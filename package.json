@@ -1,0 +1,19 @@
+{
+  "name": "e-housing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Webova PWA aplikacia pre spravu spolocenstva vlastnikov bytov.",
+  "scripts": {
+    "dev": "python -m http.server 4173 --bind 127.0.0.1",
+    "start": "python -m http.server 4173 --bind 127.0.0.1",
+    "check": "node --check app.js"
+  },
+  "keywords": [
+    "svb",
+    "housing",
+    "pwa",
+    "vercel",
+    "supabase"
+  ],
+  "license": "UNLICENSED"
+}

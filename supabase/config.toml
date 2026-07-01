@@ -1,0 +1,12 @@
+project_id = "ifyyflvxqkazndkwffvm"
+
+[api]
+enabled = true
+
+[auth]
+enabled = true
+site_url = "https://e-housing-zeta.vercel.app"
+additional_redirect_urls = ["https://e-housing-zeta.vercel.app/**", "http://127.0.0.1:4173/**", "http://localhost:4173/**"]
+
+[storage]
+enabled = true

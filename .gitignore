@@ -1,0 +1,15 @@
+.env
+.env.local
+.vercel
+supabase/.temp
+tools/gmail-oauth-url.txt
+tools/gmail-oauth-success.txt
+node_modules
+dist
+build
+release
+.DS_Store
+Thumbs.db
+*.log
+
+.vercel

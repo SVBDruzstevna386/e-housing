@@ -1,0 +1,188 @@
+﻿<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#174d57">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="e-housing">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>e-housing | SVB a NP Družstevná 386</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+    <link rel="stylesheet" href="./styles.css?v=youtube-fit-dialog">
+  </head>
+  <body>
+    <section class="login-screen" id="loginScreen">
+      <div class="login-visual">
+        <img id="loginBuildingImage" src="./building-placeholder.svg" alt="Bytový dom SVB a NP Družstevná 386">
+      </div>
+      <form class="login-panel" id="loginForm">
+        <span class="tag document">SVB a NP Družstevná 386</span>
+        <h1>Prihlásenie do e-housing</h1>
+        <p class="muted">Prihlásenie je napojené na Supabase Auth. Nový vlastník po registrácii čaká na schválenie predsedom SVB.</p>
+        <div class="field">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" value="predsedaSVB@gmail.com">
+        </div>
+        <div class="field">
+          <label for="loginPassword">Heslo</label>
+          <div class="password-field">
+            <input id="loginPassword" type="password" value="default">
+            <button class="icon-btn password-toggle" type="button" data-toggle-password="loginPassword" aria-label="Zobraziť heslo"><i data-lucide="eye"></i></button>
+          </div>
+        </div>
+        <label class="consent-check compact-check">
+          <input id="loginRemember" type="checkbox" checked>
+          <span>Zostať prihlásený na tomto zariadení</span>
+        </label>
+        <div class="field hidden">
+          <label for="loginRole">Rola</label>
+          <select id="loginRole">
+            <option value="chair">Predseda SVB</option>
+            <option value="vice_chair">Podpredseda SVB</option>
+            <option value="economic">Ekonomická správa</option>
+            <option value="board">Dozorná rada</option>
+            <option value="owner">Vlastník nehnuteľnosti</option>
+          </select>
+        </div>
+        <button class="primary" type="submit"><i data-lucide="log-in"></i><span>Prihlásiť sa</span></button>
+        <button class="ghost" type="button" id="forgotPasswordBtn"><i data-lucide="key-round"></i><span>Zabudnuté heslo</span></button>
+        <button class="ghost" type="button" id="showRegisterBtn"><i data-lucide="user-plus"></i><span>Registrácia používateľa</span></button>
+        <div class="register-panel hidden" id="registerPanel">
+          <div class="field">
+            <label for="registerRole">Typ účtu</label>
+            <select id="registerRole">
+              <option value="owner">Vlastník nehnuteľnosti</option>
+              <option value="vice_chair">Podpredseda SVB</option>
+              <option value="economic">Ekonomická správa</option>
+              <option value="board">Člen dozornej rady</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="registerName">Meno a priezvisko</label>
+            <input id="registerName" placeholder="Meno a priezvisko">
+          </div>
+          <div class="field">
+            <label for="registerFlat">Byt</label>
+            <input id="registerFlat" placeholder="napr. A-02">
+          </div>
+          <div class="field">
+            <label for="registerEmail">Email</label>
+            <input id="registerEmail" type="email" placeholder="vlastnik@example.com">
+          </div>
+          <div class="field">
+            <label for="registerPassword">Heslo</label>
+            <div class="password-field">
+              <input id="registerPassword" type="password" placeholder="Zvoľte heslo">
+              <button class="icon-btn password-toggle" type="button" data-toggle-password="registerPassword" aria-label="Zobraziť heslo"><i data-lucide="eye"></i></button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="registerPasswordRepeat">Zopakovať heslo</label>
+            <div class="password-field">
+              <input id="registerPasswordRepeat" type="password" placeholder="Zadajte heslo ešte raz">
+              <button class="icon-btn password-toggle" type="button" data-toggle-password="registerPasswordRepeat" aria-label="Zobraziť heslo"><i data-lucide="eye"></i></button>
+            </div>
+          </div>
+          <details class="legal-consent">
+            <summary>Informácie o spracúvaní osobných údajov</summary>
+            <div id="registerGdprText" class="legal-text">Načítavam GDPR informácie...</div>
+          </details>
+          <label class="consent-check">
+            <input id="registerGdprAccepted" type="checkbox">
+            <span>Potvrdzujem, že som sa oboznámil/a s informáciami o spracúvaní osobných údajov a beriem ich na vedomie.</span>
+          </label>
+          <p class="form-warning hidden" id="registerGdprWarning">Pre registráciu je potrebné potvrdiť oboznámenie sa so spracúvaním osobných údajov podľa GDPR.</p>
+          <p class="form-warning hidden" id="registerPasswordWarning">Heslá sa nezhodujú. Zadajte rovnaké heslo do oboch polí.</p>
+          <button class="primary" type="button" id="registerOwnerBtn"><i data-lucide="send"></i><span>Odoslať registráciu</span></button>
+        </div>
+        <p class="app-copyright"><button type="button" data-copyright-legal>© 2026 e-housing / Martin Nagy - ITS. Všetky práva vyhradené.</button></p>
+      </form>
+    </section>
+
+    <div class="app-shell hidden" id="appShell">
+      <aside class="sidebar" aria-label="Hlavná navigácia">
+        <div class="brand">
+          <span class="brand-mark">eh</span>
+          <div>
+            <strong>e-housing</strong>
+            <span>SVB a NP Družstevná 386</span>
+          </div>
+        </div>
+
+        <nav class="nav-list">
+          <button class="nav-item active" data-view="overview"><i data-lucide="layout-dashboard"></i><span>Prehľad</span></button>
+          <button class="nav-item" data-view="documents"><i data-lucide="file-text"></i><span>Dokumenty</span></button>
+          <button class="nav-item" data-view="documentHistory"><i data-lucide="archive"></i><span>História dokumentov</span></button>
+          <button class="nav-item" data-view="votes"><i data-lucide="vote"></i><span>Hlasovanie</span></button>
+          <button class="nav-item" data-view="billing"><i data-lucide="receipt-text"></i><span>Vyúčtovanie</span></button>
+          <button class="nav-item" data-view="executions"><i data-lucide="scale"></i><span>Exekúcie</span></button>
+          <button class="nav-item" data-view="finance"><i data-lucide="chart-column"></i><span>Hospodárenie</span></button>
+          <button class="nav-item" data-view="messages"><i data-lucide="messages-square"></i><span>Komunikácia</span></button>
+          <button class="nav-item" data-view="calendar"><i data-lucide="calendar-days"></i><span>Kalendár</span></button>
+          <button class="nav-item" data-view="activities"><i data-lucide="notebook-tabs"></i><span>Denník</span></button>
+          <button class="nav-item" data-view="photoAlbum"><i data-lucide="images"></i><span>Fotoalbum</span></button>
+          <button class="nav-item" data-view="owners"><i data-lucide="users"></i><span>Vlastníci</span></button>
+          <button class="nav-item" data-view="emails"><i data-lucide="mail"></i><span>E-mail šablóny</span></button>
+          <button class="nav-item" data-view="logs"><i data-lucide="list-checks"></i><span>Logy</span></button>
+          <button class="nav-item" data-view="settings"><i data-lucide="settings"></i><span>Nastavenia</span></button>
+          <button class="nav-item" data-view="profile"><i data-lucide="user-round"></i><span>Profil</span></button>
+        </nav>
+
+        <section class="sidebar-summary">
+          <span class="summary-label">Stav domu</span>
+          <strong>Aktívna správa</strong>
+          <span id="sidebarSummaryText">Načítavam dáta</span>
+        </section>
+
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <button class="icon-btn mobile-menu-back" id="mobileMenuBackBtn" type="button" aria-label="Späť do menu"><i data-lucide="arrow-left"></i></button>
+          <div class="page-title">
+            <p class="eyebrow" id="operationModeLabel">Live testovací režim</p>
+            <h1 id="viewTitle">Prehľad domu</h1>
+            <p class="page-subtitle">SVB a NP Družstevná 386</p>
+          </div>
+          <figure class="building-card">
+            <img id="headerBuildingImage" src="./building-placeholder.svg" alt="Náhľad bytového domu">
+            <figcaption>
+              <strong>Fotka domu</strong>
+              <span>neskôr vymeníme za reálnu fotografiu</span>
+            </figcaption>
+          </figure>
+          <div class="top-actions">
+            <button class="ghost" id="installBtn" hidden><i data-lucide="download"></i><span>Inštalovať</span></button>
+            <button class="ghost" id="logoutBtn"><i data-lucide="log-out"></i><span>Odhlásiť</span></button>
+            <button class="primary" id="newItemBtn"><i data-lucide="plus"></i><span>Pridať oznámenie</span></button>
+          </div>
+        </header>
+
+        <section id="viewRoot" class="view-root" aria-live="polite"></section>
+      </main>
+    </div>
+
+    <dialog id="actionDialog">
+      <form method="dialog" class="dialog-card">
+        <div class="dialog-head">
+          <h2 id="dialogTitle">Nová položka</h2>
+          <button class="icon-btn" value="cancel" aria-label="Zavrieť"><i data-lucide="x"></i></button>
+        </div>
+        <div id="dialogBody"></div>
+        <div class="dialog-actions">
+          <button class="ghost" value="cancel"><i data-lucide="x-circle"></i><span>Zrušiť</span></button>
+          <button class="primary" id="dialogSave" value="default"><i data-lucide="save"></i><span>Uložiť</span></button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./app.js?v=youtube-fit-dialog" defer></script>
+  </body>
+</html>
+
+
