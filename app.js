@@ -992,7 +992,8 @@ async function loadSupabaseData() {
   ]);
 
   if (ownerRecords.data) {
-    state.owners = ownerRecords.data.map(ownerRecordToOwner);
+    const profileById = new Map((profiles.data || []).map((profile) => [profile.id, profile]));
+    state.owners = ownerRecords.data.map((ownerRecord) => ownerRecordToOwner(ownerRecord, profileById.get(ownerRecord.profile_id)));
   } else if (profiles.data) {
     state.owners = profiles.data.filter((item) => item.role === "owner").map(profileToOwner);
   }
@@ -1125,21 +1126,21 @@ function profileToOwner(item) {
   };
 }
 
-function ownerRecordToOwner(item) {
+function ownerRecordToOwner(item, profile = null) {
   return {
     id: item.id,
     profileId: item.profile_id,
-    flat: item.flat_number || "Bez bytu",
-    name: item.full_name,
+    flat: item.flat_number || profile?.flat_number || "Bez bytu",
+    name: item.full_name || profile?.full_name || "Vlastník nehnuteľnosti",
     share: item.share_text || "0,00 %",
-    email: item.login_email || "",
-    loginEmail: item.login_email || "",
-    phone: item.phone || "",
-    correspondenceStreet: item.correspondence_street || "",
-    correspondenceCity: item.correspondence_city || "",
-    correspondencePostalCode: item.correspondence_postal_code || "",
-    photoPath: "",
-    photoUrl: "",
+    email: item.login_email || profile?.email || "",
+    loginEmail: item.login_email || profile?.email || "",
+    phone: item.phone || profile?.phone || "",
+    correspondenceStreet: item.correspondence_street || profile?.correspondence_street || "",
+    correspondenceCity: item.correspondence_city || profile?.correspondence_city || "",
+    correspondencePostalCode: item.correspondence_postal_code || profile?.correspondence_postal_code || "",
+    photoPath: profile?.profile_photo_path || "",
+    photoUrl: profilePhotoUrl(profile?.profile_photo_path),
     accountStatus: item.account_status || "Čaká na autorizáciu",
     approvalStatus: item.approval_status || "pending",
     ownedFrom: item.owned_from || "",
@@ -2872,7 +2873,7 @@ function serviceAdminSection() {
       values: [
         ["Manifest", "manifest.webmanifest"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v101"]
+        ["Cache", "e-housing-v102"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -6887,8 +6888,6 @@ async function boot() {
 }
 
 boot();
-
-
 
 
 
