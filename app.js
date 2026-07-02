@@ -265,7 +265,8 @@ const ROLE_DEFINITIONS = [
 ];
 
 const UI_THEME_OPTIONS = [
-  ["classic_light", "KLASIK light"]
+  ["classic_light", "KLASIK light"],
+  ["cartoon_3d", "3D cartoon"]
 ];
 
 const PERMISSION_VIEWS = [
