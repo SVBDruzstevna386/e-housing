@@ -118,6 +118,21 @@ button {
   line-height: 1.6;
 }
 
+.help-dialog-text {
+  max-height: min(58vh, 560px);
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfd;
+  line-height: 1.65;
+}
+
+.help-dialog-text p {
+  margin: 14px 0 0;
+  color: var(--muted);
+}
+
 .attachment-preview {
   margin: 16px 0;
   overflow: hidden;

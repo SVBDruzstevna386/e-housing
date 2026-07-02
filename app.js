@@ -151,6 +151,73 @@ const titles = {
   settings: "Nastavenia"
 };
 
+const HELP_TEXTS = {
+  overview: {
+    title: "Nápoveda pre Prehľad",
+    body: "Záložka Prehľad slúži ako úvodná pracovná plocha aplikácie. Zobrazuje najdôležitejšie informácie podľa prihlásenej role, napríklad stav domu, aktuálne dokumenty, hlasovania, správy, kontakty na vedenie SVB a rýchle upozornenia. Obsah sa prispôsobuje tomu, či je používateľ predseda SVB, člen vedenia alebo vlastník nehnuteľnosti."
+  },
+  documents: {
+    title: "Nápoveda pre Dokumenty",
+    body: "V záložke Dokumenty sa zverejňujú aktuálne dokumenty pre daný rok, napríklad pozvánky, zápisnice, tlačivá, zmluvy, obrázky alebo prílohy. Predseda SVB môže dokumenty pridávať, upravovať a vymazávať podľa nastavených práv. Ostatné role majú prístup na prezeranie a stiahnutie dokumentov podľa oprávnení."
+  },
+  documentHistory: {
+    title: "Nápoveda pre Históriu dokumentov",
+    body: "História dokumentov slúži ako archív starších dokumentov a dokumentov označených ako historické. Dokumenty sa dajú filtrovať podľa kategórií. Predseda SVB spravuje kategórie a môže dopĺňať archívne záznamy, ostatné role si dokumenty prezerajú podľa pridelených práv."
+  },
+  votes: {
+    title: "Nápoveda pre Hlasovanie",
+    body: "Záložka Hlasovanie slúži na elektronické zberanie stanovísk vlastníkov k návrhom predsedu SVB. Predseda SVB vytvára hlasovanie, otázky a termín uzavretia. Vlastník nehnuteľnosti hlasuje osobitne za každú svoju priradenú nehnuteľnosť a môže do uzavretia hlasovania svoj hlas zmeniť. Komentáre môžu byť verejné alebo súkromné predsedovi SVB."
+  },
+  billing: {
+    title: "Nápoveda pre Vyúčtovanie",
+    body: "Vyúčtovanie obsahuje dokumenty a históriu vyúčtovaní priradené ku konkrétnej nehnuteľnosti alebo vlastníkovi. Predseda SVB pridáva vyúčtovania pre konkrétnych vlastníkov. Vlastník vidí iba vyúčtovania patriace k aktuálne vybranej nehnuteľnosti."
+  },
+  executions: {
+    title: "Nápoveda pre Exekúcie",
+    body: "Záložka Exekúcie eviduje právny a finančný stav pohľadávok voči vlastníkom, pri ktorých môže byť potrebné riešiť vymáhanie. Predseda SVB spravuje údaje o dlhu, histórii vzniku dlhu a aktuálnom právnom stave. Ostatné role majú prístup podľa nastavených oprávnení."
+  },
+  finance: {
+    title: "Nápoveda pre Hospodárenie",
+    body: "Hospodárenie zobrazuje finančné údaje domu, stav bankového účtu, plánované výdavky, renovácie a podnety vlastníkov na inovácie. Predseda SVB dopĺňa finančné záznamy a odhadované ceny. Vlastníci môžu pridávať podnety a diskutovať k nim podľa nastavených práv."
+  },
+  messages: {
+    title: "Nápoveda pre Komunikáciu",
+    body: "Komunikácia slúži na verejné aj súkromné správy medzi používateľmi podľa nastavených práv. Správy môžu byť adresované verejnej diskusii, predsedovi SVB, vedeniu alebo konkrétnemu vlastníkovi. Odpovede sa zobrazujú v rámci pôvodnej konverzácie."
+  },
+  calendar: {
+    title: "Nápoveda pre Kalendár",
+    body: "Kalendár zobrazuje udalosti súvisiace so správou domu, napríklad schôdze, odstávky, kontroly alebo termíny hlasovaní. Používateľ s právom zápisu môže vytvoriť udalosť aj kliknutím na konkrétny deň. Udalosti sa dajú dopĺňať o poznámky a emailové notifikácie."
+  },
+  activities: {
+    title: "Nápoveda pre Denník",
+    body: "Denník slúži na evidenciu činností vykonaných pre bytový dom. Predseda SVB, podpredseda, členovia dozornej rady alebo ekonomická správa si tu zapisujú svoje aktivity, čas a stav úloh. Vlastníci môžu denník čítať podľa nastavených práv."
+  },
+  photoAlbum: {
+    title: "Nápoveda pre Fotoalbum",
+    body: "Fotoalbum zhromažďuje fotografie domu, spoločných priestorov, opráv, revízií alebo podnetov. Používatelia môžu fotografie prezerať, po kliknutí sa zobrazí väčší náhľad. Pridávanie a vymazávanie fotografií sa riadi nastavenými právami."
+  },
+  owners: {
+    title: "Nápoveda pre Vlastníkov",
+    body: "Záložka Vlastníci je administračná evidencia vlastníkov nehnuteľností. Predseda SVB tu schvaľuje nové registrácie, upravuje údaje, spravuje stav účtu, dlhy, kontakty a priradenie nehnuteľností k používateľskému účtu. Táto záložka sa zobrazuje iba rolám s príslušným oprávnením."
+  },
+  emails: {
+    title: "Nápoveda pre E-mail šablóny",
+    body: "E-mail šablóny obsahujú texty automatických emailov, napríklad notifikácie o dokumentoch, oznamoch, udalostiach, komunikácii alebo obnove hesla. Predseda SVB môže upravovať texty šablón tak, aby zodpovedali štýlu a pravidlám SVB."
+  },
+  logs: {
+    title: "Nápoveda pre Logy",
+    body: "Logy zobrazujú záznamy o aktivitách používateľov v aplikácii, napríklad prihlásenia, vytváranie, úpravy alebo vymazávanie položiek. Predseda SVB môže filtrovať logy podľa role, používateľa a typu aktivity a otvárať detail súvisiacej položky."
+  },
+  settings: {
+    title: "Nápoveda pre Nastavenia",
+    body: "Nastavenia slúžia na správu prístupových práv, komunikačných pravidiel, live chatu a technických pripojení aplikácie. Predseda SVB tu určuje, ktoré role vidia jednotlivé záložky a či môžu čítať, zapisovať alebo vymazávať záznamy."
+  },
+  profile: {
+    title: "Nápoveda pre Profil",
+    body: "Profil obsahuje osobné a kontaktné údaje prihláseného používateľa. Používateľ si môže upraviť email, telefón, korešpondenčnú adresu, heslo a profilovú fotografiu. Pri vlastníkovi s viacerými nehnuteľnosťami sa údaje ukladajú v kontexte aktuálne vybranej nehnuteľnosti."
+  }
+};
+
 const SUPABASE_URL = "https://ifyyflvxqkazndkwffvm.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_FfyzT0LPWKbDoeQYzDXMSw_bID7XfvC";
 const BUILDING_ID = "38600000-0000-0000-0000-000000000386";
@@ -446,6 +513,7 @@ const registerOwnerBtn = document.querySelector("#registerOwnerBtn");
 const root = document.querySelector("#viewRoot");
 const title = document.querySelector("#viewTitle");
 const newItemBtn = document.querySelector("#newItemBtn");
+const helpBtn = document.querySelector("#helpBtn");
 const logoutBtn = document.querySelector("#logoutBtn");
 const mobileMenuBackBtn = document.querySelector("#mobileMenuBackBtn");
 const dialog = document.querySelector("#actionDialog");
@@ -851,6 +919,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 newItemBtn.addEventListener("click", () => openCreateDialog());
+helpBtn?.addEventListener("click", () => openHelpDialog(state.view));
 
 function roleLabel() {
   return { chair: "Predseda SVB", vice_chair: "Podpredseda SVB", economic: "Ekonomická správa", board: "Dozorná rada", owner: "Vlastník nehnuteľnosti" }[state.role];
@@ -2035,12 +2104,31 @@ function openCopyrightDialog() {
   enhanceIcons();
 }
 
+function openHelpDialog(view = state.view) {
+  const help = HELP_TEXTS[view] || {
+    title: `Nápoveda pre ${titles[view] || "aktuálnu záložku"}`,
+    body: "Táto záložka zobrazuje obsah a akcie podľa aktuálne nastavenej role a prístupových práv používateľa."
+  };
+  dialogSave.hidden = true;
+  dialog.classList.remove("video-dialog");
+  dialogTitle.textContent = help.title;
+  dialogBody.innerHTML = `
+    <article class="help-dialog-text">
+      <span class="tag document">${escapeHtml(titles[view] || "Aplikácia")}</span>
+      <p>${escapeHtml(help.body)}</p>
+    </article>
+  `;
+  dialog.showModal();
+  enhanceIcons();
+}
+
 function render() {
   syncAppChrome();
   loginScreen.classList.toggle("hidden", state.loggedIn);
   appShell.classList.toggle("hidden", !state.loggedIn);
   syncMobileLayout();
   if (!state.loggedIn) {
+    if (helpBtn) helpBtn.hidden = true;
     enhanceIcons();
     return;
   }
@@ -2048,6 +2136,7 @@ function render() {
   if (isPendingOwner()) {
     title.textContent = "Čaká sa na autorizáciu";
     newItemBtn.hidden = true;
+    if (helpBtn) helpBtn.hidden = true;
     syncNavigation(true);
     root.innerHTML = `${pendingAuthorizationView()}${copyrightFooter()}`;
     syncMobileLayout();
@@ -2062,6 +2151,10 @@ function render() {
   syncNavigation();
   updateSidebarSummary();
   title.textContent = titles[state.view];
+  if (helpBtn) {
+    helpBtn.hidden = false;
+    helpBtn.innerHTML = `${icon("circle-help")}<span>Nápoveda pre ${escapeHtml(titles[state.view] || "záložku")}</span>`;
+  }
   newItemBtn.hidden = !canCreateInView();
   newItemBtn.innerHTML = `${icon("plus")}<span>${actionLabel()}</span>`;
   root.innerHTML = `${views[state.view]()}${copyrightFooter()}`;
