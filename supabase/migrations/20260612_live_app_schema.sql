@@ -33,6 +33,7 @@ create table if not exists public.profiles (
   email text not null,
   phone text,
   flat_number text,
+  profile_photo_path text,
   gdpr_accepted_at timestamptz,
   gdpr_version text,
   owned_from date,

@@ -271,6 +271,44 @@ button {
   line-height: 1.35;
 }
 
+.sidebar-profile-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-profile-card img {
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.sidebar-profile-card strong,
+.sidebar-profile-card span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-profile-card strong {
+  color: #fff;
+  line-height: 1.25;
+}
+
+.sidebar-profile-card span {
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+}
+
 .nav-list {
   display: grid;
   gap: 8px;
@@ -749,6 +787,31 @@ a.ghost {
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid var(--line);
+}
+
+.profile-photo-panel.personal-photo img {
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+.member-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.member-card > .row-actions {
+  grid-column: 1 / -1;
+}
+
+.member-photo {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
 }
 
 .install-grid {

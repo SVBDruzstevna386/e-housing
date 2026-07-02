@@ -11,7 +11,7 @@
     <title>e-housing | SVB a NP Družstevná 386</title>
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="apple-touch-icon" href="./apple-touch-icon.png">
-    <link rel="stylesheet" href="./styles.css?v=youtube-fit-dialog">
+    <link rel="stylesheet" href="./styles.css?v=profile-photos">
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -112,6 +112,14 @@
           </div>
         </div>
 
+        <section class="sidebar-profile-card" aria-label="Profil prihláseného používateľa">
+          <img id="sidebarProfilePhoto" src="./icon-192.png" alt="Profilová fotka používateľa">
+          <div>
+            <strong id="sidebarProfileName">Používateľ</strong>
+            <span id="sidebarProfileRole">Profil</span>
+          </div>
+        </section>
+
         <nav class="nav-list">
           <button class="nav-item active" data-view="overview"><i data-lucide="layout-dashboard"></i><span>Prehľad</span></button>
           <button class="nav-item" data-view="documents"><i data-lucide="file-text"></i><span>Dokumenty</span></button>
@@ -181,7 +189,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./app.js?v=youtube-fit-dialog" defer></script>
+    <script src="./app.js?v=profile-photos" defer></script>
   </body>
 </html>
 

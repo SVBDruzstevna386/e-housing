@@ -16,6 +16,7 @@ create table public.profiles (
   full_name text not null,
   email text not null,
   phone text,
+  profile_photo_path text,
   is_active boolean not null default true,
   created_at timestamptz not null default now()
 );

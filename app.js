@@ -40,9 +40,9 @@
     { id: 5, title: "Fotodokumentácia pivničných priestorov", category: "Iné dokumenty", date: "2026-05-03", owner: "Dozorná rada", note: "Obrazová príloha ku kontrole spoločných priestorov." }
   ],
   boardMembers: [
-    { id: 1, role: "Predseda SVB", name: "Martin Nagy", email: "predsedaSVB@gmail.com", phone: "+421 900 000 000", note: "Hlavný kontakt pre správu domu" },
-    { id: 2, role: "Člen dozornej rady", name: "Jana Horváthová", email: "jana@example.com", phone: "+421 900 111 111", note: "Kontrola dokumentov a zápisníc" },
-    { id: 3, role: "Člen dozornej rady", name: "Peter Kováč", email: "peter@example.com", phone: "+421 900 222 222", note: "Kontrola opráv a cenových ponúk" }
+    { id: 1, role: "Predseda SVB", name: "Martin Nagy", email: "predsedaSVB@gmail.com", phone: "+421 900 000 000", note: "Hlavný kontakt pre správu domu", photoUrl: "" },
+    { id: 2, role: "Člen dozornej rady", name: "Jana Horváthová", email: "jana@example.com", phone: "+421 900 111 111", note: "Kontrola dokumentov a zápisníc", photoUrl: "" },
+    { id: 3, role: "Člen dozornej rady", name: "Peter Kováč", email: "peter@example.com", phone: "+421 900 222 222", note: "Kontrola opráv a cenových ponúk", photoUrl: "" }
   ],
   activities: [
     { id: 1, month: "2026-06", person: "Martin Nagy", role: "Predseda SVB", title: "Príprava pozvánky na schôdzu", hours: 2.5, status: "Dokončené", note: "Pripravený návrh programu a podkladov." },
@@ -68,10 +68,10 @@
     { id: 3, title: "Nástenka pri vstupe", category: "Oznamy", author: "Vlastník nehnuteľnosti", date: "2026-05-12", description: "Podklad k diskusii o úprave informačnej tabule.", image: "building-placeholder.svg" }
   ],
   owners: [
-    { flat: "A-01", name: "Mária Nováková", share: "3,24 %", email: "maria@example.com", loginEmail: "maria@example.com", accountStatus: "Aktívny", approvalStatus: "approved", ownedFrom: "2020-04-01", isDebtor: false, debtAmount: 0, status: "Aktívny", note: "Bez poznámky" },
-    { flat: "A-06", name: "Peter Kováč", share: "2,91 %", email: "peter@example.com", loginEmail: "peter@example.com", accountStatus: "Pozvánka odoslaná", approvalStatus: "pending", ownedFrom: "2024-02-15", isDebtor: true, debtAmount: 185.4, status: "Pozvánka odoslaná", note: "Neuhradený predpis za 05/2026" },
-    { flat: "B-12", name: "Jana Horváthová", share: "3,66 %", email: "jana@example.com", loginEmail: "jana@example.com", accountStatus: "Aktívny", approvalStatus: "approved", ownedFrom: "2018-09-10", isDebtor: false, debtAmount: 0, status: "Aktívny", note: "Členka pracovnej skupiny" },
-    { flat: "C-21", name: "Tomáš Baláž", share: "2,48 %", email: "tomas@example.com", loginEmail: "tomas@example.com", accountStatus: "Aktívny", approvalStatus: "approved", ownedFrom: "2022-11-03", isDebtor: true, debtAmount: 42.75, status: "Aktívny", note: "Evidovať úhradu po splatnosti" }
+    { flat: "A-01", name: "Mária Nováková", share: "3,24 %", email: "maria@example.com", loginEmail: "maria@example.com", accountStatus: "Aktívny", approvalStatus: "approved", ownedFrom: "2020-04-01", isDebtor: false, debtAmount: 0, status: "Aktívny", note: "Bez poznámky", photoUrl: "" },
+    { flat: "A-06", name: "Peter Kováč", share: "2,91 %", email: "peter@example.com", loginEmail: "peter@example.com", accountStatus: "Pozvánka odoslaná", approvalStatus: "pending", ownedFrom: "2024-02-15", isDebtor: true, debtAmount: 185.4, status: "Pozvánka odoslaná", note: "Neuhradený predpis za 05/2026", photoUrl: "" },
+    { flat: "B-12", name: "Jana Horváthová", share: "3,66 %", email: "jana@example.com", loginEmail: "jana@example.com", accountStatus: "Aktívny", approvalStatus: "approved", ownedFrom: "2018-09-10", isDebtor: false, debtAmount: 0, status: "Aktívny", note: "Členka pracovnej skupiny", photoUrl: "" },
+    { flat: "C-21", name: "Tomáš Baláž", share: "2,48 %", email: "tomas@example.com", loginEmail: "tomas@example.com", accountStatus: "Aktívny", approvalStatus: "approved", ownedFrom: "2022-11-03", isDebtor: true, debtAmount: 42.75, status: "Aktívny", note: "Evidovať úhradu po splatnosti", photoUrl: "" }
   ],
   events: [
     { id: 1, day: 18, date: "2026-06-18", title: "Schôdza SVB" },
@@ -452,6 +452,9 @@ const sidebarSummaryText = document.querySelector("#sidebarSummaryText");
 const loginBuildingImage = document.querySelector("#loginBuildingImage");
 const headerBuildingImage = document.querySelector("#headerBuildingImage");
 const operationModeLabel = document.querySelector("#operationModeLabel");
+const sidebarProfilePhoto = document.querySelector("#sidebarProfilePhoto");
+const sidebarProfileName = document.querySelector("#sidebarProfileName");
+const sidebarProfileRole = document.querySelector("#sidebarProfileRole");
 
 let installPrompt = null;
 let mobileViewOpen = false;
@@ -1110,6 +1113,8 @@ function profileToOwner(item) {
     correspondenceStreet: item.correspondence_street || "",
     correspondenceCity: item.correspondence_city || "",
     correspondencePostalCode: item.correspondence_postal_code || "",
+    photoPath: item.profile_photo_path || "",
+    photoUrl: profilePhotoUrl(item.profile_photo_path),
     accountStatus: item.approval_status === "approved" ? "Aktívny" : "Čaká na autorizáciu",
     approvalStatus: item.approval_status,
     ownedFrom: item.owned_from || "",
@@ -1133,6 +1138,8 @@ function ownerRecordToOwner(item) {
     correspondenceStreet: item.correspondence_street || "",
     correspondenceCity: item.correspondence_city || "",
     correspondencePostalCode: item.correspondence_postal_code || "",
+    photoPath: "",
+    photoUrl: "",
     accountStatus: item.account_status || "Čaká na autorizáciu",
     approvalStatus: item.approval_status || "pending",
     ownedFrom: item.owned_from || "",
@@ -1145,7 +1152,7 @@ function ownerRecordToOwner(item) {
 
 function profileToBoardMember(item) {
   const role = item.role === "chair" ? "Predseda SVB" : item.role === "vice_chair" ? "Podpredseda SVB" : item.role === "economic" ? "Ekonomická správa" : "Člen dozornej rady";
-  return { id: item.id, role, name: item.full_name, flat: item.flat_number || "Nie je viazané na byt", email: item.email, phone: item.phone || "", note: item.note || "Profil vedenia SVB" };
+  return { id: item.id, role, name: item.full_name, flat: item.flat_number || "Nie je viazané na byt", email: item.email, phone: item.phone || "", note: item.note || "Profil vedenia SVB", photoPath: item.profile_photo_path || "", photoUrl: profilePhotoUrl(item.profile_photo_path) };
 }
 
 async function dbDocumentToCard(item) {
@@ -1376,6 +1383,16 @@ function dbActivityLogToCard(item) {
 function publicStorageUrl(path) {
   if (!path || !supabaseClient) return "";
   return supabaseClient.storage.from(PUBLIC_ASSETS_BUCKET).getPublicUrl(path).data?.publicUrl || "";
+}
+
+function profilePhotoUrl(pathOrUrl) {
+  if (!pathOrUrl) return "";
+  if (/^https?:\/\//i.test(pathOrUrl) || pathOrUrl.startsWith("blob:") || pathOrUrl.startsWith("data:")) return pathOrUrl;
+  return publicStorageUrl(pathOrUrl);
+}
+
+function profilePhotoFallback() {
+  return "./icon-192.png";
 }
 
 async function signedStorageUrl(path) {
@@ -1698,8 +1715,16 @@ function syncBuildingImages() {
   if (headerBuildingImage) headerBuildingImage.src = imageUrl;
 }
 
+function syncProfileChrome() {
+  const profile = state.loggedIn ? currentProfile() : null;
+  if (sidebarProfilePhoto) sidebarProfilePhoto.src = profile?.photoUrl || profilePhotoFallback();
+  if (sidebarProfileName) sidebarProfileName.textContent = profile?.name || "Používateľ";
+  if (sidebarProfileRole) sidebarProfileRole.textContent = profile?.role || "Profil";
+}
+
 function syncAppChrome() {
   syncBuildingImages();
+  syncProfileChrome();
   if (operationModeLabel) operationModeLabel.textContent = state.operationModeText || "Live testovací režim";
   const registerGdprText = document.querySelector("#registerGdprText");
   if (registerGdprText) {
@@ -1761,6 +1786,8 @@ function currentProfile() {
       correspondenceStreet: owner?.correspondenceStreet || "",
       correspondenceCity: owner?.correspondenceCity || "",
       correspondencePostalCode: owner?.correspondencePostalCode || "",
+      photoPath: owner?.photoPath || "",
+      photoUrl: owner?.photoUrl || "",
       role: "Vlastník nehnuteľnosti",
       readonlyNote: owner?.ownedFrom ? `Vlastník od ${owner.ownedFrom}` : "Kontaktné a korešpondenčné údaje si môže vlastník upraviť v profile"
     };
@@ -1776,6 +1803,8 @@ function currentProfile() {
     correspondenceStreet: "",
     correspondenceCity: "",
     correspondencePostalCode: "",
+    photoPath: member?.photoPath || "",
+    photoUrl: member?.photoUrl || "",
     role: member?.role || roleLabel(),
     readonlyNote: "Funkcia vo vedení SVB"
   };
@@ -2423,6 +2452,16 @@ const views = {
     const profile = currentProfile();
     const [firstName, ...surnameParts] = profile.name.split(" ");
     const surname = surnameParts.join(" ") || "";
+    const personalPhotoPanel = `
+      <div class="profile-photo-panel personal-photo">
+        <img src="${escapeAttr(profile.photoUrl || profilePhotoFallback())}" alt="Aktuálna profilová fotka">
+        <div class="field">
+          <label for="profilePersonalPhoto">Profilová fotka</label>
+          <input id="profilePersonalPhoto" type="file" accept="image/png,image/jpeg,image/webp">
+          <p class="muted">Odporúčaná veľkosť fotky je 512 × 512 px, ideálne štvorcový záber tváre. Po uložení sa zobrazí v hlavnom paneli a pri riadiacich rolách aj v kontakte vedenia SVB.</p>
+        </div>
+      </div>
+    `;
     const buildingPhotoPanel = canManageAll() ? `
       <div class="profile-photo-panel">
         <img src="${escapeAttr(state.buildingPhotoUrl || "./building-placeholder.svg")}" alt="Aktuálna fotka bytového domu">
@@ -2522,6 +2561,7 @@ const views = {
           <div class="profile-grid">
             ${canManageAll() || profile.kind === "owner" ? `${editableIdentityFields}${canManageAll() ? roleField : ""}` : readonlyFields}
           </div>
+          ${personalPhotoPanel}
           <div class="profile-form">
             <div class="field">
               <label for="profileEmail">Email</label>
@@ -2832,7 +2872,7 @@ function serviceAdminSection() {
       values: [
         ["Manifest", "manifest.webmanifest"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v94"]
+        ["Cache", "e-housing-v95"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -2937,7 +2977,9 @@ function readonlyField(label, value) {
 }
 
 function boardMemberCard(member) {
-  return `<article class="item">
+  const memberPhoto = member.photoUrl || profilePhotoFallback();
+  return `<article class="item member-card">
+    <img class="member-photo" src="${escapeAttr(memberPhoto)}" alt="Profilová fotka ${escapeAttr(member.name)}">
     <div>
       <h3>${member.name}</h3>
       <p class="muted">${member.role}</p>
@@ -5133,6 +5175,7 @@ async function saveProfile() {
   const canEditIdentity = canManageAll() || profile.kind === "owner";
   const nextFullName = canEditIdentity ? [firstName, surname].filter(Boolean).join(" ") || profile.name : profile.name;
   const status = document.querySelector("#profileStatus");
+  const personalPhotoFile = document.querySelector("#profilePersonalPhoto")?.files?.[0];
   const buildingPhotoFile = document.querySelector("#profileBuildingPhoto")?.files?.[0];
   const operationModeValue = document.querySelector("#operationModeText")?.value.trim() || state.operationModeText || "Live testovací režim";
   const gdprTextValue = document.querySelector("#gdprText")?.value.trim() || state.gdprText || defaultGdprText();
@@ -5142,12 +5185,22 @@ async function saveProfile() {
   if (supabaseClient && state.currentUserId) {
     let emailMessage = "";
     let photoMessage = "";
+    let personalPhotoPath = "";
     let modeMessage = "";
     let gdprMessage = "";
+    if (personalPhotoFile) {
+      try {
+        personalPhotoPath = await saveProfilePhoto(personalPhotoFile);
+        photoMessage = " Profilová fotka bola aktualizovaná.";
+      } catch (error) {
+        if (status) status.textContent = `Profilovú fotku sa nepodarilo uložiť: ${error.message}`;
+        return;
+      }
+    }
     if (canManageAll() && buildingPhotoFile) {
       try {
         await saveBuildingPhoto(buildingPhotoFile);
-        photoMessage = " Fotka domu bola aktualizovaná.";
+        photoMessage += " Fotka domu bola aktualizovaná.";
       } catch (error) {
         if (status) status.textContent = `Fotku domu sa nepodarilo uložiť: ${error.message}`;
         return;
@@ -5194,7 +5247,7 @@ async function saveProfile() {
       }
     }
 
-    const { error: profileError } = await supabaseClient.from("profiles").update({
+    const profileUpdate = {
       full_name: nextFullName,
       email: nextEmail,
       phone: nextPhone,
@@ -5203,7 +5256,9 @@ async function saveProfile() {
       correspondence_city: correspondenceCityValue || null,
       correspondence_postal_code: correspondencePostalCodeValue || null,
       role: canManageAll() ? roleFieldToAppRole(roleValue, state.role) : state.role
-    }).eq("id", state.currentUserId);
+    };
+    if (personalPhotoPath) profileUpdate.profile_photo_path = personalPhotoPath;
+    const { error: profileError } = await supabaseClient.from("profiles").update(profileUpdate).eq("id", state.currentUserId);
     if (profileError) {
       if (status) status.textContent = `Profil sa nepodarilo uložiť: ${profileError.message}`;
       return;
@@ -5247,16 +5302,18 @@ async function saveProfile() {
     profile.source.correspondenceStreet = correspondenceStreetValue;
     profile.source.correspondenceCity = correspondenceCityValue;
     profile.source.correspondencePostalCode = correspondencePostalCodeValue;
+    if (personalPhotoFile) profile.source.photoUrl = URL.createObjectURL(personalPhotoFile);
   }
 
   if (profile.kind === "board" && profile.source) {
     if (canManageAll()) {
       profile.source.name = [firstName, surname].filter(Boolean).join(" ") || profile.source.name;
       profile.source.flat = flatValue || profile.source.flat || "Nie je viazané na byt";
-      profile.source.role = roleValue || profile.source.role;
+    profile.source.role = roleValue || profile.source.role;
     }
     profile.source.email = nextEmail;
     profile.source.phone = nextPhone;
+    if (personalPhotoFile) profile.source.photoUrl = URL.createObjectURL(personalPhotoFile);
   }
 
   if (state.passwords[previousEmail] !== undefined && previousEmail !== nextEmail) {
@@ -5279,7 +5336,20 @@ async function saveProfile() {
     state.gdprRequired = gdprRequiredValue === "true";
     syncAppChrome();
   }
+  if (personalPhotoFile) syncProfileChrome();
   if (status) status.textContent = "Profil bol uložený.";
+}
+
+async function saveProfilePhoto(file) {
+  if (!file.type.startsWith("image/")) throw new Error("Vybraný súbor musí byť obrázok.");
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+  const path = `profile-photos/${state.currentUserId || "user"}-${Date.now()}-${safeName}`;
+  const upload = await supabaseClient.storage.from(PUBLIC_ASSETS_BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: true
+  });
+  if (upload.error) throw new Error(upload.error.message);
+  return path;
 }
 
 async function saveBuildingPhoto(file) {
