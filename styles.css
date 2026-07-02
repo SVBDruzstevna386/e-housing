@@ -118,8 +118,8 @@ body.theme-cartoon_3d .overview-hero {
   border-color: rgba(255, 255, 255, 0.28);
   border-radius: 22px;
   background:
-    linear-gradient(90deg, rgba(18, 68, 89, 0.96), rgba(50, 130, 201, 0.58)),
-    url("./assets/cartoon/cartoon-background.webp") center 34% / cover,
+    linear-gradient(90deg, rgba(18, 52, 72, 0.96) 0%, rgba(18, 52, 72, 0.78) 28%, rgba(50, 130, 201, 0.18) 58%, rgba(50, 130, 201, 0.08) 100%),
+    url("./assets/cartoon/cartoon-header-banner.webp") center / cover,
     var(--panel);
   color: #fff;
   box-shadow: 0 18px 28px rgba(29, 75, 100, 0.28), inset 0 2px 0 rgba(255, 255, 255, 0.2);
