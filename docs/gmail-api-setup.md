@@ -1,4 +1,4 @@
-# Gmail API nastavenie pre e-housing
+# Gmail API nastavenie pre e-housing solutions
 
 Notifikacie v aplikacii posiela Supabase Edge Function `send-notification` cez Gmail API.
 Emaily budu odchadzat zo schranky `SVBDruzstevna386@gmail.com`.
@@ -22,7 +22,7 @@ Do Supabase secrets treba doplnit:
 
 1. Otvor Google Cloud Console: https://console.cloud.google.com/
 2. Prihlas sa ako `SVBDruzstevna386@gmail.com`.
-3. Vytvor alebo vyber Google Cloud projekt pre e-housing.
+3. Vytvor alebo vyber Google Cloud projekt pre e-housing solutions.
 4. Zapni API: `Gmail API`.
 5. V `APIs & Services` nastav `OAuth consent screen`.
 6. Vytvor OAuth client typu `Web application`.

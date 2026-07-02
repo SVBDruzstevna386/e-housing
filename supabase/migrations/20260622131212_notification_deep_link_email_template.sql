@@ -6,7 +6,7 @@ insert into public.email_templates (building_id, key, title, subject, body) valu
     '{{eventType}}: {{title}}',
     'Dobrý deň,
 
-v aplikácii e-housing bola vytvorená alebo upravená udalosť.
+v aplikácii e-housing solutions bola vytvorená alebo upravená udalosť.
 
 Typ udalosti: {{eventType}}
 Záložka: {{section}}

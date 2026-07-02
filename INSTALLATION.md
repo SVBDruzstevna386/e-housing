@@ -1,6 +1,6 @@
-# e-housing: instalacny postup pre novu instalaciu
+# e-housing solutions: instalacny postup pre novu instalaciu
 
-Tento subor sluzi ako rychly postup pre vytvorenie samostatnej instalacie aplikacie e-housing pre iny bytovy dom.
+Tento subor sluzi ako rychly postup pre vytvorenie samostatnej instalacie aplikacie e-housing solutions pre iny bytovy dom.
 
 ## 1. Pripravit ucty
 

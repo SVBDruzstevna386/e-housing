@@ -1,6 +1,6 @@
 # Konfiguracna sablona pre novy dom
 
-Vyplnte pre kazdu novu instalaciu e-housing.
+Vyplnte pre kazdu novu instalaciu e-housing solutions.
 
 ## Zakladne udaje
 

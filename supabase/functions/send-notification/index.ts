@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     .maybeSingle();
   const body = await req.json().catch(() => ({}));
   const target: NotificationTarget = ["none", "all", "individual", "chair"].includes(body.target) ? body.target : "all";
-  const subject = String(body.subject || "Nova informacia v e-housing").trim();
+  const subject = String(body.subject || "Nova informacia v e-housing solutions").trim();
   const title = String(body.title || "").trim();
   const message = String(body.message || "").trim();
   const eventType = String(body.eventType || subject).trim();
@@ -277,7 +277,7 @@ function bytesToBase64(bytes: Uint8Array) {
 function renderEmail({ subject, title, message, senderName, eventType, section, actionUrl }: { subject: string; title: string; message: string; senderName: string; eventType: string; section: string; actionUrl: string }) {
   const safeSubject = escapeHtml(subject);
   const safeTitle = escapeHtml(title || subject);
-  const safeMessage = escapeHtml(message || "V aplikacii e-housing pribudla nova informacia.").replace(/\n/g, "<br>");
+  const safeMessage = escapeHtml(message || "V aplikacii e-housing solutions pribudla nova informacia.").replace(/\n/g, "<br>");
   const safeSender = escapeHtml(senderName);
   const safeEventType = escapeHtml(eventType || subject);
   const safeSection = escapeHtml(section || "Aplikacia");
@@ -293,7 +293,7 @@ function renderEmail({ subject, title, message, senderName, eventType, section, 
       <p>${safeMessage}</p>
       <p style="color:#607277">Odosielatel: ${safeSender}</p>
       <p style="margin:22px 0">
-        <a href="${safeActionUrl}" style="display:inline-block;background:#1f6f78;color:#ffffff;text-decoration:none;padding:11px 16px;border-radius:8px;font-weight:bold">Otvorit detail v e-housing</a>
+        <a href="${safeActionUrl}" style="display:inline-block;background:#1f6f78;color:#ffffff;text-decoration:none;padding:11px 16px;border-radius:8px;font-weight:bold">Otvorit detail v e-housing solutions</a>
       </p>
       <p style="font-size:12px;color:#607277">Ak tlacidlo nefunguje, otvorte tento odkaz: <br><a href="${safeActionUrl}" style="color:#1f6f78">${safeActionUrl}</a></p>
     </div>

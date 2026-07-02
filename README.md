@@ -1,4 +1,4 @@
-# e-housing
+# e-housing solutions
 
 Webova PWA aplikacia pre spravu spolocenstva vlastnikov bytov a nebytovych priestorov.
 

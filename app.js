@@ -83,34 +83,34 @@
     {
       id: "registration",
       title: "Registrácia vlastníka",
-      subject: "Vitajte v e-housing pre SVB a NP Družstevná 386",
-      body: "Dobrý deň, bol Vám vytvorený prístup do aplikácie e-housing. Po prihlásení nájdete dokumenty, oznamy, hlasovania a komunikáciu SVB."
+      subject: "Vitajte v e-housing solutions pre SVB a NP Družstevná 386",
+      body: "Dobrý deň, bol Vám vytvorený prístup do aplikácie e-housing solutions. Po prihlásení nájdete dokumenty, oznamy, hlasovania a komunikáciu SVB."
     },
     {
       id: "event",
       title: "Nová udalosť",
       subject: "Nová udalosť v dome: {{title}}",
-      body: "Dobrý deň, v aplikácii e-housing bola pridaná nová udalosť {{title}}. Prosíme, prihláste sa a pozrite si detail."
+      body: "Dobrý deň, v aplikácii e-housing solutions bola pridaná nová udalosť {{title}}. Prosíme, prihláste sa a pozrite si detail."
     },
     {
       id: "document",
       title: "Nový dokument",
       subject: "Nový dokument: {{title}}",
-      body: "Dobrý deň, v aplikácii e-housing bol zverejnený nový dokument {{title}}. Dokument si môžete pozrieť alebo stiahnuť po prihlásení."
+      body: "Dobrý deň, v aplikácii e-housing solutions bol zverejnený nový dokument {{title}}. Dokument si môžete pozrieť alebo stiahnuť po prihlásení."
     },
     {
       id: "notification-detail",
       key: "notification-detail",
       title: "Notifikácia udalosti s odkazom",
       subject: "{{eventType}}: {{title}}",
-      body: "Dobrý deň,\n\nv aplikácii e-housing bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}"
+      body: "Dobrý deň,\n\nv aplikácii e-housing solutions bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}"
     },
     {
       id: "password-reset",
       key: "password-reset",
       title: "Reset hesla",
-      subject: "Obnova hesla do e-housing",
-      body: "Dobrý deň, požiadali ste o obnovu hesla do aplikácie e-housing. Otvorte odkaz zo systémového emailu Supabase a nastavte si nové heslo. Ak ste o obnovu hesla nežiadali, túto správu ignorujte."
+      subject: "Obnova hesla do e-housing solutions",
+      body: "Dobrý deň, požiadali ste o obnovu hesla do aplikácie e-housing solutions. Otvorte odkaz zo systémového emailu Supabase a nastavte si nové heslo. Ak ste o obnovu hesla nežiadali, túto správu ignorujte."
     }
   ],
   notificationLog: [
@@ -406,7 +406,7 @@ function communicationPermissionFor(role = state.role, action = "publicDiscussio
 }
 
 function defaultGdprText() {
-  return `Informácie o spracúvaní osobných údajov pre aplikáciu e-housing
+  return `Informácie o spracúvaní osobných údajov pre aplikáciu e-housing solutions
 
 Prevádzkovateľ: SVB a NP Družstevná 386, zastúpené predsedom SVB alebo poverenou osobou správou domu.
 
@@ -509,28 +509,28 @@ function openInstallHelp(platform = "desktop") {
     android: [
       "Otvorte aplikáciu v prehliadači Chrome na Androide.",
       "V menu prehliadača zvoľte Pridať na plochu alebo Inštalovať aplikáciu.",
-      "Potvrďte inštaláciu. Ikona e-housing sa zobrazí medzi aplikáciami."
+      "Potvrďte inštaláciu. Ikona e-housing solutions sa zobrazí medzi aplikáciami."
     ],
     macos: [
       "Otvorte aplikáciu v Chrome alebo Edge na macOS.",
-      "Kliknite na ikonu inštalácie v adresnom riadku alebo v menu prehliadača zvoľte Inštalovať e-housing.",
-      "Po potvrdení sa e-housing otvorí ako samostatná aplikácia."
+      "Kliknite na ikonu inštalácie v adresnom riadku alebo v menu prehliadača zvoľte Inštalovať e-housing solutions.",
+      "Po potvrdení sa e-housing solutions otvorí ako samostatná aplikácia."
     ],
     windows: [
       "Otvorte aplikáciu v Chrome alebo Edge na počítači s Windows.",
-      "Kliknite na ikonu inštalácie v adresnom riadku alebo v menu prehliadača zvoľte Aplikácie a Inštalovať e-housing.",
+      "Kliknite na ikonu inštalácie v adresnom riadku alebo v menu prehliadača zvoľte Aplikácie a Inštalovať e-housing solutions.",
       "Po potvrdení sa aplikácia spustí v samostatnom okne a ikonu nájdete v ponuke Štart."
     ],
     ios: [
       "Otvorte aplikáciu v Safari na iPhone alebo iPade.",
       "Klepnite na tlačidlo Zdieľať.",
-      "Vyberte Pridať na plochu a potvrďte názov e-housing.",
+      "Vyberte Pridať na plochu a potvrďte názov e-housing solutions.",
       "Pre systémové notifikácie otvorte aplikáciu z ikony na ploche a v Profile povoľte notifikácie."
     ],
     desktop: [
       "Otvorte aplikáciu v Chrome alebo Edge.",
       "Použite ikonu inštalácie v adresnom riadku alebo menu prehliadača.",
-      "Po potvrdení bude e-housing dostupný ako samostatná aplikácia."
+      "Po potvrdení bude e-housing solutions dostupný ako samostatná aplikácia."
     ]
   }[platform] || [];
 
@@ -1417,7 +1417,7 @@ function ensureDefaultEmailTemplates() {
       key: "notification-detail",
       title: "Notifikácia udalosti s odkazom",
       subject: "{{eventType}}: {{title}}",
-      body: "Dobrý deň,\n\nv aplikácii e-housing bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}"
+      body: "Dobrý deň,\n\nv aplikácii e-housing solutions bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}"
     });
   }
   if (!hasPasswordReset) {
@@ -1425,8 +1425,8 @@ function ensureDefaultEmailTemplates() {
       id: "password-reset",
       key: "password-reset",
       title: "Reset hesla",
-      subject: "Obnova hesla do e-housing",
-      body: "Dobrý deň, požiadali ste o obnovu hesla do aplikácie e-housing. Otvorte odkaz zo systémového emailu Supabase a nastavte si nové heslo. Ak ste o obnovu hesla nežiadali, túto správu ignorujte."
+      subject: "Obnova hesla do e-housing solutions",
+      body: "Dobrý deň, požiadali ste o obnovu hesla do aplikácie e-housing solutions. Otvorte odkaz zo systémového emailu Supabase a nastavte si nové heslo. Ak ste o obnovu hesla nežiadali, túto správu ignorujte."
     });
   }
   if (!hasMessageToChair) {
@@ -1435,7 +1435,7 @@ function ensureDefaultEmailTemplates() {
       key: "message-to-chair",
       title: "Notifikácia predsedovi o správe",
       subject: "Nová správa pre predsedu SVB: {{subject}}",
-      body: "Dobrý deň,\n\nv aplikácii e-housing bola vytvorená správa, ktorú má predseda SVB preveriť.\n\nTyp správy: {{scope}}\nOdosielateľ: {{sender}}\nPredmet: {{subject}}\nKomu: {{recipient}}\n\nText správy:\n{{message}}\n\nProsíme, prihláste sa do aplikácie e-housing a pozrite si detail komunikácie."
+      body: "Dobrý deň,\n\nv aplikácii e-housing solutions bola vytvorená správa, ktorú má predseda SVB preveriť.\n\nTyp správy: {{scope}}\nOdosielateľ: {{sender}}\nPredmet: {{subject}}\nKomu: {{recipient}}\n\nText správy:\n{{message}}\n\nProsíme, prihláste sa do aplikácie e-housing solutions a pozrite si detail komunikácie."
     });
   }
 }
@@ -1629,7 +1629,7 @@ async function enableAppNotifications() {
   localStorage.setItem(APP_NOTIFICATIONS_KEY, "true");
   state.appNotificationsEnabled = true;
   saveNotificationSeenAt(new Date().toISOString());
-  await registration.showNotification("e-housing notifikácie zapnuté", {
+  await registration.showNotification("e-housing solutions notifikácie zapnuté", {
     body: "Odteraz sa nové notifikácie pre váš účet zobrazia aj ako systémové upozornenie.",
     icon: "./icon-192.png",
     badge: "./icon-192.png",
@@ -1688,7 +1688,7 @@ async function checkForNewAppNotifications({ silent = false } = {}) {
 async function showSystemNotificationForLog(item) {
   const meta = notificationMetaFor(item.related_table, item.related_id, {});
   const registration = await navigator.serviceWorker.ready;
-  await registration.showNotification(item.subject || "Nová notifikácia v e-housing", {
+  await registration.showNotification(item.subject || "Nová notifikácia v e-housing solutions", {
     body: `Záložka: ${meta.sectionLabel}. Kliknutím otvoríte detail v aplikácii.`,
     icon: "./icon-192.png",
     badge: "./icon-192.png",
@@ -1839,7 +1839,7 @@ function isPendingOwner() {
 
 const COPYRIGHT_LEGAL_TEXT = `Autorské práva a ochrana aplikácie
 
-Aplikácia e-housing, jej názov, grafické rozhranie, dizajn, texty, databázy, funkcionality, štruktúra, zdrojový kód, používateľské prvky, dokumentácia, logo, vizuálna identita a ďalší obsah sú chránené autorským právom a ďalšími príslušnými právnymi predpismi.
+Aplikácia e-housing solutions, jej názov, grafické rozhranie, dizajn, texty, databázy, funkcionality, štruktúra, zdrojový kód, používateľské prvky, dokumentácia, logo, vizuálna identita a ďalší obsah sú chránené autorským právom a ďalšími príslušnými právnymi predpismi.
 
 Všetky práva k aplikácii patria jej autorovi, prevádzkovateľovi alebo oprávnenému držiteľovi práv, pokiaľ nie je výslovne uvedené inak. Používateľovi sa sprístupnením aplikácie neudeľuje žiadne vlastnícke právo k aplikácii, jej zdrojovému kódu, dizajnu, databázam ani k iným chráneným prvkom. Používateľ získava iba obmedzené, nevýhradné, neprenosné a odvolateľné oprávnenie používať aplikáciu na účel, na ktorý bola vytvorená a sprístupnená.
 
@@ -1855,10 +1855,10 @@ Je zakázané používať aplikáciu na vytváranie, šírenie alebo spracovanie
 
 V prípade porušenia autorských práv, licenčných podmienok alebo neoprávneného zásahu do aplikácie si autor alebo prevádzkovateľ vyhradzuje právo uplatniť všetky dostupné právne prostriedky ochrany, vrátane nároku na náhradu škody, vydanie bezdôvodného obohatenia, odstránenie protiprávneho stavu a ďalšie nároky podľa platných právnych predpisov.
 
-© 2026 e-housing / Martin Nagy - ITS. Všetky práva vyhradené.`;
+© 2026 e-housing solutions / Martin Nagy - ITS. Všetky práva vyhradené.`;
 
 function copyrightFooter() {
-  return `<p class="app-copyright"><button type="button" data-copyright-legal>© 2026 e-housing / Martin Nagy - ITS. Všetky práva vyhradené.</button></p>`;
+  return `<p class="app-copyright"><button type="button" data-copyright-legal>© 2026 e-housing solutions / Martin Nagy - ITS. Všetky práva vyhradené.</button></p>`;
 }
 
 function openCopyrightDialog() {
@@ -2615,7 +2615,7 @@ const views = {
           </div>
           <div class="list">
             ${systemCard("Stav zariadenia", notificationPermissionText())}
-            ${systemCard("iPhone a iPad", "Na iOS fungujú notifikácie pre webové aplikácie až po nainštalovaní aplikácie na plochu a otvorení cez ikonu e-housing.")}
+            ${systemCard("iPhone a iPad", "Na iOS fungujú notifikácie pre webové aplikácie až po nainštalovaní aplikácie na plochu a otvorení cez ikonu e-housing solutions.")}
           </div>
           <div class="row-actions">
             <button class="primary" data-enable-app-notifications type="button">${icon("bell-ring")}<span>Zapnúť notifikácie</span></button>
@@ -2624,7 +2624,7 @@ const views = {
         </section>
         <section class="panel">
           <h2>Inštalácia aplikácie</h2>
-          <p class="muted">e-housing je pripravený ako webová aplikácia PWA. Po inštalácii sa otvorí ako samostatná aplikácia s vlastnou ikonou.</p>
+          <p class="muted">e-housing solutions je pripravený ako webová aplikácia PWA. Po inštalácii sa otvorí ako samostatná aplikácia s vlastnou ikonou.</p>
           <div class="install-grid">
             <button class="primary" data-install-app="android" type="button">${icon("smartphone")}<span>Stiahnuť pre Android</span></button>
             <button class="ghost" data-install-app="windows" type="button">${icon("monitor-down")}<span>Nainštalovať pre PC</span></button>
@@ -2766,12 +2766,12 @@ function serviceAdminSection() {
       manageUrl: "https://vercel.com/dashboard",
       values: [
         ["Produkčná URL", LIVE_APP_URL],
-        ["Projekt", "e-housing"],
+        ["Projekt", "e-housing solutions"],
         ["Konfigurácia", "vercel.json"],
         ["Aktuálny typ deploya", "Static web/PWA"]
       ],
       steps: [
-        "Vytvorte alebo otvorte Vercel účet a projekt e-housing.",
+        "Vytvorte alebo otvorte Vercel účet a projekt e-housing solutions.",
         "Prepojte projekt s GitHub repozitárom alebo použite Vercel CLI z priečinka aplikácie.",
         "Skontrolujte, že v projekte existuje súbor vercel.json s rewrite pravidlom na /index.html.",
         "V prípade potreby doplňte produkčné environment variables pre funkcie alebo build.",
@@ -2872,7 +2872,7 @@ function serviceAdminSection() {
       values: [
         ["Manifest", "manifest.webmanifest"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v98"]
+        ["Cache", "e-housing-v99"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -5600,7 +5600,7 @@ function formFor(type, defaults = {}) {
     return `
       <article class="notice">
         <strong>Informačné upozornenie</strong>
-        <p>Toto hlasovanie predstavuje elektronické hlasovanie v aplikácii e-housing. Platné hlasovanie bude zaznamenané až počas domovej schôdze po úplnom odhlasovaní všetkých vlastníkov bytov prítomných na schôdzi.</p>
+        <p>Toto hlasovanie predstavuje elektronické hlasovanie v aplikácii e-housing solutions. Platné hlasovanie bude zaznamenané až počas domovej schôdze po úplnom odhlasovaní všetkých vlastníkov bytov prítomných na schôdzi.</p>
       </article>
     ` + fieldsWithValues([
       ["title", "Názov hlasovania", "Hlasovanie o opravách domu"],
@@ -5661,7 +5661,7 @@ function formFor(type, defaults = {}) {
     return fields([
       ["title", "Názov šablóny", "Nová emailová šablóna"],
       ["category", "Predmet", "Nová správa zo SVB"],
-      ["note", "Text emailu", "Dobrý deň, v aplikácii e-housing pribudla nová informácia.", "textarea"]
+      ["note", "Text emailu", "Dobrý deň, v aplikácii e-housing solutions pribudla nová informácia.", "textarea"]
     ]);
   }
   return fieldsWithValues([
@@ -6457,7 +6457,7 @@ async function notifyByChoice(subject, titleText, messageText, notification = {}
     sender: roleLabel() || state.currentUserEmail || "Používateľ"
   };
   const emailSubject = fillEmailTemplate(template.subject || "{{eventType}}: {{title}}", replacements);
-  const emailBody = fillEmailTemplate(template.body || "Dobrý deň,\n\nv aplikácii e-housing bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}", replacements);
+  const emailBody = fillEmailTemplate(template.body || "Dobrý deň,\n\nv aplikácii e-housing solutions bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}", replacements);
   try {
     const { data, error } = await supabaseClient.functions.invoke("send-notification", {
       body: {
@@ -6497,7 +6497,7 @@ async function notifyChairAboutMessage({ subject, message, scope, recipient, rel
     sender: roleLabel() || state.currentUserEmail || "Používateľ"
   };
   const emailSubject = fillEmailTemplate(template.subject || "Nová správa pre predsedu SVB: {{subject}}", replacements);
-  const emailBody = fillEmailTemplate(template.body || "V aplikácii e-housing bola vytvorená nová správa.\n\nOdosielateľ: {{sender}}\nPredmet: {{subject}}\nText správy:\n{{message}}", replacements);
+  const emailBody = fillEmailTemplate(template.body || "V aplikácii e-housing solutions bola vytvorená nová správa.\n\nOdosielateľ: {{sender}}\nPredmet: {{subject}}\nText správy:\n{{message}}", replacements);
   const meta = notificationMetaFor(relatedTable, relatedId, {
     view,
     detailType,
@@ -6886,8 +6886,6 @@ async function boot() {
 }
 
 boot();
-
-
 
 
 

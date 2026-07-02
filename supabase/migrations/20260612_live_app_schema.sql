@@ -330,7 +330,7 @@ insert into public.document_categories (name, sort_order) values
 on conflict (building_id, name) do nothing;
 
 insert into public.email_templates (key, title, subject, body) values
-  ('registration', 'Registrácia vlastníka', 'Vitajte v e-housing pre SVB a NP Družstevná 386', 'Dobrý deň, bol Vám vytvorený prístup do aplikácie e-housing.'),
+  ('registration', 'Registrácia vlastníka', 'Vitajte v e-housing solutions pre SVB a NP Družstevná 386', 'Dobrý deň, bol Vám vytvorený prístup do aplikácie e-housing solutions.'),
   ('event', 'Nová udalosť', 'Nová udalosť v dome: {{title}}', 'Dobrý deň, v aplikácii pribudla nová udalosť {{title}}.'),
   ('document', 'Nový dokument', 'Nový dokument: {{title}}', 'Dobrý deň, v aplikácii bol zverejnený nový dokument {{title}}.')
 on conflict (building_id, key) do nothing;
