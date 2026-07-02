@@ -745,7 +745,7 @@ registerOwnerBtn.addEventListener("click", async () => {
     if (propertyPairing && requestedRole === "owner") {
       const paired = await registerPairedOwnerProperty({ email, password, name, flat, gdprAcceptedAt });
       if (paired.ok) {
-        window.alert("Žiadosť o priradenie ďalšej nehnuteľnosti bola prijatá. Po schválení predsedom SVB sa zobrazí v prepínači nehnuteľností.");
+        window.alert("Žiadosť o priradenie ďalšej nehnuteľnosti bola prijatá (verzia registrácie v106). Po schválení predsedom SVB sa zobrazí v prepínači nehnuteľností.");
         render();
         return;
       }
@@ -757,7 +757,7 @@ registerOwnerBtn.addEventListener("click", async () => {
       if (requestedRole === "owner") {
         const paired = await registerPairedOwnerProperty({ email, password, name, flat, gdprAcceptedAt });
         if (paired.ok) {
-          window.alert("Žiadosť o priradenie ďalšej nehnuteľnosti bola prijatá. Po schválení predsedom SVB sa zobrazí v prepínači nehnuteľností.");
+          window.alert("Žiadosť o priradenie ďalšej nehnuteľnosti bola prijatá (verzia registrácie v106). Po schválení predsedom SVB sa zobrazí v prepínači nehnuteľností.");
           render();
           return;
         }
