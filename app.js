@@ -754,9 +754,23 @@ registerOwnerBtn.addEventListener("click", async () => {
     }
     let { data, error } = await registerSupabaseUser({ email, password, name, flat, requestedRole, gdprAccepted, gdprAcceptedAt });
     if (error && /already registered|already exists|user already/i.test(error.message || "")) {
+      if (requestedRole === "owner") {
+        const paired = await registerPairedOwnerProperty({ email, password, name, flat, gdprAcceptedAt });
+        if (paired.ok) {
+          window.alert("Žiadosť o priradenie ďalšej nehnuteľnosti bola prijatá. Po schválení predsedom SVB sa zobrazí v prepínači nehnuteľností.");
+          render();
+          return;
+        }
+        if (propertyPairing) {
+          window.alert(`Párovanie nehnuteľnosti zlyhalo: ${paired.error || "Skontrolujte existujúci login email a heslo."}`);
+          return;
+        }
+      }
       const cleanup = await cleanupOrphanAuthUser(email);
       if (cleanup.cleaned) {
         ({ data, error } = await registerSupabaseUser({ email, password, name, flat, requestedRole, gdprAccepted, gdprAcceptedAt }));
+      } else if (requestedRole === "owner") {
+        error = new Error("Tento email už má vytvorený účet. Ak pridávate ďalšiu nehnuteľnosť, zadajte existujúce heslo k tomuto účtu a zaškrtnite Párovanie nehnuteľností.");
       }
     }
     if (error) {
