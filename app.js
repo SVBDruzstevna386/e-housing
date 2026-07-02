@@ -537,6 +537,7 @@ const operationModeLabel = document.querySelector("#operationModeLabel");
 const sidebarProfilePhoto = document.querySelector("#sidebarProfilePhoto");
 const sidebarProfileName = document.querySelector("#sidebarProfileName");
 const sidebarProfileRole = document.querySelector("#sidebarProfileRole");
+const sidebarPropertyText = document.querySelector("#sidebarPropertyText");
 const sidebarPropertySelect = document.querySelector("#sidebarPropertySelect");
 
 let installPrompt = null;
@@ -1921,6 +1922,12 @@ function propertyOptionLabel(owner) {
   return `${owner?.flat || "Bez čísla"}${status}`;
 }
 
+function propertyDisplayLabel(owner) {
+  const flat = owner?.flat || "bez čísla";
+  const status = owner?.approvalStatus === "approved" ? "" : " - čaká na schválenie";
+  return `Nehnuteľnosť č. ${flat}${status}`;
+}
+
 function rememberActiveOwnerRecordId(id) {
   try {
     if (id) localStorage.setItem(activeOwnerStorageKey(), id);
@@ -1958,19 +1965,34 @@ function syncProfileChrome() {
   if (sidebarProfileRole) sidebarProfileRole.textContent = profile?.role || "Profil";
   if (sidebarPropertySelect) {
     const owners = state.role === "owner" ? ownersForCurrentUser() : [];
-    if (owners.length) {
+    if (owners.length > 1) {
       const active = syncActiveOwnerRecordSelection();
       sidebarPropertySelect.innerHTML = owners
         .map((owner) => `<option value="${escapeHtml(owner.id)}">${escapeHtml(propertyOptionLabel(owner))}</option>`)
         .join("");
       sidebarPropertySelect.value = active?.id || owners[0]?.id || "";
-      sidebarPropertySelect.disabled = owners.length < 2;
+      sidebarPropertySelect.disabled = false;
       sidebarPropertySelect.hidden = false;
-    } else {
-      sidebarPropertySelect.innerHTML = `<option value="">${escapeHtml(profile?.flat || "Nie je viazané na byt")}</option>`;
+      if (sidebarPropertyText) sidebarPropertyText.hidden = true;
+    } else if (owners.length === 1) {
+      const active = syncActiveOwnerRecordSelection();
+      sidebarPropertySelect.innerHTML = "";
       sidebarPropertySelect.value = "";
       sidebarPropertySelect.disabled = true;
-      sidebarPropertySelect.hidden = !state.loggedIn;
+      sidebarPropertySelect.hidden = true;
+      if (sidebarPropertyText) {
+        sidebarPropertyText.textContent = propertyDisplayLabel(active || owners[0]);
+        sidebarPropertyText.hidden = false;
+      }
+    } else {
+      sidebarPropertySelect.innerHTML = "";
+      sidebarPropertySelect.value = "";
+      sidebarPropertySelect.disabled = true;
+      sidebarPropertySelect.hidden = true;
+      if (sidebarPropertyText) {
+        sidebarPropertyText.textContent = state.loggedIn && profile?.flat ? `Nehnuteľnosť č. ${profile.flat}` : "";
+        sidebarPropertyText.hidden = !state.loggedIn || !profile?.flat;
+      }
     }
   }
 }

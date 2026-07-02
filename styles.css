@@ -352,6 +352,14 @@ button {
   text-transform: uppercase;
 }
 
+.sidebar-property-text {
+  display: block;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
 .sidebar-property-select {
   width: 100%;
   min-height: 36px;

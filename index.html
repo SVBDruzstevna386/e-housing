@@ -14,7 +14,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png">
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="apple-touch-icon" href="./apple-touch-icon.png">
-    <link rel="stylesheet" href="./styles.css?v=110">
+    <link rel="stylesheet" href="./styles.css?v=111">
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -124,7 +124,7 @@
           <div>
             <strong id="sidebarProfileName">Používateľ</strong>
             <span id="sidebarProfileRole">Profil</span>
-            <label class="sidebar-property-label" for="sidebarPropertySelect">Nehnuteľnosť</label>
+            <span id="sidebarPropertyText" class="sidebar-property-text" hidden></span>
             <select id="sidebarPropertySelect" class="sidebar-property-select" aria-label="Aktívna nehnuteľnosť"></select>
           </div>
         </section>
@@ -200,6 +200,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./app.js?v=110" defer></script>
+    <script src="./app.js?v=111" defer></script>
   </body>
 </html>
