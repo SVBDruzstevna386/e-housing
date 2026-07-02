@@ -125,6 +125,8 @@
   gdprText: "",
   gdprVersion: "GDPR-SVB-2026-01",
   gdprRequired: true,
+  helpTextOverrides: {},
+  welcomeText: "",
   liveChatWidgetCode: "",
   liveChatEnabled: false,
   pendingDeepLink: null,
@@ -232,6 +234,8 @@ const ROLE_PERMISSIONS_SETTING_KEY = "role_permissions";
 const COMMUNICATION_PERMISSIONS_SETTING_KEY = "communication_permissions";
 const LIVE_CHAT_WIDGET_SETTING_KEY = "live_chat_widget_code";
 const LIVE_CHAT_ENABLED_SETTING_KEY = "live_chat_enabled";
+const HELP_TEXTS_SETTING_KEY = "help_text_overrides";
+const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
@@ -499,6 +503,10 @@ Bezpečnosť: aplikácia používa prihlasovanie, roly, schvaľovanie registrác
 Kontakt pre uplatnenie práv: predseda SVB alebo poverená osoba správy domu na kontaktoch zverejnených v aplikácii.`;
 }
 
+function defaultWelcomeText() {
+  return "Vitajte v aplikácii e-housing solutions pre SVB a NP Družstevná 386. Táto aplikácia slúži na prehľadnú komunikáciu, dokumenty, hlasovanie, vyúčtovanie a správu informácií súvisiacich s bytovým domom.";
+}
+
 const loginScreen = document.querySelector("#loginScreen");
 const appShell = document.querySelector("#appShell");
 const loginForm = document.querySelector("#loginForm");
@@ -514,6 +522,7 @@ const root = document.querySelector("#viewRoot");
 const title = document.querySelector("#viewTitle");
 const newItemBtn = document.querySelector("#newItemBtn");
 const helpBtn = document.querySelector("#helpBtn");
+const welcomeBtn = document.querySelector("#welcomeBtn");
 const logoutBtn = document.querySelector("#logoutBtn");
 const mobileMenuBackBtn = document.querySelector("#mobileMenuBackBtn");
 const dialog = document.querySelector("#actionDialog");
@@ -920,6 +929,7 @@ document.addEventListener("visibilitychange", () => {
 
 newItemBtn.addEventListener("click", () => openCreateDialog());
 helpBtn?.addEventListener("click", () => openHelpDialog(state.view));
+welcomeBtn?.addEventListener("click", () => openWelcomeDialog());
 
 function roleLabel() {
   return { chair: "Predseda SVB", vice_chair: "Podpredseda SVB", economic: "Ekonomická správa", board: "Dozorná rada", owner: "Vlastník nehnuteľnosti" }[state.role];
@@ -1193,7 +1203,7 @@ async function loadPublicSettings() {
   const { data } = await supabaseClient
     .from("app_settings")
     .select("key, value")
-    .in("key", [BUILDING_PHOTO_SETTING_KEY, OPERATION_MODE_SETTING_KEY, GDPR_TEXT_SETTING_KEY, GDPR_VERSION_SETTING_KEY, GDPR_REQUIRED_SETTING_KEY, ROLE_PERMISSIONS_SETTING_KEY, COMMUNICATION_PERMISSIONS_SETTING_KEY, LIVE_CHAT_WIDGET_SETTING_KEY, LIVE_CHAT_ENABLED_SETTING_KEY]);
+    .in("key", [BUILDING_PHOTO_SETTING_KEY, OPERATION_MODE_SETTING_KEY, GDPR_TEXT_SETTING_KEY, GDPR_VERSION_SETTING_KEY, GDPR_REQUIRED_SETTING_KEY, ROLE_PERMISSIONS_SETTING_KEY, COMMUNICATION_PERMISSIONS_SETTING_KEY, LIVE_CHAT_WIDGET_SETTING_KEY, LIVE_CHAT_ENABLED_SETTING_KEY, HELP_TEXTS_SETTING_KEY, WELCOME_TEXT_SETTING_KEY]);
   const settings = new Map((data || []).map((item) => [item.key, item.value]));
   const buildingPhotoPath = settings.get(BUILDING_PHOTO_SETTING_KEY);
   const operationModeText = settings.get(OPERATION_MODE_SETTING_KEY);
@@ -1206,7 +1216,19 @@ async function loadPublicSettings() {
   state.communicationPermissions = parseCommunicationPermissions(settings.get(COMMUNICATION_PERMISSIONS_SETTING_KEY));
   state.liveChatWidgetCode = settings.get(LIVE_CHAT_WIDGET_SETTING_KEY) || "";
   state.liveChatEnabled = (settings.get(LIVE_CHAT_ENABLED_SETTING_KEY) || "false") === "true";
+  state.helpTextOverrides = parseHelpTextOverrides(settings.get(HELP_TEXTS_SETTING_KEY));
+  state.welcomeText = settings.get(WELCOME_TEXT_SETTING_KEY) || defaultWelcomeText();
   syncAppChrome();
+}
+
+function parseHelpTextOverrides(value) {
+  if (!value) return {};
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 
 function parseRolePermissions(value) {
@@ -2104,22 +2126,136 @@ function openCopyrightDialog() {
   enhanceIcons();
 }
 
-function openHelpDialog(view = state.view) {
-  const help = HELP_TEXTS[view] || {
+function canEditHelpContent() {
+  return state.role === "chair";
+}
+
+function helpContentFor(view = state.view) {
+  const defaults = HELP_TEXTS[view] || {
     title: `Nápoveda pre ${titles[view] || "aktuálnu záložku"}`,
     body: "Táto záložka zobrazuje obsah a akcie podľa aktuálne nastavenej role a prístupových práv používateľa."
   };
-  dialogSave.hidden = true;
+  const override = state.helpTextOverrides?.[view] || {};
+  return {
+    title: override.title || defaults.title,
+    body: override.body || defaults.body
+  };
+}
+
+function openHelpDialog(view = state.view) {
+  const help = helpContentFor(view);
+  dialogSave.hidden = !canEditHelpContent();
   dialog.classList.remove("video-dialog");
   dialogTitle.textContent = help.title;
-  dialogBody.innerHTML = `
+  dialogBody.innerHTML = canEditHelpContent() ? `
+    <article class="notice">
+      <strong>Editácia nápovedy</strong>
+      <p>Text sa po uložení zobrazí používateľom pri tejto záložke.</p>
+    </article>
+    <div class="field">
+      <label for="helpTitle">Nadpis nápovedy</label>
+      <input id="helpTitle" value="${escapeAttr(help.title)}">
+    </div>
+    <div class="field">
+      <label for="helpBody">Text nápovedy</label>
+      <textarea id="helpBody" class="legal-editor">${escapeHtml(help.body)}</textarea>
+    </div>
+  ` : `
     <article class="help-dialog-text">
       <span class="tag document">${escapeHtml(titles[view] || "Aplikácia")}</span>
-      <p>${escapeHtml(help.body)}</p>
+      <p>${escapeHtml(help.body).replaceAll("\n", "<br>")}</p>
     </article>
   `;
+  dialogSave.onclick = async (event) => {
+    event.preventDefault();
+    await saveHelpText(view);
+  };
   dialog.showModal();
   enhanceIcons();
+}
+
+function openWelcomeDialog() {
+  const text = state.welcomeText || defaultWelcomeText();
+  dialogSave.hidden = !canEditHelpContent();
+  dialog.classList.remove("video-dialog");
+  dialogTitle.textContent = "Uvítanie správcom SVB";
+  dialogBody.innerHTML = canEditHelpContent() ? `
+    <article class="notice">
+      <strong>Editácia uvítania</strong>
+      <p>Text sa zobrazí po stlačení tlačidla Uvítanie správcom SVB v záložke Prehľad.</p>
+    </article>
+    <div class="field">
+      <label for="welcomeText">Text uvítania</label>
+      <textarea id="welcomeText" class="legal-editor">${escapeHtml(text)}</textarea>
+    </div>
+  ` : `
+    <article class="help-dialog-text">
+      <span class="tag document">Prehľad domu</span>
+      <p>${escapeHtml(text).replaceAll("\n", "<br>")}</p>
+    </article>
+  `;
+  dialogSave.onclick = async (event) => {
+    event.preventDefault();
+    await saveWelcomeText();
+  };
+  dialog.showModal();
+  enhanceIcons();
+}
+
+async function saveHelpText(view = state.view) {
+  if (!canEditHelpContent()) return;
+  const defaults = helpContentFor(view);
+  const nextTitle = document.querySelector("#helpTitle")?.value.trim() || defaults.title;
+  const nextBody = document.querySelector("#helpBody")?.value.trim() || defaults.body;
+  const nextOverrides = {
+    ...(state.helpTextOverrides || {}),
+    [view]: { title: nextTitle, body: nextBody }
+  };
+  if (supabaseClient && state.currentUserId) {
+    const { error } = await supabaseClient.from("app_settings").upsert({
+      key: HELP_TEXTS_SETTING_KEY,
+      value: JSON.stringify(nextOverrides),
+      updated_by: state.currentUserId,
+      updated_at: new Date().toISOString()
+    });
+    if (error) {
+      window.alert(`Nápovedu sa nepodarilo uložiť: ${error.message}`);
+      return;
+    }
+    await writeActivityLog("settings", `Úprava nápovedy: ${titles[view] || view}`, {
+      relatedTable: "app_settings",
+      relatedId: HELP_TEXTS_SETTING_KEY,
+      metadata: { view }
+    });
+  }
+  state.helpTextOverrides = nextOverrides;
+  dialog.close();
+  render();
+}
+
+async function saveWelcomeText() {
+  if (!canEditHelpContent()) return;
+  const nextText = document.querySelector("#welcomeText")?.value.trim() || defaultWelcomeText();
+  if (supabaseClient && state.currentUserId) {
+    const { error } = await supabaseClient.from("app_settings").upsert({
+      key: WELCOME_TEXT_SETTING_KEY,
+      value: nextText,
+      updated_by: state.currentUserId,
+      updated_at: new Date().toISOString()
+    });
+    if (error) {
+      window.alert(`Uvítanie sa nepodarilo uložiť: ${error.message}`);
+      return;
+    }
+    await writeActivityLog("settings", "Úprava uvítania správcom SVB", {
+      relatedTable: "app_settings",
+      relatedId: WELCOME_TEXT_SETTING_KEY,
+      metadata: { view: "overview" }
+    });
+  }
+  state.welcomeText = nextText;
+  dialog.close();
+  render();
 }
 
 function render() {
@@ -2129,6 +2265,7 @@ function render() {
   syncMobileLayout();
   if (!state.loggedIn) {
     if (helpBtn) helpBtn.hidden = true;
+    if (welcomeBtn) welcomeBtn.hidden = true;
     enhanceIcons();
     return;
   }
@@ -2137,6 +2274,7 @@ function render() {
     title.textContent = "Čaká sa na autorizáciu";
     newItemBtn.hidden = true;
     if (helpBtn) helpBtn.hidden = true;
+    if (welcomeBtn) welcomeBtn.hidden = true;
     syncNavigation(true);
     root.innerHTML = `${pendingAuthorizationView()}${copyrightFooter()}`;
     syncMobileLayout();
@@ -2154,6 +2292,10 @@ function render() {
   if (helpBtn) {
     helpBtn.hidden = false;
     helpBtn.innerHTML = `${icon("circle-help")}<span>Nápoveda pre ${escapeHtml(titles[state.view] || "záložku")}</span>`;
+  }
+  if (welcomeBtn) {
+    welcomeBtn.hidden = state.view !== "overview";
+    welcomeBtn.innerHTML = `${icon("handshake")}<span>Uvítanie správcom SVB</span>`;
   }
   newItemBtn.hidden = !canCreateInView();
   newItemBtn.innerHTML = `${icon("plus")}<span>${actionLabel()}</span>`;
