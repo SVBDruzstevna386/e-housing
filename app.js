@@ -5,6 +5,7 @@
   authEmail: "",
   activeOwnerRecordId: "",
   role: "chair",
+  uiTheme: "classic_light",
   view: "overview",
   passwords: {},
   filter: "all",
@@ -242,6 +243,7 @@ const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
 const APP_NOTIFICATIONS_KEY = "eHousingAppNotifications";
 const APP_NOTIFICATION_LAST_PREFIX = "eHousingLastNotification:";
 const ACTIVE_OWNER_RECORD_PREFIX = "eHousingActiveOwnerRecord:";
+const UI_THEME_STORAGE_PREFIX = "eHousingUiTheme:";
 const APP_NOTIFICATION_POLL_MS = 45000;
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
@@ -260,6 +262,10 @@ const ROLE_DEFINITIONS = [
   ["economic", "Ekonomická správa"],
   ["board", "Dozorná rada"],
   ["owner", "Vlastník nehnuteľnosti"]
+];
+
+const UI_THEME_OPTIONS = [
+  ["classic_light", "KLASIK light"]
 ];
 
 const PERMISSION_VIEWS = [
@@ -1124,6 +1130,7 @@ async function ensureCurrentProfile(user) {
   const { data: nextProfile } = await supabaseClient.from("profiles").select("*").eq("id", user.id).maybeSingle();
   if (nextProfile) {
     state.role = nextProfile.role;
+    rememberUiTheme(nextProfile.ui_theme || storedUiTheme());
     return true;
   }
   return false;
@@ -1279,6 +1286,40 @@ function normalizeCommunicationPermissions(input = {}) {
   return input;
 }
 
+function normalizeUiTheme(value) {
+  return UI_THEME_OPTIONS.some(([theme]) => theme === value) ? value : "classic_light";
+}
+
+function uiThemeStorageKey() {
+  return `${UI_THEME_STORAGE_PREFIX}${state.currentUserId || state.currentUserEmail || "anonymous"}`;
+}
+
+function rememberUiTheme(theme) {
+  const nextTheme = normalizeUiTheme(theme);
+  state.uiTheme = nextTheme;
+  try {
+    localStorage.setItem(uiThemeStorageKey(), nextTheme);
+  } catch {
+    // Theme persistence is optional; the database profile remains the source of truth.
+  }
+  applyUiTheme(nextTheme);
+}
+
+function storedUiTheme() {
+  try {
+    return normalizeUiTheme(localStorage.getItem(uiThemeStorageKey()));
+  } catch {
+    return "classic_light";
+  }
+}
+
+function applyUiTheme(theme = state.uiTheme) {
+  const nextTheme = normalizeUiTheme(theme);
+  document.body.dataset.theme = nextTheme;
+  document.body.classList.remove(...UI_THEME_OPTIONS.map(([themeName]) => `theme-${themeName}`));
+  document.body.classList.add(`theme-${nextTheme}`);
+}
+
 function profileToOwner(item) {
   return {
     id: item.id,
@@ -1294,6 +1335,7 @@ function profileToOwner(item) {
     correspondencePostalCode: item.correspondence_postal_code || "",
     photoPath: item.profile_photo_path || "",
     photoUrl: profilePhotoUrl(item.profile_photo_path),
+    uiTheme: normalizeUiTheme(item.ui_theme),
     accountStatus: item.approval_status === "approved" ? "Aktívny" : "Čaká na autorizáciu",
     approvalStatus: item.approval_status,
     ownedFrom: item.owned_from || "",
@@ -1319,6 +1361,7 @@ function ownerRecordToOwner(item, profile = null) {
     correspondencePostalCode: item.correspondence_postal_code || profile?.correspondence_postal_code || "",
     photoPath: profile?.profile_photo_path || "",
     photoUrl: profilePhotoUrl(profile?.profile_photo_path),
+    uiTheme: normalizeUiTheme(profile?.ui_theme),
     accountStatus: item.account_status || "Čaká na autorizáciu",
     approvalStatus: item.approval_status || "pending",
     ownedFrom: item.owned_from || "",
@@ -1331,7 +1374,7 @@ function ownerRecordToOwner(item, profile = null) {
 
 function profileToBoardMember(item) {
   const role = item.role === "chair" ? "Predseda SVB" : item.role === "vice_chair" ? "Podpredseda SVB" : item.role === "economic" ? "Ekonomická správa" : "Člen dozornej rady";
-  return { id: item.id, role, name: item.full_name, flat: item.flat_number || "Nie je viazané na byt", email: item.email, phone: item.phone || "", note: item.note || "Profil vedenia SVB", photoPath: item.profile_photo_path || "", photoUrl: profilePhotoUrl(item.profile_photo_path) };
+  return { id: item.id, role, name: item.full_name, flat: item.flat_number || "Nie je viazané na byt", email: item.email, phone: item.phone || "", note: item.note || "Profil vedenia SVB", photoPath: item.profile_photo_path || "", photoUrl: profilePhotoUrl(item.profile_photo_path), uiTheme: normalizeUiTheme(item.ui_theme) };
 }
 
 async function dbDocumentToCard(item) {
@@ -1998,6 +2041,7 @@ function syncProfileChrome() {
 }
 
 function syncAppChrome() {
+  applyUiTheme();
   syncBuildingImages();
   syncProfileChrome();
   if (operationModeLabel) operationModeLabel.textContent = state.operationModeText || "Live testovací režim";
@@ -2067,6 +2111,7 @@ function currentProfile() {
       correspondencePostalCode: owner?.correspondencePostalCode || "",
       photoPath: owner?.photoPath || "",
       photoUrl: owner?.photoUrl || "",
+      uiTheme: owner?.uiTheme || state.uiTheme,
       role: "Vlastník nehnuteľnosti",
       readonlyNote: owner?.ownedFrom ? `Vlastník od ${owner.ownedFrom}` : "Kontaktné a korešpondenčné údaje si môže vlastník upraviť v profile"
     };
@@ -2084,6 +2129,7 @@ function currentProfile() {
     correspondencePostalCode: "",
     photoPath: member?.photoPath || "",
     photoUrl: member?.photoUrl || "",
+    uiTheme: member?.uiTheme || state.uiTheme,
     role: member?.role || roleLabel(),
     readonlyNote: "Funkcia vo vedení SVB"
   };
@@ -2875,6 +2921,7 @@ const views = {
     const profile = currentProfile();
     const [firstName, ...surnameParts] = profile.name.split(" ");
     const surname = surnameParts.join(" ") || "";
+    const selectedUiTheme = normalizeUiTheme(profile.uiTheme || state.uiTheme);
     const personalPhotoPanel = `
       <div class="profile-photo-panel personal-photo">
         <img src="${escapeAttr(profile.photoUrl || profilePhotoFallback())}" alt="Aktuálna profilová fotka">
@@ -2993,6 +3040,13 @@ const views = {
             <div class="field">
               <label for="profilePhone">Telefón</label>
               <input id="profilePhone" value="${escapeAttr(profile.phone)}" placeholder="+421 ...">
+            </div>
+            <div class="field span-all">
+              <label for="profileUiTheme">Dizajn aplikácie</label>
+              <select id="profileUiTheme">
+                ${UI_THEME_OPTIONS.map(([value, label]) => `<option value="${escapeAttr(value)}" ${selectedUiTheme === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}
+              </select>
+              <p class="muted">KLASIK light je stabilný predvolený dizajn. Nové grafické šablóny budeme pridávať ako samostatné témy bez zmeny logiky aplikácie.</p>
             </div>
             ${profile.kind === "owner" ? `
               <div class="field span-all">
@@ -5591,6 +5645,7 @@ async function saveProfile() {
   const roleValue = document.querySelector("#profileRoleField")?.value.trim();
   const nextEmail = document.querySelector("#profileEmail")?.value.trim() || profile.email;
   const nextPhone = document.querySelector("#profilePhone")?.value.trim() || "";
+  const nextUiTheme = normalizeUiTheme(document.querySelector("#profileUiTheme")?.value || state.uiTheme);
   const correspondenceStreetValue = document.querySelector("#profileCorrespondenceStreet")?.value.trim() || "";
   const correspondenceCityValue = document.querySelector("#profileCorrespondenceCity")?.value.trim() || "";
   const correspondencePostalCodeValue = document.querySelector("#profileCorrespondencePostalCode")?.value.trim() || "";
@@ -5611,6 +5666,7 @@ async function saveProfile() {
     let personalPhotoPath = "";
     let modeMessage = "";
     let gdprMessage = "";
+    const themeMessage = nextUiTheme !== state.uiTheme ? " Dizajn aplikácie bol aktualizovaný." : "";
     if (personalPhotoFile) {
       try {
         personalPhotoPath = await saveProfilePhoto(personalPhotoFile);
@@ -5678,6 +5734,7 @@ async function saveProfile() {
       correspondence_street: correspondenceStreetValue || null,
       correspondence_city: correspondenceCityValue || null,
       correspondence_postal_code: correspondencePostalCodeValue || null,
+      ui_theme: nextUiTheme,
       role: canManageAll() ? roleFieldToAppRole(roleValue, state.role) : state.role
     };
     if (personalPhotoPath) profileUpdate.profile_photo_path = personalPhotoPath;
@@ -5712,12 +5769,13 @@ async function saveProfile() {
     await writeActivityLog("profile", "Úprava profilu používateľa", {
       relatedTable: "profiles",
       relatedId: state.currentUserId,
-      metadata: { emailChanged: nextEmail !== previousEmail, phoneChanged: nextPhone !== profile.phone, role: canManageAll() ? roleFieldToAppRole(roleValue, state.role) : state.role }
+      metadata: { emailChanged: nextEmail !== previousEmail, phoneChanged: nextPhone !== profile.phone, uiTheme: nextUiTheme, role: canManageAll() ? roleFieldToAppRole(roleValue, state.role) : state.role }
     });
+    rememberUiTheme(nextUiTheme);
     await loadSupabaseData();
     render();
     const nextStatus = document.querySelector("#profileStatus");
-    if (nextStatus) nextStatus.textContent = `Profil bol uložený.${emailMessage}${photoMessage}${modeMessage}${gdprMessage}`;
+    if (nextStatus) nextStatus.textContent = `Profil bol uložený.${emailMessage}${photoMessage}${modeMessage}${gdprMessage}${themeMessage}`;
     return;
   }
 
@@ -5730,6 +5788,7 @@ async function saveProfile() {
     profile.source.correspondenceStreet = correspondenceStreetValue;
     profile.source.correspondenceCity = correspondenceCityValue;
     profile.source.correspondencePostalCode = correspondencePostalCodeValue;
+    profile.source.uiTheme = nextUiTheme;
     if (personalPhotoFile) profile.source.photoUrl = URL.createObjectURL(personalPhotoFile);
   }
 
@@ -5741,6 +5800,7 @@ async function saveProfile() {
     }
     profile.source.email = nextEmail;
     profile.source.phone = nextPhone;
+    profile.source.uiTheme = nextUiTheme;
     if (personalPhotoFile) profile.source.photoUrl = URL.createObjectURL(personalPhotoFile);
   }
 
@@ -5750,6 +5810,7 @@ async function saveProfile() {
   }
 
   state.currentUserEmail = nextEmail;
+  rememberUiTheme(nextUiTheme);
   loginEmail.value = nextEmail;
   if (canManageAll() && buildingPhotoFile) {
     state.buildingPhotoUrl = URL.createObjectURL(buildingPhotoFile);
