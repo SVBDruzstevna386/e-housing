@@ -14,7 +14,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png">
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="apple-touch-icon" href="./apple-touch-icon.png">
-    <link rel="stylesheet" href="./styles.css?v=111">
+    <link rel="stylesheet" href="./styles.css?v=112">
   </head>
   <body>
     <section class="login-screen" id="loginScreen">
@@ -119,16 +119,6 @@
           </div>
         </div>
 
-        <section class="sidebar-profile-card" aria-label="Profil prihláseného používateľa">
-          <img id="sidebarProfilePhoto" src="./icon-192.png" alt="Profilová fotka používateľa">
-          <div>
-            <strong id="sidebarProfileName">Používateľ</strong>
-            <span id="sidebarProfileRole">Profil</span>
-            <span id="sidebarPropertyText" class="sidebar-property-text" hidden></span>
-            <select id="sidebarPropertySelect" class="sidebar-property-select" aria-label="Aktívna nehnuteľnosť"></select>
-          </div>
-        </section>
-
         <nav class="nav-list">
           <button class="nav-item active" data-view="overview"><i data-lucide="layout-dashboard"></i><span>Prehľad</span></button>
           <button class="nav-item" data-view="documents"><i data-lucide="file-text"></i><span>Dokumenty</span></button>
@@ -147,6 +137,16 @@
           <button class="nav-item" data-view="settings"><i data-lucide="settings"></i><span>Nastavenia</span></button>
           <button class="nav-item" data-view="profile"><i data-lucide="user-round"></i><span>Profil</span></button>
         </nav>
+
+        <section class="sidebar-profile-card" aria-label="Profil prihláseného používateľa">
+          <img id="sidebarProfilePhoto" src="./icon-192.png" alt="Profilová fotka používateľa">
+          <div>
+            <strong id="sidebarProfileName">Používateľ</strong>
+            <span id="sidebarProfileRole">Profil</span>
+            <span id="sidebarPropertyText" class="sidebar-property-text" hidden></span>
+            <select id="sidebarPropertySelect" class="sidebar-property-select" aria-label="Aktívna nehnuteľnosť"></select>
+          </div>
+        </section>
 
         <section class="sidebar-summary">
           <span class="summary-label">Stav domu</span>
@@ -200,6 +200,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./app.js?v=111" defer></script>
+    <script src="./app.js?v=112" defer></script>
   </body>
 </html>
