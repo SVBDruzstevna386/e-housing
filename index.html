@@ -71,6 +71,10 @@
             <label for="registerFlat">Byt</label>
             <input id="registerFlat" placeholder="napr. A-02">
           </div>
+          <label class="consent-check">
+            <input id="registerPropertyPairing" type="checkbox">
+            <span>Párovanie nehnuteľností - mám už vytvorený účet a chcem pridať ďalšiu nehnuteľnosť pod rovnaký login email.</span>
+          </label>
           <div class="field">
             <label for="registerEmail">Email</label>
             <input id="registerEmail" type="email" placeholder="vlastnik@example.com">
@@ -120,6 +124,8 @@
           <div>
             <strong id="sidebarProfileName">Používateľ</strong>
             <span id="sidebarProfileRole">Profil</span>
+            <label class="sidebar-property-label" for="sidebarPropertySelect">Nehnuteľnosť</label>
+            <select id="sidebarPropertySelect" class="sidebar-property-select" aria-label="Aktívna nehnuteľnosť"></select>
           </div>
         </section>
 
@@ -195,5 +201,4 @@
     <script src="./app.js" defer></script>
   </body>
 </html>
-
 

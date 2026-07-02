@@ -1,6 +1,9 @@
 ﻿const state = {
   loggedIn: false,
   currentUserEmail: "predsedaSVB@gmail.com",
+  currentUserId: "",
+  authEmail: "",
+  activeOwnerRecordId: "",
   role: "chair",
   view: "overview",
   passwords: {},
@@ -15,6 +18,7 @@
   innovationComments: [],
   voteComments: [],
   activityLogs: [],
+  profiles: [],
   logRoleFilter: "all",
   logUserFilter: "all",
   logActivityFilter: "all",
@@ -166,6 +170,7 @@ const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
 const APP_NOTIFICATIONS_KEY = "eHousingAppNotifications";
 const APP_NOTIFICATION_LAST_PREFIX = "eHousingLastNotification:";
+const ACTIVE_OWNER_RECORD_PREFIX = "eHousingActiveOwnerRecord:";
 const APP_NOTIFICATION_POLL_MS = 45000;
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
@@ -455,6 +460,7 @@ const operationModeLabel = document.querySelector("#operationModeLabel");
 const sidebarProfilePhoto = document.querySelector("#sidebarProfilePhoto");
 const sidebarProfileName = document.querySelector("#sidebarProfileName");
 const sidebarProfileRole = document.querySelector("#sidebarProfileRole");
+const sidebarPropertySelect = document.querySelector("#sidebarPropertySelect");
 
 let installPrompt = null;
 let mobileViewOpen = false;
@@ -716,6 +722,7 @@ registerOwnerBtn.addEventListener("click", async () => {
   const email = document.querySelector("#registerEmail").value.trim() || "vlastnik@example.com";
   const password = document.querySelector("#registerPassword").value;
   const passwordRepeat = document.querySelector("#registerPasswordRepeat")?.value || "";
+  const propertyPairing = Boolean(document.querySelector("#registerPropertyPairing")?.checked);
   const gdprAccepted = Boolean(document.querySelector("#registerGdprAccepted")?.checked);
   const gdprWarning = document.querySelector("#registerGdprWarning");
   const passwordWarning = document.querySelector("#registerPasswordWarning");
@@ -729,13 +736,27 @@ registerOwnerBtn.addEventListener("click", async () => {
     if (gdprWarning) gdprWarning.classList.remove("hidden");
     return;
   }
+  if (propertyPairing && requestedRole !== "owner") {
+    window.alert("Párovanie nehnuteľností je dostupné iba pre rolu Vlastník nehnuteľnosti.");
+    return;
+  }
   const gdprAcceptedAt = new Date().toISOString();
   if (supabaseClient && password) {
     let { data, error } = await registerSupabaseUser({ email, password, name, flat, requestedRole, gdprAccepted, gdprAcceptedAt });
     if (error && /already registered|already exists|user already/i.test(error.message || "")) {
-      const cleanup = await cleanupOrphanAuthUser(email);
-      if (cleanup.cleaned) {
-        ({ data, error } = await registerSupabaseUser({ email, password, name, flat, requestedRole, gdprAccepted, gdprAcceptedAt }));
+      if (propertyPairing && requestedRole === "owner") {
+        const paired = await registerPairedOwnerProperty({ email, password, name, flat, gdprAcceptedAt });
+        if (paired.ok) {
+          window.alert("Žiadosť o priradenie ďalšej nehnuteľnosti bola prijatá. Po schválení predsedom SVB sa zobrazí v prepínači nehnuteľností.");
+          render();
+          return;
+        }
+        error = new Error(paired.error || "Párovanie nehnuteľnosti zlyhalo.");
+      } else {
+        const cleanup = await cleanupOrphanAuthUser(email);
+        if (cleanup.cleaned) {
+          ({ data, error } = await registerSupabaseUser({ email, password, name, flat, requestedRole, gdprAccepted, gdprAcceptedAt }));
+        }
       }
     }
     if (error) {
@@ -802,6 +823,13 @@ document.querySelectorAll(".nav-item").forEach((button) => {
   });
 });
 
+sidebarPropertySelect?.addEventListener("change", () => {
+  state.activeOwnerRecordId = sidebarPropertySelect.value || "";
+  rememberActiveOwnerRecordId(state.activeOwnerRecordId);
+  syncProfileChrome();
+  render();
+});
+
 mobileMenuBackBtn?.addEventListener("click", openMobileMenu);
 window.addEventListener("resize", syncMobileLayout);
 document.addEventListener("visibilitychange", () => {
@@ -838,6 +866,48 @@ async function registerSupabaseUser({ email, password, name, flat, requestedRole
       }
     }
   });
+}
+
+async function registerPairedOwnerProperty({ email, password, name, flat, gdprAcceptedAt }) {
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error || !data?.user) {
+      return { ok: false, error: error?.message || "Existujúci účet sa nepodarilo overiť. Skontrolujte email a heslo." };
+    }
+    state.loggedIn = true;
+    state.currentUserId = data.user.id;
+    state.currentUserEmail = data.user.email || email;
+    state.authEmail = data.user.email || email;
+    state.role = "owner";
+    loadNotificationPreferences();
+
+    const { data: inserted, error: insertError } = await supabaseClient.from("owner_records").insert({
+      profile_id: data.user.id,
+      full_name: name,
+      flat_number: flat,
+      share_text: "0,00 %",
+      login_email: data.user.email || email,
+      account_status: "Čaká na autorizáciu",
+      approval_status: "pending",
+      owned_from: new Date().toISOString().slice(0, 10),
+      is_debtor: false,
+      debt_amount: 0,
+      note: `Párovanie nehnuteľnosti vytvorené registráciou ${gdprAcceptedAt ? `, GDPR ${state.gdprVersion}` : ""}`
+    }).select("id").single();
+    if (insertError) return { ok: false, error: insertError.message };
+
+    state.activeOwnerRecordId = inserted?.id || "";
+    rememberActiveOwnerRecordId(state.activeOwnerRecordId);
+    await writeActivityLog("create", `Žiadosť o párovanie nehnuteľnosti: ${flat}`, {
+      relatedTable: "owner_records",
+      relatedId: inserted?.id,
+      metadata: { email, flat, name }
+    });
+    await loadSupabaseData();
+    return { ok: true, ownerRecordId: inserted?.id };
+  } catch (error) {
+    return { ok: false, error: error?.message || "Párovanie nehnuteľnosti zlyhalo." };
+  }
 }
 
 async function cleanupOrphanAuthUser(email) {
@@ -972,7 +1042,7 @@ async function loadSupabaseData() {
     supabaseClient.from("owner_records").select("*").order("flat_number", { ascending: true }),
     supabaseClient.from("document_categories").select("*").order("sort_order", { ascending: true }),
     supabaseClient.from("documents").select("*").order("published_at", { ascending: false }).order("created_at", { ascending: false }),
-    supabaseClient.from("billing_settlements").select("*, owner:profiles!billing_settlements_owner_profile_id_fkey(full_name, flat_number, email)").order("settlement_year", { ascending: false }).order("created_at", { ascending: false }),
+    supabaseClient.from("billing_settlements").select("*, owner:profiles!billing_settlements_owner_profile_id_fkey(full_name, flat_number, email), owner_record:owner_records!billing_settlements_owner_record_id_fkey(full_name, flat_number, login_email)").order("settlement_year", { ascending: false }).order("created_at", { ascending: false }),
     supabaseClient.from("execution_cases").select("*").order("updated_at", { ascending: false }).order("created_at", { ascending: false }),
     supabaseClient.from("finance_entries").select("*").order("finance_year", { ascending: false }).order("entry_date", { ascending: false }).order("created_at", { ascending: false }),
     supabaseClient.from("innovation_ideas").select("*, creator:profiles!innovation_ideas_created_by_fkey(full_name, role, flat_number)").order("created_at", { ascending: false }),
@@ -982,7 +1052,7 @@ async function loadSupabaseData() {
     supabaseClient.from("messages").select("*, sender:profiles!messages_sender_id_fkey(full_name, role), recipient:profiles!messages_recipient_id_fkey(full_name, flat_number)").order("created_at", { ascending: false }),
     supabaseClient.from("votes").select("*").order("created_at", { ascending: false }),
     supabaseClient.from("vote_questions").select("*").order("sort_order", { ascending: true }),
-    supabaseClient.from("vote_answers").select("vote_id, question_id, profile_id, comment, answer, voter:profiles!vote_answers_profile_id_fkey(full_name, flat_number, email)"),
+    supabaseClient.from("vote_answers").select("vote_id, question_id, profile_id, owner_record_id, comment, answer, voter:profiles!vote_answers_profile_id_fkey(full_name, flat_number, email), owner_record:owner_records!vote_answers_owner_record_id_fkey(full_name, flat_number, login_email)"),
     supabaseClient.from("vote_comments").select("*, author:profiles!vote_comments_profile_id_fkey(full_name, role, flat_number), recipient:profiles!vote_comments_recipient_id_fkey(full_name, role)").order("created_at", { ascending: true }),
     supabaseClient.from("activities").select("*").order("created_at", { ascending: false }),
     supabaseClient.from("photos").select("*, creator:profiles!photos_created_by_fkey(full_name, role)").order("created_at", { ascending: false }),
@@ -991,12 +1061,14 @@ async function loadSupabaseData() {
     supabaseClient.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(500)
   ]);
 
+  if (profiles.data) state.profiles = profiles.data;
   if (ownerRecords.data) {
     const profileById = new Map((profiles.data || []).map((profile) => [profile.id, profile]));
     state.owners = ownerRecords.data.map((ownerRecord) => ownerRecordToOwner(ownerRecord, profileById.get(ownerRecord.profile_id)));
   } else if (profiles.data) {
     state.owners = profiles.data.filter((item) => item.role === "owner").map(profileToOwner);
   }
+  syncActiveOwnerRecordSelection();
   if (profiles.data) {
     state.boardMembers = profiles.data.filter((item) => item.role !== "owner").map(profileToBoardMember);
   }
@@ -1218,12 +1290,14 @@ function dbMessageToCard(item) {
 }
 
 function voteAnswerOwner(answer) {
-  const owner = state.owners.find((item) => item.profileId === answer.profile_id);
+  const owner = state.owners.find((item) => String(item.id) === String(answer.owner_record_id))
+    || state.owners.find((item) => item.profileId === answer.profile_id);
   const voter = answer.voter || {};
+  const ownerRecord = answer.owner_record || {};
   return {
-    name: voter.full_name || owner?.name || "Neznámy vlastník",
-    flat: voter.flat_number || owner?.flat || "Bez bytu",
-    email: voter.email || owner?.loginEmail || owner?.email || ""
+    name: ownerRecord.full_name || voter.full_name || owner?.name || "Neznámy vlastník",
+    flat: ownerRecord.flat_number || voter.flat_number || owner?.flat || "Bez bytu",
+    email: ownerRecord.login_email || voter.email || owner?.loginEmail || owner?.email || ""
   };
 }
 
@@ -1232,7 +1306,7 @@ function dbVoteToCard(item, answers = [], questions = [], comments = []) {
   const voteQuestions = questions.filter((question) => question.vote_id === item.id);
   const mappedQuestions = voteQuestions.map((question) => {
     const questionAnswers = voteAnswers.filter((answer) => answer.question_id === question.id);
-    const myAnswer = questionAnswers.find((answer) => answer.profile_id === state.currentUserId);
+    const myAnswer = questionAnswers.find((answer) => isAnswerForActiveProperty(answer));
     return {
       id: question.id,
       text: question.question,
@@ -1241,12 +1315,18 @@ function dbVoteToCard(item, answers = [], questions = [], comments = []) {
       no: questionAnswers.filter((answer) => answer.answer === "Proti").length,
       abstain: questionAnswers.filter((answer) => answer.answer === "Zdržal sa").length,
       myAnswer: myAnswer?.answer || "",
-      voters: questionAnswers.map((answer) => ({ profileId: answer.profile_id, ...voteAnswerOwner(answer), answer: answer.answer, comment: answer.comment || "" }))
+      voters: questionAnswers.map((answer) => ({ profileId: answer.profile_id, ownerRecordId: answer.owner_record_id, ...voteAnswerOwner(answer), answer: answer.answer, comment: answer.comment || "" }))
     };
   });
   const voteThread = comments.filter((comment) => comment.voteId === item.id);
-  const electronicVoters = new Set(voteAnswers.map((answer) => answer.profile_id).filter(Boolean)).size;
+  const electronicVoters = new Set(voteAnswers.map((answer) => answer.owner_record_id || answer.profile_id).filter(Boolean)).size;
   return { id: item.id, title: item.title, description: item.description || "", type: item.vote_type || "present_majority", createdAt: item.created_at || item.closes_at || "", closes: item.closes_at || "", status: item.status, yes: item.yes_count, no: item.no_count, abstain: item.abstain_count, comments: voteThread.length || voteAnswers.filter((answer) => answer.comment).length, electronicVoters, questions: mappedQuestions, thread: voteThread };
+}
+
+function isAnswerForActiveProperty(answer) {
+  const owner = currentOwner();
+  if (owner?.id && answer.owner_record_id) return String(answer.owner_record_id) === String(owner.id);
+  return answer.profile_id === state.currentUserId;
 }
 
 function dbVoteCommentToCard(item) {
@@ -1282,14 +1362,16 @@ async function dbPhotoToCard(item) {
 async function dbBillingSettlementToCard(item) {
   const fileUrl = await signedStorageUrl(item.storage_path);
   const owner = item.owner || {};
+  const ownerRecord = item.owner_record || {};
   return {
     id: item.id,
     title: item.title,
     year: item.settlement_year,
+    ownerRecordId: item.owner_record_id,
     ownerProfileId: item.owner_profile_id,
-    ownerName: owner.full_name || "Vlastník nehnuteľnosti",
-    flat: owner.flat_number || "Bez bytu",
-    email: owner.email || "",
+    ownerName: ownerRecord.full_name || owner.full_name || "Vlastník nehnuteľnosti",
+    flat: ownerRecord.flat_number || owner.flat_number || "Bez bytu",
+    email: ownerRecord.login_email || owner.email || "",
     note: item.note || "",
     storagePath: item.storage_path,
     fileUrl,
@@ -1716,11 +1798,76 @@ function syncBuildingImages() {
   if (headerBuildingImage) headerBuildingImage.src = imageUrl;
 }
 
+function activeOwnerStorageKey() {
+  const identifier = state.currentUserId || state.currentUserEmail || "anonymous";
+  return `${ACTIVE_OWNER_RECORD_PREFIX}${identifier}`;
+}
+
+function ownersForCurrentUser() {
+  const email = String(state.currentUserEmail || state.authEmail || "").toLowerCase();
+  return state.owners.filter((owner) => (
+    owner.profileId === state.currentUserId
+    || String(owner.loginEmail || owner.email || "").toLowerCase() === email
+  ));
+}
+
+function propertyOptionLabel(owner) {
+  const status = owner?.approvalStatus === "approved" ? "" : " - čaká na schválenie";
+  return `${owner?.flat || "Bez čísla"}${status}`;
+}
+
+function rememberActiveOwnerRecordId(id) {
+  try {
+    if (id) localStorage.setItem(activeOwnerStorageKey(), id);
+    else localStorage.removeItem(activeOwnerStorageKey());
+  } catch {
+    // Local storage is optional; selection still works for the current session.
+  }
+}
+
+function syncActiveOwnerRecordSelection() {
+  const owners = ownersForCurrentUser();
+  if (!owners.length) {
+    state.activeOwnerRecordId = "";
+    return null;
+  }
+  let stored = "";
+  try {
+    stored = localStorage.getItem(activeOwnerStorageKey()) || "";
+  } catch {
+    stored = "";
+  }
+  const current = owners.find((owner) => String(owner.id) === String(state.activeOwnerRecordId));
+  const saved = owners.find((owner) => String(owner.id) === String(stored));
+  const fallback = owners.find((owner) => owner.approvalStatus === "approved") || owners[0];
+  const next = current || saved || fallback;
+  state.activeOwnerRecordId = next?.id || "";
+  if (state.activeOwnerRecordId) rememberActiveOwnerRecordId(state.activeOwnerRecordId);
+  return next || null;
+}
+
 function syncProfileChrome() {
   const profile = state.loggedIn ? currentProfile() : null;
   if (sidebarProfilePhoto) sidebarProfilePhoto.src = profile?.photoUrl || profilePhotoFallback();
   if (sidebarProfileName) sidebarProfileName.textContent = profile?.name || "Používateľ";
   if (sidebarProfileRole) sidebarProfileRole.textContent = profile?.role || "Profil";
+  if (sidebarPropertySelect) {
+    const owners = state.role === "owner" ? ownersForCurrentUser() : [];
+    if (owners.length) {
+      const active = syncActiveOwnerRecordSelection();
+      sidebarPropertySelect.innerHTML = owners
+        .map((owner) => `<option value="${escapeHtml(owner.id)}">${escapeHtml(propertyOptionLabel(owner))}</option>`)
+        .join("");
+      sidebarPropertySelect.value = active?.id || owners[0]?.id || "";
+      sidebarPropertySelect.disabled = owners.length < 2;
+      sidebarPropertySelect.hidden = false;
+    } else {
+      sidebarPropertySelect.innerHTML = `<option value="">${escapeHtml(profile?.flat || "Nie je viazané na byt")}</option>`;
+      sidebarPropertySelect.value = "";
+      sidebarPropertySelect.disabled = true;
+      sidebarPropertySelect.hidden = !state.loggedIn;
+    }
+  }
 }
 
 function syncAppChrome() {
@@ -1764,7 +1911,11 @@ function syncLiveChatWidget() {
 }
 
 function currentOwner() {
-  return state.owners.find((owner) => owner.profileId === state.currentUserId || owner.loginEmail === state.currentUserEmail || owner.email === state.currentUserEmail);
+  const owners = ownersForCurrentUser();
+  if (!owners.length) return null;
+  return owners.find((owner) => String(owner.id) === String(state.activeOwnerRecordId))
+    || syncActiveOwnerRecordSelection()
+    || owners[0];
 }
 
 function currentBoardMember() {
@@ -2144,7 +2295,7 @@ const views = {
   billing() {
     const owner = currentOwner();
     const items = state.role === "owner"
-      ? state.billingSettlements.filter((item) => item.ownerProfileId === state.currentUserId || item.email === state.currentUserEmail || item.flat === owner?.flat)
+      ? state.billingSettlements.filter((item) => item.ownerRecordId === owner?.id || item.flat === owner?.flat || (!owner?.id && (item.ownerProfileId === state.currentUserId || item.email === state.currentUserEmail)))
       : state.billingSettlements;
     return `
       <section class="panel">
@@ -5266,6 +5417,11 @@ async function saveProfile() {
     }
 
     if (profile.kind === "owner") {
+      const activeOwner = currentOwner();
+      if (!activeOwner?.id) {
+        if (status) status.textContent = "Údaje vlastníka sa nepodarilo uložiť: nie je vybraná aktívna nehnuteľnosť.";
+        return;
+      }
       const { error: ownerRecordError } = await supabaseClient.from("owner_records").update({
         full_name: nextFullName,
         flat_number: flatValue || profile.flat,
@@ -5275,7 +5431,7 @@ async function saveProfile() {
         correspondence_city: correspondenceCityValue || null,
         correspondence_postal_code: correspondencePostalCodeValue || null,
         updated_at: new Date().toISOString()
-      }).eq("profile_id", state.currentUserId);
+      }).eq("id", activeOwner.id).eq("profile_id", state.currentUserId);
       if (ownerRecordError) {
         if (status) status.textContent = `Údaje vlastníka sa nepodarilo uložiť: ${ownerRecordError.message}`;
         return;
@@ -5699,7 +5855,13 @@ function ownerNotificationOptions() {
 
 function billingOwnerOptions() {
   const owners = state.owners.filter((ownerItem) => ownerItem.profileId && ownerItem.approvalStatus === "approved");
-  return [["", "Vyberte registrovaného vlastníka"], ...owners.map((ownerItem) => [ownerItem.profileId, `${ownerItem.name} · ${ownerItem.flat}`])];
+  return [["", "Vyberte registrovaného vlastníka"], ...owners.map((ownerItem) => [ownerItem.id || ownerItem.profileId, `${ownerItem.name} · ${ownerItem.flat}`])];
+}
+
+function profileByEmail(email) {
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized) return null;
+  return state.profiles.find((profile) => String(profile.email || "").toLowerCase() === normalized) || null;
 }
 
 function executionOwnerOptions() {
@@ -5922,10 +6084,12 @@ async function saveVoteAnswer(voteId, commentOnly = false) {
 
   if (supabaseClient && state.currentUserId) {
     try {
+      const activeOwner = state.role === "owner" ? currentOwner() : null;
       const answerControls = [...document.querySelectorAll("[data-vote-question-id]")];
       const questions = vote.questions?.length ? vote.questions : [];
       let payload = [];
       if (!commentOnly) {
+        if (state.role === "owner" && !activeOwner?.id) throw new Error("Nie je vybraná aktívna nehnuteľnosť pre hlasovanie.");
         payload = answerControls.map((control, index) => ({
           id: control.dataset.voteQuestionId || questions[index]?.id,
           answer: control.value || "Za"
@@ -5933,11 +6097,12 @@ async function saveVoteAnswer(voteId, commentOnly = false) {
           vote_id: voteId,
           question_id: question.id,
           profile_id: state.currentUserId,
+          owner_record_id: activeOwner?.id || null,
           answer: question.answer,
           comment: null
         }));
         if (!payload.length) throw new Error("Hlasovanie nemá žiadne otázky.");
-        const { error } = await supabaseClient.from("vote_answers").upsert(payload, { onConflict: "vote_id,question_id,profile_id" });
+        const { error } = await supabaseClient.from("vote_answers").upsert(payload, { onConflict: "vote_id,question_id,owner_record_id" });
         if (error) throw new Error(error.message);
         await refreshVoteCounts(voteId);
       }
@@ -6185,8 +6350,8 @@ async function saveDialog(type) {
     state.documentHistory.unshift({ id: Date.now(), title: titleValue, category: categoryValue, date: documentDateValue || new Date().toISOString().slice(0, 10), owner: roleLabel(), note: noteValue, youtubeUrl: youtubeUrlValue || "" });
     state.documentHistory.sort(sortByDocumentDateDesc);
   } else if (type === "billing") {
-    const owner = state.owners.find((item) => item.profileId === categoryValue);
-    state.billingSettlements.unshift({ id: Date.now(), title: titleValue, year: settlementYearValue || new Date().getFullYear(), ownerProfileId: owner?.profileId, ownerName: owner?.name || "Vlastník nehnuteľnosti", flat: owner?.flat || "", email: owner?.email || "", note: noteValue, date: new Date().toISOString() });
+    const owner = state.owners.find((item) => String(item.id) === String(categoryValue) || String(item.profileId) === String(categoryValue));
+    state.billingSettlements.unshift({ id: Date.now(), title: titleValue, year: settlementYearValue || new Date().getFullYear(), ownerRecordId: owner?.id, ownerProfileId: owner?.profileId, ownerName: owner?.name || "Vlastník nehnuteľnosti", flat: owner?.flat || "", email: owner?.email || "", note: noteValue, date: new Date().toISOString() });
   } else if (type === "executions") {
     const owner = state.owners.find((item) => String(item.id) === String(categoryValue) || String(item.profileId) === String(categoryValue));
     state.executionCases.unshift({ id: Date.now(), title: titleValue, ownerRecordId: owner?.id, ownerProfileId: owner?.profileId, ownerName: owner?.name || "Vlastník nehnuteľnosti", flat: owner?.flat || "", email: owner?.email || owner?.loginEmail || "", debtAmount: Number.parseFloat(amountValue || "0"), debtSince: ownedFromValue || new Date().toISOString().slice(0, 10), status: statusValue || "Evidovaný dlh", executionTitleStatus: executionTitleStatusValue || "Neposúdené", legalStatus: legalStatusValue || "", debtHistory: noteValue, note: "", lastActionDate: new Date().toISOString(), nextStepDate: nextStepDateValue || "" });
@@ -6269,16 +6434,18 @@ async function saveDialogToSupabase(type, values) {
   } else if (type === "billing") {
     if (!values.categoryValue) throw new Error("Vyberte registrovaného vlastníka nehnuteľnosti.");
     if (!filePath) throw new Error("Nahrajte súbor vyúčtovania.");
+    const owner = state.owners.find((ownerItem) => String(ownerItem.id) === String(values.categoryValue) || String(ownerItem.profileId) === String(values.categoryValue));
     const response = assertSupabaseOk(await supabaseClient.from("billing_settlements").insert({
       created_by: state.currentUserId,
-      owner_profile_id: values.categoryValue,
+      owner_record_id: owner?.id || null,
+      owner_profile_id: owner?.profileId || values.categoryValue,
       title: values.titleValue,
       settlement_year: Number.parseInt(values.settlementYearValue || `${new Date().getFullYear()}`, 10),
       note: values.noteValue,
       storage_path: filePath
     }).select("id").single());
     const billingNotification = { ...values.notification };
-    if (billingNotification.target === "individual" && !billingNotification.ownerId) billingNotification.ownerId = values.categoryValue;
+    if (billingNotification.target === "individual" && !billingNotification.ownerId) billingNotification.ownerId = owner?.profileId || values.categoryValue;
     await notifyByChoice("Nové vyúčtovanie", values.titleValue, values.noteValue, billingNotification, "billing_settlements", response.data.id);
   } else if (type === "executions") {
     if (!values.categoryValue) throw new Error("Vyberte vlastníka nehnuteľnosti.");
@@ -6386,7 +6553,9 @@ async function saveDialogToSupabase(type, values) {
     }))));
     await notifyByChoice("Nové hlasovanie", values.titleValue, values.noteValue, values.notification, "votes", voteResponse.data.id);
   } else if (type === "owners") {
+    const pairedProfile = profileByEmail(values.loginEmailValue);
     const { data, error } = await supabaseClient.from("owner_records").insert({
+      profile_id: pairedProfile?.id || null,
       full_name: values.titleValue,
       flat_number: values.categoryValue,
       share_text: "0,00 %",
@@ -6717,7 +6886,9 @@ async function saveEditToSupabase(type, item, values) {
   if (type === "owner") {
     const nextDebtAmount = Number.parseFloat(values.debtAmountValue || item.debtAmount || "0");
     const nextIsDebtor = values.isDebtorValue ? ["áno", "ano", "yes", "true", "1"].includes(values.isDebtorValue) : nextDebtAmount > 0;
+    const pairedProfile = profileByEmail(values.loginEmailValue || item.loginEmail || item.email);
     const { error } = await supabaseClient.from("owner_records").update({
+      ...(pairedProfile ? { profile_id: pairedProfile.id } : {}),
       full_name: values.titleValue,
       flat_number: values.categoryValue || item.flat,
       login_email: values.loginEmailValue || item.loginEmail || item.email,
@@ -6888,7 +7059,3 @@ async function boot() {
 }
 
 boot();
-
-
-
-

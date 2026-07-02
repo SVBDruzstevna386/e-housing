@@ -327,6 +327,36 @@ button {
   font-size: 0.82rem;
 }
 
+.sidebar-property-label {
+  display: block;
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sidebar-property-select {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 5px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.sidebar-property-select option {
+  color: #172033;
+}
+
+.sidebar-property-select:disabled {
+  opacity: 0.82;
+}
+
 .nav-list {
   display: grid;
   gap: 8px;
