@@ -1,9 +1,9 @@
-const CACHE_NAME = "e-housing-v114";
+const CACHE_NAME = "e-housing-v115";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=114",
-  "./app.js?v=114",
+  "./styles.css?v=115",
+  "./app.js?v=115",
   "./manifest.webmanifest",
   "./favicon.ico",
   "./favicon-16.png",
@@ -14,7 +14,24 @@ const ASSETS = [
   "./icon.svg",
   "./icon-192.png",
   "./icon-512.png",
-  "./apple-touch-icon.png"
+  "./apple-touch-icon.png",
+  "./assets/cartoon/cartoon-background.webp",
+  "./assets/cartoon/icon-overview.png",
+  "./assets/cartoon/icon-documents.png",
+  "./assets/cartoon/icon-documentHistory.png",
+  "./assets/cartoon/icon-votes.png",
+  "./assets/cartoon/icon-billing.png",
+  "./assets/cartoon/icon-executions.png",
+  "./assets/cartoon/icon-finance.png",
+  "./assets/cartoon/icon-messages.png",
+  "./assets/cartoon/icon-calendar.png",
+  "./assets/cartoon/icon-activities.png",
+  "./assets/cartoon/icon-photoAlbum.png",
+  "./assets/cartoon/icon-owners.png",
+  "./assets/cartoon/icon-emails.png",
+  "./assets/cartoon/icon-logs.png",
+  "./assets/cartoon/icon-settings.png",
+  "./assets/cartoon/icon-profile.png"
 ];
 
 self.addEventListener("install", (event) => {

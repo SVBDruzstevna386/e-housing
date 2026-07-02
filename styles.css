@@ -37,6 +37,8 @@ body.theme-cartoon_3d {
   --shadow: 0 24px 42px rgba(20, 61, 82, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.36);
   --shadow-soft: 0 13px 24px rgba(30, 70, 91, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   background:
+    linear-gradient(90deg, rgba(172, 230, 242, 0.2), rgba(255, 255, 255, 0.05)),
+    url("./assets/cartoon/cartoon-background.webp") center / cover fixed,
     radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.85) 0 5rem, transparent 5.2rem),
     radial-gradient(circle at 88% 22%, rgba(255, 255, 255, 0.72) 0 6rem, transparent 6.2rem),
     radial-gradient(circle at 72% 82%, rgba(89, 206, 115, 0.5), transparent 18rem),
@@ -67,9 +69,36 @@ body.theme-cartoon_3d .nav-item {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
+body.theme-cartoon_3d .nav-item::before {
+  content: "";
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  filter: drop-shadow(0 5px 4px rgba(51, 33, 11, 0.28));
+}
+
+body.theme-cartoon_3d .nav-item[data-view="overview"]::before { background-image: url("./assets/cartoon/icon-overview.png"); }
+body.theme-cartoon_3d .nav-item[data-view="documents"]::before { background-image: url("./assets/cartoon/icon-documents.png"); }
+body.theme-cartoon_3d .nav-item[data-view="documentHistory"]::before { background-image: url("./assets/cartoon/icon-documentHistory.png"); }
+body.theme-cartoon_3d .nav-item[data-view="votes"]::before { background-image: url("./assets/cartoon/icon-votes.png"); }
+body.theme-cartoon_3d .nav-item[data-view="billing"]::before { background-image: url("./assets/cartoon/icon-billing.png"); }
+body.theme-cartoon_3d .nav-item[data-view="executions"]::before { background-image: url("./assets/cartoon/icon-executions.png"); }
+body.theme-cartoon_3d .nav-item[data-view="finance"]::before { background-image: url("./assets/cartoon/icon-finance.png"); }
+body.theme-cartoon_3d .nav-item[data-view="messages"]::before { background-image: url("./assets/cartoon/icon-messages.png"); }
+body.theme-cartoon_3d .nav-item[data-view="calendar"]::before { background-image: url("./assets/cartoon/icon-calendar.png"); }
+body.theme-cartoon_3d .nav-item[data-view="activities"]::before { background-image: url("./assets/cartoon/icon-activities.png"); }
+body.theme-cartoon_3d .nav-item[data-view="photoAlbum"]::before { background-image: url("./assets/cartoon/icon-photoAlbum.png"); }
+body.theme-cartoon_3d .nav-item[data-view="owners"]::before { background-image: url("./assets/cartoon/icon-owners.png"); }
+body.theme-cartoon_3d .nav-item[data-view="emails"]::before { background-image: url("./assets/cartoon/icon-emails.png"); }
+body.theme-cartoon_3d .nav-item[data-view="logs"]::before { background-image: url("./assets/cartoon/icon-logs.png"); }
+body.theme-cartoon_3d .nav-item[data-view="settings"]::before { background-image: url("./assets/cartoon/icon-settings.png"); }
+body.theme-cartoon_3d .nav-item[data-view="profile"]::before { background-image: url("./assets/cartoon/icon-profile.png"); }
+
 body.theme-cartoon_3d .nav-item svg {
-  color: #ffc47d;
-  filter: drop-shadow(0 4px 4px rgba(51, 33, 11, 0.28));
+  display: none;
 }
 
 body.theme-cartoon_3d .nav-item:hover,
@@ -80,8 +109,8 @@ body.theme-cartoon_3d .nav-item.active {
 
 body.theme-cartoon_3d .main {
   background:
-    radial-gradient(circle at 25% 18%, rgba(255, 245, 230, 0.65), transparent 14rem),
-    radial-gradient(circle at 78% 28%, rgba(86, 195, 95, 0.38), transparent 17rem);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06)),
+    url("./assets/cartoon/cartoon-background.webp") center / cover fixed;
 }
 
 body.theme-cartoon_3d .topbar,
@@ -89,7 +118,8 @@ body.theme-cartoon_3d .overview-hero {
   border-color: rgba(255, 255, 255, 0.28);
   border-radius: 22px;
   background:
-    linear-gradient(90deg, rgba(18, 68, 89, 0.96), rgba(50, 130, 201, 0.88)),
+    linear-gradient(90deg, rgba(18, 68, 89, 0.96), rgba(50, 130, 201, 0.58)),
+    url("./assets/cartoon/cartoon-background.webp") center 34% / cover,
     var(--panel);
   color: #fff;
   box-shadow: 0 18px 28px rgba(29, 75, 100, 0.28), inset 0 2px 0 rgba(255, 255, 255, 0.2);
