@@ -2872,7 +2872,7 @@ function serviceAdminSection() {
       values: [
         ["Manifest", "manifest.webmanifest"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v96"]
+        ["Cache", "e-housing-v97"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",

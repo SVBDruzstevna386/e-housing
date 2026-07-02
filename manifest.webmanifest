@@ -2,7 +2,7 @@
   "name": "e-housing",
   "short_name": "e-housing",
   "description": "Správa SVB a NP Družstevná 386",
-  "start_url": "/?v=pwa-install-v2",
+  "start_url": "/?v=logo-brand",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f7f4",
@@ -19,6 +19,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "./logo-e-housing.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "./icon.svg",

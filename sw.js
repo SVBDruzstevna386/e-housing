@@ -1,10 +1,14 @@
-﻿const CACHE_NAME = "e-housing-v96";
+﻿const CACHE_NAME = "e-housing-v97";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
+  "./favicon.ico",
+  "./favicon-16.png",
+  "./favicon-32.png",
+  "./logo-e-housing.png",
   "./icon.svg",
   "./icon-192.png",
   "./icon-512.png",
@@ -48,11 +52,3 @@ self.addEventListener("notificationclick", (event) => {
     })
   );
 });
-
-
-
-
-
-
-
-
