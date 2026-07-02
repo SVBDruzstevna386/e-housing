@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "e-housing-v95";
+﻿const CACHE_NAME = "e-housing-v96";
 const ASSETS = [
   "./",
   "./index.html",
