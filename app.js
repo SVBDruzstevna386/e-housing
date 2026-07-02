@@ -2178,11 +2178,11 @@ function openWelcomeDialog() {
   const text = state.welcomeText || defaultWelcomeText();
   dialogSave.hidden = !canEditHelpContent();
   dialog.classList.remove("video-dialog");
-  dialogTitle.textContent = "Uvítanie správcom SVB";
+  dialogTitle.textContent = "Uvítanie správcom";
   dialogBody.innerHTML = canEditHelpContent() ? `
     <article class="notice">
       <strong>Editácia uvítania</strong>
-      <p>Text sa zobrazí po stlačení tlačidla Uvítanie správcom SVB v záložke Prehľad.</p>
+      <p>Text sa zobrazí po stlačení tlačidla Uvítanie správcom v záložke Prehľad.</p>
     </article>
     <div class="field">
       <label for="welcomeText">Text uvítania</label>
@@ -2295,7 +2295,7 @@ function render() {
   }
   if (welcomeBtn) {
     welcomeBtn.hidden = state.view !== "overview";
-    welcomeBtn.innerHTML = `${icon("handshake")}<span>Uvítanie správcom SVB</span>`;
+    welcomeBtn.innerHTML = `${icon("handshake")}<span>Uvítanie správcom</span>`;
   }
   newItemBtn.hidden = !canCreateInView();
   newItemBtn.innerHTML = `${icon("plus")}<span>${actionLabel()}</span>`;
