@@ -1392,7 +1392,7 @@ function profilePhotoUrl(pathOrUrl) {
 }
 
 function profilePhotoFallback() {
-  return "./icon-192.png";
+  return "./default-user-photo.png";
 }
 
 async function signedStorageUrl(path) {
@@ -5343,7 +5343,8 @@ async function saveProfile() {
 async function saveProfilePhoto(file) {
   if (!file.type.startsWith("image/")) throw new Error("Vybraný súbor musí byť obrázok.");
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-  const path = `profile-photos/${state.currentUserId || "user"}-${Date.now()}-${safeName}`;
+  const ownerPrefix = state.currentUserId || "user";
+  const path = `profile-photos/${ownerPrefix}/${Date.now()}-${safeName}`;
   const upload = await supabaseClient.storage.from(PUBLIC_ASSETS_BUCKET).upload(path, file, {
     cacheControl: "3600",
     upsert: true
@@ -6886,7 +6887,6 @@ async function boot() {
 }
 
 boot();
-
 
 
 
