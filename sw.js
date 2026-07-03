@@ -1,9 +1,9 @@
-const CACHE_NAME = "e-housing-v119";
+const CACHE_NAME = "e-housing-v120";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=119",
-  "./app.js?v=119",
+  "./styles.css?v=120",
+  "./app.js?v=120",
   "./manifest.webmanifest",
   "./favicon.ico",
   "./favicon-16.png",
@@ -18,22 +18,22 @@ const ASSETS = [
   "./assets/cartoon/cartoon-background.webp",
   "./assets/cartoon/cartoon-header-banner.webp",
   "./assets/cartoon/cartoon-owner-overview-banner.webp",
-  "./assets/cartoon/icon-overview.png",
-  "./assets/cartoon/icon-documents.png",
-  "./assets/cartoon/icon-documentHistory.png",
-  "./assets/cartoon/icon-votes.png",
-  "./assets/cartoon/icon-billing.png",
-  "./assets/cartoon/icon-executions.png",
-  "./assets/cartoon/icon-finance.png",
-  "./assets/cartoon/icon-messages.png",
-  "./assets/cartoon/icon-calendar.png",
-  "./assets/cartoon/icon-activities.png",
-  "./assets/cartoon/icon-photoAlbum.png",
-  "./assets/cartoon/icon-owners.png",
-  "./assets/cartoon/icon-emails.png",
-  "./assets/cartoon/icon-logs.png",
-  "./assets/cartoon/icon-settings.png",
-  "./assets/cartoon/icon-profile.png"
+  "./assets/cartoon/icon-overview.png?v=120",
+  "./assets/cartoon/icon-documents.png?v=120",
+  "./assets/cartoon/icon-documentHistory.png?v=120",
+  "./assets/cartoon/icon-votes.png?v=120",
+  "./assets/cartoon/icon-billing.png?v=120",
+  "./assets/cartoon/icon-executions.png?v=120",
+  "./assets/cartoon/icon-finance.png?v=120",
+  "./assets/cartoon/icon-messages.png?v=120",
+  "./assets/cartoon/icon-calendar.png?v=120",
+  "./assets/cartoon/icon-activities.png?v=120",
+  "./assets/cartoon/icon-photoAlbum.png?v=120",
+  "./assets/cartoon/icon-owners.png?v=120",
+  "./assets/cartoon/icon-emails.png?v=120",
+  "./assets/cartoon/icon-logs.png?v=120",
+  "./assets/cartoon/icon-settings.png?v=120",
+  "./assets/cartoon/icon-profile.png?v=120"
 ];
 
 self.addEventListener("install", (event) => {
