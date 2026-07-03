@@ -1944,7 +1944,35 @@ function syncNavigation(forceHide = false) {
 
 function syncBuildingImages() {
   const imageUrl = state.buildingPhotoUrl || "./building-placeholder.svg";
-  if (loginBuildingImage) loginBuildingImage.src = imageUrl;
+  if (loginBuildingImage && !document.body.classList.contains("app-loading")) loginBuildingImage.src = imageUrl;
+  if (headerBuildingImage) headerBuildingImage.src = imageUrl;
+}
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function preloadImage(src) {
+  return new Promise((resolve) => {
+    if (!src) {
+      resolve(false);
+      return;
+    }
+    const image = new Image();
+    image.onload = () => resolve(true);
+    image.onerror = () => resolve(false);
+    image.src = src;
+    if (image.complete) resolve(true);
+  });
+}
+
+async function prepareLoginVisual() {
+  const imageUrl = state.buildingPhotoUrl || "./building-placeholder.svg";
+  await Promise.race([preloadImage(imageUrl), wait(8000)]);
+  if (loginBuildingImage) {
+    loginBuildingImage.src = imageUrl;
+    loginBuildingImage.classList.add("is-loaded");
+  }
   if (headerBuildingImage) headerBuildingImage.src = imageUrl;
 }
 
@@ -2711,33 +2739,42 @@ const views = {
       state.messageFilter === "all" || message.scope === state.messageFilter || message.to === state.messageFilter
     );
     return `
-      <div class="grid two wide-left">
-        <section class="panel">
-          <div class="toolbar">
+      <div class="grid">
+        <section class="panel messages-panel">
+          <div class="toolbar messages-toolbar">
             <div>
               <h2>Správy a vlákna</h2>
               <p class="muted">Čítanie verejných aj súkromných správ podľa oprávnenia role.</p>
             </div>
-            <select class="search" data-message-filter>
-              <option value="all" ${state.messageFilter === "all" ? "selected" : ""}>Všetky správy</option>
-              <option value="Verejná diskusia" ${state.messageFilter === "Verejná diskusia" ? "selected" : ""}>Verejná diskusia</option>
-              <option value="Súkromná správa" ${state.messageFilter === "Súkromná správa" ? "selected" : ""}>Súkromné správy</option>
-              <option value="Predseda SVB" ${state.messageFilter === "Predseda SVB" ? "selected" : ""}>Predseda SVB</option>
-              <option value="Podpredseda SVB" ${state.messageFilter === "Podpredseda SVB" ? "selected" : ""}>Podpredseda SVB</option>
-              <option value="Ekonomická správa" ${state.messageFilter === "Ekonomická správa" ? "selected" : ""}>Ekonomická správa</option>
-              <option value="Dozorná rada" ${state.messageFilter === "Dozorná rada" ? "selected" : ""}>Dozorná rada</option>
-            </select>
+          </div>
+          <select class="search below-title-select message-filter-select" data-message-filter>
+            <option value="all" ${state.messageFilter === "all" ? "selected" : ""}>Všetky správy</option>
+            <option value="Verejná diskusia" ${state.messageFilter === "Verejná diskusia" ? "selected" : ""}>Verejná diskusia</option>
+            <option value="Súkromná správa" ${state.messageFilter === "Súkromná správa" ? "selected" : ""}>Súkromné správy</option>
+            <option value="Predseda SVB" ${state.messageFilter === "Predseda SVB" ? "selected" : ""}>Predseda SVB</option>
+            <option value="Podpredseda SVB" ${state.messageFilter === "Podpredseda SVB" ? "selected" : ""}>Podpredseda SVB</option>
+            <option value="Ekonomická správa" ${state.messageFilter === "Ekonomická správa" ? "selected" : ""}>Ekonomická správa</option>
+            <option value="Dozorná rada" ${state.messageFilter === "Dozorná rada" ? "selected" : ""}>Dozorná rada</option>
+          </select>
+          <div class="grid three system-cards message-recipient-row" aria-label="Adresáti správ">
+            <article class="card icon-card message-recipient-card public" data-system-icon="info">
+              <div class="card-icon">${icon("info")}</div>
+              <h3>Verejná diskusia</h3>
+              <p class="muted">Správy k domu, ktoré môžu čítať všetky role.</p>
+            </article>
+            <article class="card icon-card message-recipient-card private" data-system-icon="info">
+              <div class="card-icon">${icon("info")}</div>
+              <h3>Súkromná správa</h3>
+              <p class="muted">Správa smeruje na vedenie SVB alebo určeného adresáta.</p>
+            </article>
+            <article class="card icon-card message-recipient-card owner" data-system-icon="info">
+              <div class="card-icon">${icon("info")}</div>
+              <h3>Konkrétny vlastník</h3>
+              <p class="muted">Pri písaní správy vyberiete vlastníka podľa mena a bytu.</p>
+            </article>
           </div>
           <div class="message-list">
             ${messages.map(messageCard).join("")}
-          </div>
-        </section>
-        <section class="panel">
-          <h2>Adresáti</h2>
-          <div class="list">
-            ${systemCard("Verejná diskusia", "Správy k domu, ktoré môžu čítať všetky role.")}
-            ${systemCard("Súkromná správa", "Správa smeruje na predsedu, podpredsedu, dozornú radu alebo konkrétneho vlastníka nehnuteľnosti.")}
-            ${systemCard("Konkrétny vlastník", "Pri písaní správy si v poli Komu vyberiete vlastníka podľa mena a bytu.")}
           </div>
         </section>
       </div>
@@ -2841,30 +2878,32 @@ const views = {
     const month = new Date().toISOString().slice(0, 7);
     const items = state.activities.filter((activity) => activity.month === month);
     return `
-      <div class="grid two">
-        <section class="panel">
-          <div class="toolbar">
-            <div>
-              <h2>Denník predsedu a dozornej rady</h2>
-              <p class="muted">Mesačný zápis vlastných aktivít vykonaných pre bytový dom. Záznamy vidia aj vlastníci nehnuteľností.</p>
+      <section class="panel activities-overview-panel">
+        <div class="toolbar">
+          <div>
+            <h2>Denník predsedu a dozornej rady</h2>
+            <p class="muted">Mesačný zápis vlastných aktivít vykonaných pre bytový dom. Záznamy vidia aj vlastníci nehnuteľností.</p>
+          </div>
+          <span class="tag document">${month}</span>
+        </div>
+        <div class="activities-merged-content">
+          <div class="activities-merged-section">
+            <div class="list">${(items.length ? items : state.activities).map(activityCard).join("")}</div>
+          </div>
+          <div class="activities-merged-section">
+            <h2>Prehľad hodín</h2>
+            <div class="grid three activity-hours-grid">
+              ${activitySummaryCard("Spolu", state.activities.reduce((sum, item) => sum + Number(item.hours || 0), 0))}
+              ${activitySummaryCard("Predseda", state.activities.filter((item) => item.role === "Predseda SVB").reduce((sum, item) => sum + Number(item.hours || 0), 0))}
+              ${activitySummaryCard("Podpredseda", state.activities.filter((item) => item.role === "Podpredseda SVB").reduce((sum, item) => sum + Number(item.hours || 0), 0))}
+              ${activitySummaryCard("Ekonomická správa", state.activities.filter((item) => item.role === "Ekonomická správa").reduce((sum, item) => sum + Number(item.hours || 0), 0))}
+              ${activitySummaryCard("Dozorná rada", state.activities.filter((item) => !["Predseda SVB", "Podpredseda SVB", "Ekonomická správa"].includes(item.role)).reduce((sum, item) => sum + Number(item.hours || 0), 0))}
             </div>
-            <span class="tag document">${month}</span>
+            <h2>Vedenie a kontakty</h2>
+            <div class="list">${state.boardMembers.map(boardMemberCard).join("")}</div>
           </div>
-          <div class="list">${(items.length ? items : state.activities).map(activityCard).join("")}</div>
-        </section>
-        <section class="panel">
-          <h2>Prehľad hodín</h2>
-          <div class="grid three">
-            ${activitySummaryCard("Spolu", state.activities.reduce((sum, item) => sum + Number(item.hours || 0), 0))}
-            ${activitySummaryCard("Predseda", state.activities.filter((item) => item.role === "Predseda SVB").reduce((sum, item) => sum + Number(item.hours || 0), 0))}
-            ${activitySummaryCard("Podpredseda", state.activities.filter((item) => item.role === "Podpredseda SVB").reduce((sum, item) => sum + Number(item.hours || 0), 0))}
-            ${activitySummaryCard("Ekonomická správa", state.activities.filter((item) => item.role === "Ekonomická správa").reduce((sum, item) => sum + Number(item.hours || 0), 0))}
-            ${activitySummaryCard("Dozorná rada", state.activities.filter((item) => !["Predseda SVB", "Podpredseda SVB", "Ekonomická správa"].includes(item.role)).reduce((sum, item) => sum + Number(item.hours || 0), 0))}
-          </div>
-          <h2>Vedenie a kontakty</h2>
-          <div class="list">${state.boardMembers.map(boardMemberCard).join("")}</div>
-        </section>
-      </div>
+        </div>
+      </section>
     `;
   },
   photoAlbum() {
@@ -2967,7 +3006,7 @@ const views = {
       </div>
     ` : "";
     const gdprPanel = ["chair", "vice_chair"].includes(state.role) ? `
-      <section class="panel">
+      <section class="profile-merged-section span-all">
         <div class="toolbar">
           <div>
             <h2>GDPR a ochrana osobných údajov</h2>
@@ -3027,8 +3066,9 @@ const views = {
       ${readonlyField("Rola", profile.role)}
     `;
     return `
-      <div class="grid two">
-        <section class="panel">
+      <section class="panel profile-overview-panel">
+        <div class="grid two profile-merged-content">
+        <section class="profile-merged-section">
           <div class="toolbar">
             <div>
               <h2>Môj profil</h2>
@@ -3074,7 +3114,7 @@ const views = {
           </div>
           ${buildingPhotoPanel}
         </section>
-        <section class="panel">
+        <section class="profile-merged-section">
           <h2>Zmena hesla</h2>
           <p class="muted">${profile.readonlyNote}. V lokálnom prototype sa heslo uloží iba do demo stavu aplikácie.</p>
           <div class="profile-form">
@@ -3090,7 +3130,7 @@ const views = {
             <p class="muted" id="profileStatus"></p>
           </div>
         </section>
-        <section class="panel">
+        <section class="profile-merged-section">
           <div class="toolbar">
             <div>
               <h2>Notifikácie aplikácie</h2>
@@ -3107,7 +3147,7 @@ const views = {
             <button class="ghost" data-disable-app-notifications type="button">${icon("bell-off")}<span>Vypnúť notifikácie</span></button>
           </div>
         </section>
-        <section class="panel">
+        <section class="profile-merged-section">
           <h2>Inštalácia aplikácie</h2>
           <p class="muted">e-housing solutions je pripravený ako webová aplikácia PWA. Po inštalácii sa otvorí ako samostatná aplikácia s vlastnou ikonou.</p>
           <div class="install-grid">
@@ -3118,12 +3158,17 @@ const views = {
           </div>
         </section>
         ${gdprPanel}
-      </div>
+        </div>
+      </section>
     `;
   },
   owners() {
     return `
-      <section class="panel">
+      <section class="panel owners-overview-panel">
+        <div class="owners-overview-head">
+          <h2>Vlastníci a byty</h2>
+          <p class="muted">Vlastníci a byty zobrazuje všetkých registrovaných vlastníkov nehnuteľností.</p>
+        </div>
         <div class="toolbar">
           <input class="search" data-search placeholder="Hľadať vlastníka alebo byt">
           <span class="tag vote">Evidencia vlastníkov</span>
@@ -3139,7 +3184,12 @@ const views = {
   },
   emails() {
     return `
-      <div class="grid two">
+      <section class="panel emails-overview-panel">
+      <div class="emails-overview-head">
+        <h2>Šablóny automatických emailov</h2>
+        <p class="muted">Šablóny automatických emailov môže vytvárať a editovať predseda SVB.</p>
+      </div>
+      <div class="grid two emails-merged-content">
         <section class="panel">
           <div class="toolbar">
             <h2>Šablóny automatických emailov</h2>
@@ -3149,7 +3199,7 @@ const views = {
             ${state.emailTemplates.map(templateCard).join("")}
           </div>
         </section>
-        <section class="panel">
+        <section class="panel emails-automation-panel">
           <h2>Automatizácie</h2>
           <div class="list">
             ${systemCard("Registrácia vlastníka", "Po pridaní alebo registrácii vlastníka sa odošle uvítací email s informáciou o prístupe.")}
@@ -3160,19 +3210,25 @@ const views = {
           <div class="list">${state.notificationLog.map(notificationRow).join("")}</div>
         </section>
       </div>
+      </section>
     `;
   },
   settings() {
     return `
-      <div class="grid two">
-        <section class="panel">
-          <h2>Nastavenia domu</h2>
-          ${toggle("Email notifikácie", true)}
-          ${toggle("Súkromné správy vlastník ↔ predseda", true)}
-          ${toggle("Správy medzi vlastníkmi", false)}
-          ${toggle("Potvrdenie prečítania oznámení", true)}
-          ${toggle("Vážené hlasovanie podľa podielov", true)}
-        </section>
+      <section class="panel settings-overview-panel span-all">
+          <div class="settings-overview-head">
+            <h2>Nastavenia</h2>
+            <p class="muted">Administrátorské nastavenia môže spravovať predseda SVB.</p>
+          </div>
+        <div class="grid two settings-overview-content">
+          <section class="panel settings-house-panel">
+            <h2>Nastavenia domu</h2>
+            ${toggle("Email notifikácie", true)}
+            ${toggle("Súkromné správy vlastník ↔ predseda", true)}
+            ${toggle("Správy medzi vlastníkmi", false)}
+            ${toggle("Potvrdenie prečítania oznámení", true)}
+            ${toggle("Vážené hlasovanie podľa podielov", true)}
+          </section>
         <section class="panel">
           <h2>Bezpečnosť a audit</h2>
           <div class="list">
@@ -3220,6 +3276,7 @@ const views = {
           <p class="muted" id="permissionsStatus"></p>
         </section>
       </div>
+      </section>
     `;
   }
 };
@@ -4347,7 +4404,8 @@ function templateCard(template) {
 }
 
 function notificationRow(item) {
-  return `<article class="notification-row"><span class="tag">${item.type}</span><div><strong>${item.subject}</strong><p class="muted">${item.status}</p></div><span class="muted">${item.time}</span></article>`;
+  const actions = state.role === "chair" ? `<button class="ghost" data-delete-email-event="${escapeAttr(item.id || item.localId || item.subject || item.time)}">${icon("trash-2")}<span>Vymazať</span></button>` : "";
+  return `<article class="notification-row"><span class="tag">${escapeHtml(item.type || "Email")}</span><div><strong>${escapeHtml(item.subject || "Emailová udalosť")}</strong><p class="muted">${escapeHtml(item.status || "")}</p></div><span class="muted">${escapeHtml(item.time || "")}</span>${actions ? `<div class="row-actions compact">${actions}</div>` : ""}</article>`;
 }
 
 function permissionMatrix() {
@@ -4791,6 +4849,10 @@ function bindViewActions() {
 
   document.querySelectorAll("[data-delete-item]").forEach((button) => {
     button.addEventListener("click", () => deleteItem(button.dataset.deleteItem, button.dataset.id));
+  });
+
+  document.querySelectorAll("[data-delete-email-event]").forEach((button) => {
+    button.addEventListener("click", () => deleteEmailEvent(button.dataset.deleteEmailEvent));
   });
 
   document.querySelectorAll("[data-approve-owner]").forEach((button) => {
@@ -5544,6 +5606,36 @@ async function deleteItem(type, id) {
   }
 
   state.notificationLog.unshift({ time: "Teraz", type: "Vymazanie", subject: label, status: "Položka bola vymazaná" });
+  render();
+}
+
+async function deleteEmailEvent(id) {
+  if (state.role !== "chair") return;
+  const item = state.notificationLog.find((entry) => String(entry.id || entry.localId || entry.subject || entry.time) === String(id));
+  if (!item) return;
+  const label = item.subject || "Emailová udalosť";
+  const confirmed = window.confirm(`Naozaj vymazať emailovú udalosť "${label}"?`);
+  if (!confirmed) return;
+
+  if (supabaseClient && state.currentUserId && item.id) {
+    try {
+      const { data, error } = await supabaseClient.from("notification_log").delete().eq("id", item.id).select("id").maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data?.id) throw new Error("Databáza nevymazala žiadny záznam. Pravdepodobne chýba RLS oprávnenie na mazanie emailových udalostí.");
+      await writeActivityLog("delete", `Vymazanie emailovej udalosti: ${label}`, {
+        relatedTable: "notification_log",
+        relatedId: item.id,
+        metadata: { subject: label }
+      });
+      await loadSupabaseData();
+    } catch (error) {
+      window.alert(`Vymazanie emailovej udalosti zlyhalo: ${error.message}`);
+      return;
+    }
+  } else {
+    state.notificationLog = state.notificationLog.filter((entry) => String(entry.id || entry.localId || entry.subject || entry.time) !== String(id));
+  }
+
   render();
 }
 
@@ -7388,14 +7480,22 @@ async function saveEditToSupabase(type, item, values) {
 
 async function boot() {
   state.pendingDeepLink = readDeepLinkFromUrl();
-  if (supabaseClient) {
-    await loadPublicSettings();
-    const { data } = await supabaseClient.auth.getSession();
-    if (data.session) {
-      await applySupabaseSession(data.session);
+  try {
+    if (supabaseClient) {
+      await loadPublicSettings();
+      await prepareLoginVisual();
+      const { data } = await supabaseClient.auth.getSession();
+      if (data.session) {
+        await applySupabaseSession(data.session);
+      }
+    } else {
+      await prepareLoginVisual();
     }
+  } finally {
+    document.body.classList.remove("app-loading");
+    document.body.classList.add("app-ready");
+    render();
   }
-  render();
 }
 
 boot();
