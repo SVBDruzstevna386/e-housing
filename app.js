@@ -2562,7 +2562,7 @@ const views = {
   documents() {
     const docs = state.filter === "all" ? state.documents : state.documents.filter((doc) => doc.type === state.filter);
     return `
-      <section class="panel">
+      <section class="panel documents-active-panel">
         <div class="toolbar">
           <div>
             <h2>Dokumenty aktuálneho roka</h2>
