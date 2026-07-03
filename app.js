@@ -2683,12 +2683,12 @@ const views = {
           </div>
           ${financeChart(financeRowsByYear())}
           ${financeLineChart(financeRowsByYear())}
-          <div class="toolbar">
-            <h2>Finančné položky</h2>
-            <span class="tag">${state.financeEntries.length} záznamy</span>
-          </div>
           <div class="finance-merged-content">
             <div class="finance-merged-section">
+              <div class="toolbar compact-toolbar">
+                <h2>Finančné položky</h2>
+                <span class="tag">${state.financeEntries.length} záznamy</span>
+              </div>
               <div class="list">${state.financeEntries.length ? state.financeEntries.map(financeEntryCard).join("") : systemCard("Bez finančných položiek", "Predseda SVB zatiaľ nepridal stav účtu ani plánované výdavky.", "chart-column")}</div>
             </div>
             <div class="finance-merged-section">
