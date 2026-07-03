@@ -2666,8 +2666,8 @@ const views = {
     const other = financeTotal("other_expense");
     const ideas = state.innovationIdeas.reduce((sum, idea) => sum + Number(idea.estimatedCost || 0), 0);
     return `
-      <div class="grid two wide-left">
-        <section class="panel">
+      <div class="grid finance-merged-layout">
+        <section class="panel finance-overview-panel">
           <div class="toolbar">
             <div>
               <h2>Finančný prehľad domu</h2>
@@ -2687,17 +2687,21 @@ const views = {
             <h2>Finančné položky</h2>
             <span class="tag">${state.financeEntries.length} záznamy</span>
           </div>
-          <div class="list">${state.financeEntries.length ? state.financeEntries.map(financeEntryCard).join("") : systemCard("Bez finančných položiek", "Predseda SVB zatiaľ nepridal stav účtu ani plánované výdavky.", "chart-column")}</div>
-        </section>
-        <section class="panel">
-          <div class="toolbar">
-            <div>
-              <h2>Podnety a inovácie</h2>
-              <p class="muted">Vlastníci môžu pridávať nápady. Predseda ich doplní o stav, odhadovanú cenu a cenovú ponuku.</p>
+          <div class="finance-merged-content">
+            <div class="finance-merged-section">
+              <div class="list">${state.financeEntries.length ? state.financeEntries.map(financeEntryCard).join("") : systemCard("Bez finančných položiek", "Predseda SVB zatiaľ nepridal stav účtu ani plánované výdavky.", "chart-column")}</div>
             </div>
-            <span class="tag vote">${state.innovationIdeas.length} podnety</span>
+            <div class="finance-merged-section">
+              <div class="toolbar compact-toolbar">
+                <div>
+                  <h2>Podnety a inovácie</h2>
+                  <p class="muted">Vlastníci môžu pridávať nápady. Predseda ich doplní o stav, odhadovanú cenu a cenovú ponuku.</p>
+                </div>
+                <span class="tag vote">${state.innovationIdeas.length} podnety</span>
+              </div>
+              <div class="list">${state.innovationIdeas.length ? state.innovationIdeas.map(innovationIdeaCard).join("") : systemCard("Bez podnetov", "Zatiaľ nie je zadaný žiadny podnet na inováciu.", "lightbulb")}</div>
+            </div>
           </div>
-          <div class="list">${state.innovationIdeas.length ? state.innovationIdeas.map(innovationIdeaCard).join("") : systemCard("Bez podnetov", "Zatiaľ nie je zadaný žiadny podnet na inováciu.", "lightbulb")}</div>
         </section>
       </div>
     `;
