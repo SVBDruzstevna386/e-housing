@@ -1,4 +1,4 @@
-﻿const state = {
+const state = {
   loggedIn: false,
   currentUserEmail: "predsedaSVB@gmail.com",
   currentUserId: "",
@@ -2860,11 +2860,11 @@ const views = {
               <div>
                 <h3>História hlasovania</h3>
                 <p class="muted">Vyberte si jedno historické hlasovanie podľa dátumu uverejnenia.</p>
+                <select class="search vote-history-select" data-vote-history-filter aria-label="Filter histórie podľa dátumu uverejnenia">
+                  <option value="latest" ${state.voteHistoryFilter === "latest" ? "selected" : ""}>Najnovšie v histórii</option>
+                  ${historyItems.map((vote) => `<option value="${vote.id}" ${String(state.voteHistoryFilter) === String(vote.id) ? "selected" : ""}>${escapeHtml(voteHistoryOptionLabel(vote))}</option>`).join("")}
+                </select>
               </div>
-              <select class="search" data-vote-history-filter aria-label="Filter histórie podľa dátumu uverejnenia">
-                <option value="latest" ${state.voteHistoryFilter === "latest" ? "selected" : ""}>Najnovšie v histórii</option>
-                ${historyItems.map((vote) => `<option value="${vote.id}" ${String(state.voteHistoryFilter) === String(vote.id) ? "selected" : ""}>${escapeHtml(voteHistoryOptionLabel(vote))}</option>`).join("")}
-              </select>
             </div>
             <div class="vote-row">
               <div class="list vote-list">${historyVote ? voteCard(historyVote) : systemCard("História je prázdna", "Po uzavretí alebo pridaní ďalších hlasovaní sa tu zobrazí vybrané historické hlasovanie.", "archive")}</div>
@@ -3553,7 +3553,7 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest"],
+        ["Manifest", "manifest.webmanifest?v=158"],
         ["Service worker", "sw.js"],
         ["Cache", "e-housing-v102"]
       ],

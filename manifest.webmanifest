@@ -1,8 +1,8 @@
-﻿{
+{
   "name": "e-housing solutions",
   "short_name": "e-housing solutions",
   "description": "Správa SVB a NP Družstevná 386",
-  "start_url": "/?v=logo-brand",
+  "start_url": "/?v=158",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f7f4",
@@ -34,4 +34,3 @@
     }
   ]
 }
-
