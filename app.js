@@ -3228,7 +3228,7 @@ function enhanceIcons() {
 }
 
 function stat(label, value, note, iconName = "activity") {
-  return `<section class="panel stat"><div class="card-icon">${icon(iconName)}</div><strong>${value}</strong><span>${label}</span><p class="muted">${note}</p></section>`;
+  return `<section class="panel stat" data-stat-icon="${escapeAttr(iconName)}"><div class="card-icon">${icon(iconName)}</div><strong>${value}</strong><span>${label}</span><p class="muted">${note}</p></section>`;
 }
 
 function statusMetric(label, value, note) {

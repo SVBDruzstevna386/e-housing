@@ -1,9 +1,9 @@
-const CACHE_NAME = "e-housing-v122";
+const CACHE_NAME = "e-housing-v123";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=122",
-  "./app.js?v=122",
+  "./styles.css?v=123",
+  "./app.js?v=123",
   "./manifest.webmanifest",
   "./favicon.ico",
   "./favicon-16.png",
@@ -18,22 +18,22 @@ const ASSETS = [
   "./assets/cartoon/cartoon-background.webp",
   "./assets/cartoon/cartoon-header-banner.webp",
   "./assets/cartoon/cartoon-owner-overview-banner.webp",
-  "./assets/cartoon/icon-overview.png?v=122",
-  "./assets/cartoon/icon-documents.png?v=122",
-  "./assets/cartoon/icon-documentHistory.png?v=122",
-  "./assets/cartoon/icon-votes.png?v=122",
-  "./assets/cartoon/icon-billing.png?v=122",
-  "./assets/cartoon/icon-executions.png?v=122",
-  "./assets/cartoon/icon-finance.png?v=122",
-  "./assets/cartoon/icon-messages.png?v=122",
-  "./assets/cartoon/icon-calendar.png?v=122",
-  "./assets/cartoon/icon-activities.png?v=122",
-  "./assets/cartoon/icon-photoAlbum.png?v=122",
-  "./assets/cartoon/icon-owners.png?v=122",
-  "./assets/cartoon/icon-emails.png?v=122",
-  "./assets/cartoon/icon-logs.png?v=122",
-  "./assets/cartoon/icon-settings.png?v=122",
-  "./assets/cartoon/icon-profile.png?v=122"
+  "./assets/cartoon/icon-overview.png?v=123",
+  "./assets/cartoon/icon-documents.png?v=123",
+  "./assets/cartoon/icon-documentHistory.png?v=123",
+  "./assets/cartoon/icon-votes.png?v=123",
+  "./assets/cartoon/icon-billing.png?v=123",
+  "./assets/cartoon/icon-executions.png?v=123",
+  "./assets/cartoon/icon-finance.png?v=123",
+  "./assets/cartoon/icon-messages.png?v=123",
+  "./assets/cartoon/icon-calendar.png?v=123",
+  "./assets/cartoon/icon-activities.png?v=123",
+  "./assets/cartoon/icon-photoAlbum.png?v=123",
+  "./assets/cartoon/icon-owners.png?v=123",
+  "./assets/cartoon/icon-emails.png?v=123",
+  "./assets/cartoon/icon-logs.png?v=123",
+  "./assets/cartoon/icon-settings.png?v=123",
+  "./assets/cartoon/icon-profile.png?v=123"
 ];
 
 self.addEventListener("install", (event) => {

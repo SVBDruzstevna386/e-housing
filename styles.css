@@ -80,22 +80,22 @@ body.theme-cartoon_3d .nav-item::before {
   filter: none;
 }
 
-body.theme-cartoon_3d .nav-item[data-view="overview"]::before { background-image: url("./assets/cartoon/icon-overview.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="documents"]::before { background-image: url("./assets/cartoon/icon-documents.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="documentHistory"]::before { background-image: url("./assets/cartoon/icon-documentHistory.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="votes"]::before { background-image: url("./assets/cartoon/icon-votes.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="billing"]::before { background-image: url("./assets/cartoon/icon-billing.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="executions"]::before { background-image: url("./assets/cartoon/icon-executions.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="finance"]::before { background-image: url("./assets/cartoon/icon-finance.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="messages"]::before { background-image: url("./assets/cartoon/icon-messages.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="calendar"]::before { background-image: url("./assets/cartoon/icon-calendar.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="activities"]::before { background-image: url("./assets/cartoon/icon-activities.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="photoAlbum"]::before { background-image: url("./assets/cartoon/icon-photoAlbum.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="owners"]::before { background-image: url("./assets/cartoon/icon-owners.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="emails"]::before { background-image: url("./assets/cartoon/icon-emails.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="logs"]::before { background-image: url("./assets/cartoon/icon-logs.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="settings"]::before { background-image: url("./assets/cartoon/icon-settings.png?v=122"); }
-body.theme-cartoon_3d .nav-item[data-view="profile"]::before { background-image: url("./assets/cartoon/icon-profile.png?v=122"); }
+body.theme-cartoon_3d .nav-item[data-view="overview"]::before { background-image: url("./assets/cartoon/icon-overview.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="documents"]::before { background-image: url("./assets/cartoon/icon-documents.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="documentHistory"]::before { background-image: url("./assets/cartoon/icon-documentHistory.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="votes"]::before { background-image: url("./assets/cartoon/icon-votes.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="billing"]::before { background-image: url("./assets/cartoon/icon-billing.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="executions"]::before { background-image: url("./assets/cartoon/icon-executions.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="finance"]::before { background-image: url("./assets/cartoon/icon-finance.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="messages"]::before { background-image: url("./assets/cartoon/icon-messages.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="calendar"]::before { background-image: url("./assets/cartoon/icon-calendar.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="activities"]::before { background-image: url("./assets/cartoon/icon-activities.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="photoAlbum"]::before { background-image: url("./assets/cartoon/icon-photoAlbum.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="owners"]::before { background-image: url("./assets/cartoon/icon-owners.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="emails"]::before { background-image: url("./assets/cartoon/icon-emails.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="logs"]::before { background-image: url("./assets/cartoon/icon-logs.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="settings"]::before { background-image: url("./assets/cartoon/icon-settings.png?v=123"); }
+body.theme-cartoon_3d .nav-item[data-view="profile"]::before { background-image: url("./assets/cartoon/icon-profile.png?v=123"); }
 
 body.theme-cartoon_3d .nav-item svg {
   display: none;
@@ -206,6 +206,117 @@ body.theme-cartoon_3d .grid.four > .card:nth-child(4),
 body.theme-cartoon_3d .vote-summary-card:nth-child(4) {
   background: linear-gradient(145deg, #7a7af0, #4e61cf);
   color: #fff;
+}
+
+body.theme-cartoon_3d .grid.stats {
+  gap: 22px;
+}
+
+body.theme-cartoon_3d .grid.stats .stat {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 176px;
+  padding: 22px 20px 20px;
+  border: 0;
+  border-radius: 18px;
+  color: #fff;
+  box-shadow: 0 18px 30px rgba(20, 58, 74, 0.28), inset 0 2px 0 rgba(255, 255, 255, 0.28);
+}
+
+body.theme-cartoon_3d .grid.stats .stat::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  z-index: -1;
+  width: 112px;
+  height: 112px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.96;
+}
+
+body.theme-cartoon_3d .grid.stats .stat .card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #16475a;
+}
+
+body.theme-cartoon_3d .grid.stats .stat strong,
+body.theme-cartoon_3d .grid.stats .stat span,
+body.theme-cartoon_3d .grid.stats .stat p {
+  position: relative;
+  z-index: 1;
+  max-width: 68%;
+}
+
+body.theme-cartoon_3d .grid.stats .stat strong {
+  margin-top: 14px;
+  margin-bottom: 2px;
+  color: currentColor;
+  font-size: clamp(2rem, 4vw, 2.55rem);
+  line-height: 0.95;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.18);
+}
+
+body.theme-cartoon_3d .grid.stats .stat span {
+  display: block;
+  color: currentColor;
+  font-size: 1.08rem;
+  line-height: 1.15;
+}
+
+body.theme-cartoon_3d .grid.stats .stat p {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.95rem;
+}
+
+body.theme-cartoon_3d .grid.stats .stat:nth-child(1) {
+  background: linear-gradient(145deg, #f36a72 0%, #de4d5e 100%);
+}
+
+body.theme-cartoon_3d .grid.stats .stat:nth-child(2) {
+  background: linear-gradient(145deg, #ffd85e 0%, #efb436 100%);
+  color: #111;
+}
+
+body.theme-cartoon_3d .grid.stats .stat:nth-child(2) p {
+  color: rgba(0, 0, 0, 0.72);
+}
+
+body.theme-cartoon_3d .grid.stats .stat:nth-child(3) {
+  background: linear-gradient(145deg, #65d881 0%, #42b96d 100%);
+}
+
+body.theme-cartoon_3d .grid.stats .stat:nth-child(4) {
+  background: linear-gradient(145deg, #777cea 0%, #5564cf 100%);
+}
+
+body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="users"]::after,
+body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="home"]::after {
+  background-image: url("./assets/cartoon/icon-owners.png?v=123");
+}
+
+body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="file-text"]::after,
+body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="file-check"]::after {
+  background-image: url("./assets/cartoon/icon-documents.png?v=123");
+}
+
+body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="vote"]::after {
+  background-image: url("./assets/cartoon/icon-votes.png?v=123");
+}
+
+body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="mail"]::after,
+body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="mail-open"]::after {
+  background-image: url("./assets/cartoon/icon-emails.png?v=123");
+}
+
+body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="notebook-tabs"]::after {
+  background-image: url("./assets/cartoon/icon-activities.png?v=123");
 }
 
 body.theme-cartoon_3d input,
