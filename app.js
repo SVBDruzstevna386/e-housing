@@ -2553,7 +2553,7 @@ const views = {
       </div>
       <section class="panel">
         <h2>Rýchly stav systému</h2>
-        <div class="grid three">
+        <div class="grid three system-cards">
           ${roleCopy.systemCards.map((item) => systemCard(item.head, item.body, item.icon)).join("")}
         </div>
       </section>
@@ -3449,7 +3449,7 @@ function nextOpenVote() {
 }
 
 function systemCard(head, body, iconName = "info") {
-  return `<article class="card icon-card"><div class="card-icon">${icon(iconName)}</div><h3>${head}</h3><p class="muted">${body}</p></article>`;
+  return `<article class="card icon-card" data-system-icon="${escapeAttr(iconName)}"><div class="card-icon">${icon(iconName)}</div><h3>${head}</h3><p class="muted">${body}</p></article>`;
 }
 
 function readonlyField(label, value) {
