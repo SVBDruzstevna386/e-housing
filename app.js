@@ -2425,6 +2425,7 @@ function overviewRoleCopy({ pendingOwners, urgentDocuments, unreadMessages, open
   if (state.role === "owner") {
     const owner = currentOwner();
     return {
+      heroVariant: "owner-property",
       title: "Prehľad vlastníka nehnuteľnosti",
       subtitle: "Rýchly prístup k oznamom, dokumentom, hlasovaniam, kalendáru a správam relevantným pre vlastníka nehnuteľnosti.",
       stats: [
@@ -2505,6 +2506,7 @@ const views = {
     const newestDocuments = state.documents.slice(0, 3);
     const newestAnnouncements = state.announcements.slice(0, 3);
     const roleCopy = overviewRoleCopy({ pendingOwners, urgentDocuments, unreadMessages, openVotes, nextVote });
+    const overviewHeroClass = roleCopy.heroVariant ? `overview-hero overview-hero-${roleCopy.heroVariant}` : "overview-hero";
     return `
       <section class="legal-banner">
         <div class="card-icon">${icon("scale")}</div>
@@ -2514,7 +2516,7 @@ const views = {
         </div>
         <a class="ghost button-link" href="https://www.slov-lex.sk/ezbierky/pravne-predpisy/SK/ZZ/1993/182/" target="_blank" rel="noreferrer">${icon("external-link")}<span>Oficiálne znenie zákona</span></a>
       </section>
-      <section class="overview-hero">
+      <section class="${overviewHeroClass}">
         <div>
           <span class="tag document">SVB a NP Družstevná 386</span>
           <h2>${roleCopy.title}</h2>

@@ -1,9 +1,9 @@
-const CACHE_NAME = "e-housing-v116";
+const CACHE_NAME = "e-housing-v117";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=116",
-  "./app.js?v=116",
+  "./styles.css?v=117",
+  "./app.js?v=117",
   "./manifest.webmanifest",
   "./favicon.ico",
   "./favicon-16.png",
@@ -17,6 +17,7 @@ const ASSETS = [
   "./apple-touch-icon.png",
   "./assets/cartoon/cartoon-background.webp",
   "./assets/cartoon/cartoon-header-banner.webp",
+  "./assets/cartoon/cartoon-owner-overview-banner.webp",
   "./assets/cartoon/icon-overview.png",
   "./assets/cartoon/icon-documents.png",
   "./assets/cartoon/icon-documentHistory.png",
