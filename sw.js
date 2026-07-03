@@ -1,9 +1,9 @@
-const CACHE_NAME = "e-housing-v126";
+const CACHE_NAME = "e-housing-v127";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=126",
-  "./app.js?v=126",
+  "./styles.css?v=127",
+  "./app.js?v=127",
   "./manifest.webmanifest",
   "./favicon.ico",
   "./favicon-16.png",
@@ -18,23 +18,23 @@ const ASSETS = [
   "./assets/cartoon/cartoon-background.webp",
   "./assets/cartoon/cartoon-header-banner.webp",
   "./assets/cartoon/cartoon-owner-overview-banner.webp",
-  "./assets/cartoon/icon-overview.png?v=126",
-  "./assets/cartoon/icon-documents.png?v=126",
-  "./assets/cartoon/icon-documentHistory.png?v=126",
-  "./assets/cartoon/icon-votes.png?v=126",
-  "./assets/cartoon/icon-billing.png?v=126",
-  "./assets/cartoon/icon-executions.png?v=126",
-  "./assets/cartoon/icon-finance.png?v=126",
-  "./assets/cartoon/icon-messages.png?v=126",
-  "./assets/cartoon/icon-calendar.png?v=126",
-  "./assets/cartoon/icon-activities.png?v=126",
-  "./assets/cartoon/icon-photoAlbum.png?v=126",
-  "./assets/cartoon/icon-owners.png?v=126",
-  "./assets/cartoon/icon-emails.png?v=126",
-  "./assets/cartoon/icon-logs.png?v=126",
-  "./assets/cartoon/icon-settings.png?v=126",
-  "./assets/cartoon/icon-profile.png?v=126",
-  "./assets/cartoon/icon-pwa.png?v=126"
+  "./assets/cartoon/icon-overview.png?v=127",
+  "./assets/cartoon/icon-documents.png?v=127",
+  "./assets/cartoon/icon-documentHistory.png?v=127",
+  "./assets/cartoon/icon-votes.png?v=127",
+  "./assets/cartoon/icon-billing.png?v=127",
+  "./assets/cartoon/icon-executions.png?v=127",
+  "./assets/cartoon/icon-finance.png?v=127",
+  "./assets/cartoon/icon-messages.png?v=127",
+  "./assets/cartoon/icon-calendar.png?v=127",
+  "./assets/cartoon/icon-activities.png?v=127",
+  "./assets/cartoon/icon-photoAlbum.png?v=127",
+  "./assets/cartoon/icon-owners.png?v=127",
+  "./assets/cartoon/icon-emails.png?v=127",
+  "./assets/cartoon/icon-logs.png?v=127",
+  "./assets/cartoon/icon-settings.png?v=127",
+  "./assets/cartoon/icon-profile.png?v=127",
+  "./assets/cartoon/icon-pwa.png?v=127"
 ];
 
 self.addEventListener("install", (event) => {
