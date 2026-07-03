@@ -80,22 +80,22 @@ body.theme-cartoon_3d .nav-item::before {
   filter: none;
 }
 
-body.theme-cartoon_3d .nav-item[data-view="overview"]::before { background-image: url("./assets/cartoon/icon-overview.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="documents"]::before { background-image: url("./assets/cartoon/icon-documents.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="documentHistory"]::before { background-image: url("./assets/cartoon/icon-documentHistory.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="votes"]::before { background-image: url("./assets/cartoon/icon-votes.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="billing"]::before { background-image: url("./assets/cartoon/icon-billing.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="executions"]::before { background-image: url("./assets/cartoon/icon-executions.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="finance"]::before { background-image: url("./assets/cartoon/icon-finance.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="messages"]::before { background-image: url("./assets/cartoon/icon-messages.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="calendar"]::before { background-image: url("./assets/cartoon/icon-calendar.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="activities"]::before { background-image: url("./assets/cartoon/icon-activities.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="photoAlbum"]::before { background-image: url("./assets/cartoon/icon-photoAlbum.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="owners"]::before { background-image: url("./assets/cartoon/icon-owners.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="emails"]::before { background-image: url("./assets/cartoon/icon-emails.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="logs"]::before { background-image: url("./assets/cartoon/icon-logs.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="settings"]::before { background-image: url("./assets/cartoon/icon-settings.png?v=125"); }
-body.theme-cartoon_3d .nav-item[data-view="profile"]::before { background-image: url("./assets/cartoon/icon-profile.png?v=125"); }
+body.theme-cartoon_3d .nav-item[data-view="overview"]::before { background-image: url("./assets/cartoon/icon-overview.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="documents"]::before { background-image: url("./assets/cartoon/icon-documents.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="documentHistory"]::before { background-image: url("./assets/cartoon/icon-documentHistory.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="votes"]::before { background-image: url("./assets/cartoon/icon-votes.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="billing"]::before { background-image: url("./assets/cartoon/icon-billing.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="executions"]::before { background-image: url("./assets/cartoon/icon-executions.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="finance"]::before { background-image: url("./assets/cartoon/icon-finance.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="messages"]::before { background-image: url("./assets/cartoon/icon-messages.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="calendar"]::before { background-image: url("./assets/cartoon/icon-calendar.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="activities"]::before { background-image: url("./assets/cartoon/icon-activities.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="photoAlbum"]::before { background-image: url("./assets/cartoon/icon-photoAlbum.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="owners"]::before { background-image: url("./assets/cartoon/icon-owners.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="emails"]::before { background-image: url("./assets/cartoon/icon-emails.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="logs"]::before { background-image: url("./assets/cartoon/icon-logs.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="settings"]::before { background-image: url("./assets/cartoon/icon-settings.png?v=126"); }
+body.theme-cartoon_3d .nav-item[data-view="profile"]::before { background-image: url("./assets/cartoon/icon-profile.png?v=126"); }
 
 body.theme-cartoon_3d .nav-item svg {
   display: none;
@@ -298,25 +298,25 @@ body.theme-cartoon_3d .grid.stats .stat:nth-child(4) {
 
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="users"]::after,
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="home"]::after {
-  background-image: url("./assets/cartoon/icon-owners.png?v=125");
+  background-image: url("./assets/cartoon/icon-owners.png?v=126");
 }
 
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="file-text"]::after,
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="file-check"]::after {
-  background-image: url("./assets/cartoon/icon-documents.png?v=125");
+  background-image: url("./assets/cartoon/icon-documents.png?v=126");
 }
 
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="vote"]::after {
-  background-image: url("./assets/cartoon/icon-votes.png?v=125");
+  background-image: url("./assets/cartoon/icon-votes.png?v=126");
 }
 
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="mail"]::after,
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="mail-open"]::after {
-  background-image: url("./assets/cartoon/icon-emails.png?v=125");
+  background-image: url("./assets/cartoon/icon-emails.png?v=126");
 }
 
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="notebook-tabs"]::after {
-  background-image: url("./assets/cartoon/icon-activities.png?v=125");
+  background-image: url("./assets/cartoon/icon-activities.png?v=126");
 }
 
 body.theme-cartoon_3d .system-cards {
@@ -399,15 +399,15 @@ body.theme-cartoon_3d .system-cards .icon-card[data-system-icon="smartphone"] {
 }
 
 body.theme-cartoon_3d .system-cards .icon-card[data-system-icon="folder-open"]::after {
-  background-image: url("./assets/cartoon/icon-documents.png?v=125");
+  background-image: url("./assets/cartoon/icon-documents.png?v=126");
 }
 
 body.theme-cartoon_3d .system-cards .icon-card[data-system-icon="messages-square"]::after {
-  background-image: url("./assets/cartoon/icon-messages.png?v=125");
+  background-image: url("./assets/cartoon/icon-messages.png?v=126");
 }
 
 body.theme-cartoon_3d .system-cards .icon-card[data-system-icon="smartphone"]::after {
-  background-image: url("./assets/cartoon/icon-pwa.png?v=125");
+  background-image: url("./assets/cartoon/icon-pwa.png?v=126");
 }
 
 body.theme-cartoon_3d .documents-active-panel {
@@ -428,7 +428,7 @@ body.theme-cartoon_3d .documents-active-panel::after {
   z-index: -1;
   width: min(180px, 28%);
   aspect-ratio: 1;
-  background: url("./assets/cartoon/icon-documents.png?v=125") center / contain no-repeat;
+  background: url("./assets/cartoon/icon-documents.png?v=126") center / contain no-repeat;
   opacity: 0.94;
 }
 
@@ -455,6 +455,230 @@ body.theme-cartoon_3d .documents-active-panel p {
 
 body.theme-cartoon_3d .documents-active-panel .search {
   background: rgba(255, 255, 255, 0.88);
+}
+
+body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child,
+body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child,
+body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child,
+body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child,
+body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child,
+body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child,
+body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child,
+body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child,
+body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child,
+body.theme-cartoon_3d[data-view="owners"] .view-root > .panel:first-child,
+body.theme-cartoon_3d[data-view="emails"] .view-root > div:first-child > .panel:first-child,
+body.theme-cartoon_3d[data-view="logs"] .view-root > .panel:first-child,
+body.theme-cartoon_3d[data-view="settings"] .view-root > div:first-child > .panel:first-child,
+body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel:first-child {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 0;
+  color: #111;
+  box-shadow: 0 18px 30px rgba(20, 58, 74, 0.28), inset 0 2px 0 rgba(255, 255, 255, 0.28);
+}
+
+body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="owners"] .view-root > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="emails"] .view-root > div:first-child > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="logs"] .view-root > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="settings"] .view-root > div:first-child > .panel:first-child::after,
+body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel:first-child::after {
+  content: "";
+  position: absolute;
+  right: 28px;
+  top: 22px;
+  z-index: -1;
+  width: min(176px, 28%);
+  aspect-ratio: 1;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.94;
+}
+
+body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="owners"] .view-root > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="emails"] .view-root > div:first-child > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="logs"] .view-root > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="settings"] .view-root > div:first-child > .panel:first-child > *,
+body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel:first-child > * {
+  position: relative;
+  z-index: 1;
+}
+
+body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child .toolbar,
+body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child .toolbar,
+body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child .toolbar,
+body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child .toolbar,
+body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child .toolbar,
+body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child > .toolbar,
+body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child .toolbar,
+body.theme-cartoon_3d[data-view="owners"] .view-root > .panel:first-child .toolbar,
+body.theme-cartoon_3d[data-view="emails"] .view-root > div:first-child > .panel:first-child .toolbar,
+body.theme-cartoon_3d[data-view="logs"] .view-root > .panel:first-child .toolbar,
+body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel:first-child .toolbar {
+  align-items: flex-start;
+  padding-right: min(210px, 32%);
+}
+
+body.theme-cartoon_3d[data-view="documentHistory"] .below-title-select {
+  width: min(100%, 360px);
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child,
+body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child,
+body.theme-cartoon_3d[data-view="logs"] .view-root > .panel:first-child {
+  background: linear-gradient(145deg, #f4b175 0%, #d88754 100%);
+}
+
+body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child,
+body.theme-cartoon_3d[data-view="emails"] .view-root > div:first-child > .panel:first-child {
+  background: linear-gradient(145deg, #ffd85e 0%, #efb436 100%);
+}
+
+body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child,
+body.theme-cartoon_3d[data-view="owners"] .view-root > .panel:first-child {
+  background: linear-gradient(145deg, #f36a72 0%, #de4d5e 100%);
+  color: #fff;
+}
+
+body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child,
+body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child,
+body.theme-cartoon_3d[data-view="settings"] .view-root > div:first-child > .panel:first-child {
+  background: linear-gradient(145deg, #65d881 0%, #42b96d 100%);
+}
+
+body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child,
+body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child,
+body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel:first-child {
+  background: linear-gradient(145deg, #777cea 0%, #5564cf 100%);
+  color: #fff;
+}
+
+body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child {
+  background: linear-gradient(145deg, #76d8ee 0%, #3b9cc7 100%);
+}
+
+body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child p,
+body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child p,
+body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child > .toolbar p,
+body.theme-cartoon_3d[data-view="owners"] .view-root > .panel:first-child p,
+body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel:first-child p {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-documentHistory.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-billing.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-executions.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-finance.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-messages.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-votes.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-calendar.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-activities.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-photoAlbum.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="owners"] .view-root > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-owners.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="emails"] .view-root > div:first-child > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-emails.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="logs"] .view-root > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-logs.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="settings"] .view-root > div:first-child > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-settings.png?v=126");
+}
+
+body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-profile.png?v=126");
+}
+
+@media (max-width: 760px) {
+  body.theme-cartoon_3d .documents-active-panel .toolbar,
+  body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child .toolbar,
+  body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child .toolbar,
+  body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child .toolbar,
+  body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child .toolbar,
+  body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child .toolbar,
+  body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child > .toolbar,
+  body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child .toolbar,
+  body.theme-cartoon_3d[data-view="owners"] .view-root > .panel:first-child .toolbar,
+  body.theme-cartoon_3d[data-view="emails"] .view-root > div:first-child > .panel:first-child .toolbar,
+  body.theme-cartoon_3d[data-view="logs"] .view-root > .panel:first-child .toolbar,
+  body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel:first-child .toolbar {
+    padding-right: 0;
+  }
+
+  body.theme-cartoon_3d .documents-active-panel::after,
+  body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="owners"] .view-root > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="emails"] .view-root > div:first-child > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="logs"] .view-root > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="settings"] .view-root > div:first-child > .panel:first-child::after,
+  body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel:first-child::after {
+    right: 12px;
+    top: 12px;
+    width: 94px;
+    opacity: 0.22;
+  }
 }
 
 body.theme-cartoon_3d input,

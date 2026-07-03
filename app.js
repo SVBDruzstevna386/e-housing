@@ -2043,6 +2043,7 @@ function syncProfileChrome() {
 
 function syncAppChrome() {
   applyUiTheme();
+  document.body.dataset.view = state.loggedIn ? state.view : "login";
   syncBuildingImages();
   syncProfileChrome();
   if (operationModeLabel) operationModeLabel.textContent = state.operationModeText || "Live testovací režim";
@@ -2600,11 +2601,11 @@ const views = {
             <div>
               <h2>Archív a história dokumentov</h2>
               <p class="muted">Prehľad zápisníc, zmlúv, cenových ponúk a ďalších dokumentov dôležitých pre dom.</p>
+              <select class="search below-title-select" data-document-history-filter>
+                <option value="all" ${state.documentHistoryFilter === "all" ? "selected" : ""}>Všetky kategórie</option>
+                ${documentTypeOptions().map((category) => `<option value="${escapeAttr(category)}" ${state.documentHistoryFilter === category ? "selected" : ""}>${escapeHtml(category)}</option>`).join("")}
+              </select>
             </div>
-            <select class="search" data-document-history-filter>
-              <option value="all" ${state.documentHistoryFilter === "all" ? "selected" : ""}>Všetky kategórie</option>
-              ${documentTypeOptions().map((category) => `<option value="${escapeAttr(category)}" ${state.documentHistoryFilter === category ? "selected" : ""}>${escapeHtml(category)}</option>`).join("")}
-            </select>
           </div>
           <div class="list">${items.map(historyDocumentCard).join("")}</div>
         </section>
