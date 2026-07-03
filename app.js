@@ -128,6 +128,7 @@
   gdprRequired: true,
   helpTextOverrides: {},
   welcomeText: "",
+  loadingMessage: "please wait, e-housing for SVB Družstevná 386 is loading",
   liveChatWidgetCode: "",
   liveChatEnabled: false,
   pendingDeepLink: null,
@@ -237,6 +238,7 @@ const LIVE_CHAT_WIDGET_SETTING_KEY = "live_chat_widget_code";
 const LIVE_CHAT_ENABLED_SETTING_KEY = "live_chat_enabled";
 const HELP_TEXTS_SETTING_KEY = "help_text_overrides";
 const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
+const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
@@ -244,6 +246,7 @@ const APP_NOTIFICATIONS_KEY = "eHousingAppNotifications";
 const APP_NOTIFICATION_LAST_PREFIX = "eHousingLastNotification:";
 const ACTIVE_OWNER_RECORD_PREFIX = "eHousingActiveOwnerRecord:";
 const UI_THEME_STORAGE_PREFIX = "eHousingUiTheme:";
+const LOADING_MESSAGE_CACHE_KEY = "eHousingLoginLoadingMessage";
 const APP_NOTIFICATION_POLL_MS = 45000;
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
@@ -514,6 +517,10 @@ function defaultWelcomeText() {
   return "Vitajte v aplikácii e-housing solutions pre SVB a NP Družstevná 386. Táto aplikácia slúži na prehľadnú komunikáciu, dokumenty, hlasovanie, vyúčtovanie a správu informácií súvisiacich s bytovým domom.";
 }
 
+function defaultLoadingMessage() {
+  return "please wait, e-housing for SVB Družstevná 386 is loading";
+}
+
 const loginScreen = document.querySelector("#loginScreen");
 const appShell = document.querySelector("#appShell");
 const loginForm = document.querySelector("#loginForm");
@@ -539,6 +546,7 @@ const dialogSave = document.querySelector("#dialogSave");
 const installBtn = document.querySelector("#installBtn");
 const sidebarSummaryText = document.querySelector("#sidebarSummaryText");
 const loginBuildingImage = document.querySelector("#loginBuildingImage");
+const appLoadingMessage = document.querySelector("#appLoadingMessage");
 const headerBuildingImage = document.querySelector("#headerBuildingImage");
 const operationModeLabel = document.querySelector("#operationModeLabel");
 const sidebarProfilePhoto = document.querySelector("#sidebarProfilePhoto");
@@ -1212,7 +1220,7 @@ async function loadPublicSettings() {
   const { data } = await supabaseClient
     .from("app_settings")
     .select("key, value")
-    .in("key", [BUILDING_PHOTO_SETTING_KEY, OPERATION_MODE_SETTING_KEY, GDPR_TEXT_SETTING_KEY, GDPR_VERSION_SETTING_KEY, GDPR_REQUIRED_SETTING_KEY, ROLE_PERMISSIONS_SETTING_KEY, COMMUNICATION_PERMISSIONS_SETTING_KEY, LIVE_CHAT_WIDGET_SETTING_KEY, LIVE_CHAT_ENABLED_SETTING_KEY, HELP_TEXTS_SETTING_KEY, WELCOME_TEXT_SETTING_KEY]);
+    .in("key", [BUILDING_PHOTO_SETTING_KEY, OPERATION_MODE_SETTING_KEY, GDPR_TEXT_SETTING_KEY, GDPR_VERSION_SETTING_KEY, GDPR_REQUIRED_SETTING_KEY, ROLE_PERMISSIONS_SETTING_KEY, COMMUNICATION_PERMISSIONS_SETTING_KEY, LIVE_CHAT_WIDGET_SETTING_KEY, LIVE_CHAT_ENABLED_SETTING_KEY, HELP_TEXTS_SETTING_KEY, WELCOME_TEXT_SETTING_KEY, LOADING_MESSAGE_SETTING_KEY]);
   const settings = new Map((data || []).map((item) => [item.key, item.value]));
   const buildingPhotoPath = settings.get(BUILDING_PHOTO_SETTING_KEY);
   const operationModeText = settings.get(OPERATION_MODE_SETTING_KEY);
@@ -1227,6 +1235,10 @@ async function loadPublicSettings() {
   state.liveChatEnabled = (settings.get(LIVE_CHAT_ENABLED_SETTING_KEY) || "false") === "true";
   state.helpTextOverrides = parseHelpTextOverrides(settings.get(HELP_TEXTS_SETTING_KEY));
   state.welcomeText = settings.get(WELCOME_TEXT_SETTING_KEY) || defaultWelcomeText();
+  state.loadingMessage = settings.get(LOADING_MESSAGE_SETTING_KEY) || defaultLoadingMessage();
+  try {
+    localStorage.setItem(LOADING_MESSAGE_CACHE_KEY, state.loadingMessage);
+  } catch {}
   syncAppChrome();
 }
 
@@ -1943,9 +1955,20 @@ function syncNavigation(forceHide = false) {
 }
 
 function syncBuildingImages() {
-  const imageUrl = state.buildingPhotoUrl || "./building-placeholder.svg";
-  if (loginBuildingImage && !document.body.classList.contains("app-loading")) loginBuildingImage.src = imageUrl;
-  if (headerBuildingImage) headerBuildingImage.src = imageUrl;
+  const loginImageUrl = state.buildingPhotoUrl || "";
+  const chromeImageUrl = state.buildingPhotoUrl || "./building-placeholder.svg";
+  if (loginBuildingImage && !document.body.classList.contains("app-loading")) {
+    if (loginImageUrl) {
+      if (loginBuildingImage.src !== loginImageUrl) {
+        loginBuildingImage.classList.remove("is-loaded");
+        loginBuildingImage.src = loginImageUrl;
+      }
+    } else {
+      loginBuildingImage.removeAttribute("src");
+      loginBuildingImage.classList.remove("is-loaded");
+    }
+  }
+  if (headerBuildingImage) headerBuildingImage.src = chromeImageUrl;
 }
 
 function wait(ms) {
@@ -1967,9 +1990,17 @@ function preloadImage(src) {
 }
 
 async function prepareLoginVisual() {
-  const imageUrl = state.buildingPhotoUrl || "./building-placeholder.svg";
+  const imageUrl = state.buildingPhotoUrl || "";
+  if (!imageUrl) {
+    if (loginBuildingImage) {
+      loginBuildingImage.removeAttribute("src");
+      loginBuildingImage.classList.remove("is-loaded");
+    }
+    return;
+  }
   await Promise.race([preloadImage(imageUrl), wait(8000)]);
   if (loginBuildingImage) {
+    loginBuildingImage.classList.remove("is-loaded");
     loginBuildingImage.src = imageUrl;
     loginBuildingImage.classList.add("is-loaded");
   }
@@ -2072,6 +2103,7 @@ function syncProfileChrome() {
 function syncAppChrome() {
   applyUiTheme();
   document.body.dataset.view = state.loggedIn ? state.view : "login";
+  if (appLoadingMessage) appLoadingMessage.textContent = state.loadingMessage || defaultLoadingMessage();
   syncBuildingImages();
   syncProfileChrome();
   if (operationModeLabel) operationModeLabel.textContent = state.operationModeText || "Live testovací režim";
@@ -2676,7 +2708,6 @@ const views = {
         <div class="grid stats">
           ${stat("Aktívne prípady", activeCount, "evidované na ďalší postup", "scale")}
           ${stat("Evidovaný dlh", formatMoney(totalDebt), "súčet dlhov v tejto evidencii", "receipt")}
-          ${stat("Prístup", "Čítanie", "všetky role, edituje iba predseda SVB", "shield-check")}
         </div>
         <article class="notice">
           <strong>Právna poznámka</strong>
@@ -3237,6 +3268,21 @@ const views = {
             ${systemCard("Exporty", "Výsledky hlasovaní a zoznamy vlastníkov pôjdu exportovať do PDF/CSV.")}
           </div>
         </section>
+        <section class="panel span-all">
+          <div class="toolbar">
+            <div>
+              <h2>Text pri nahrávaní login stránky</h2>
+              <p class="muted">Táto veta sa zobrazí počas načítavania login obrazovky pred zobrazením fotky domu.</p>
+            </div>
+            <button class="primary" data-save-loading-message type="button">${icon("save")}<span>Uložiť text nahrávania</span></button>
+          </div>
+          <div class="field">
+            <label for="loadingMessageText">Úvodná informačná veta</label>
+            <input id="loadingMessageText" value="${escapeAttr(state.loadingMessage || defaultLoadingMessage())}">
+          </div>
+          <p class="muted" id="loadingMessageStatus"></p>
+        </section>
+        ${websiteIntegrationSection()}
         ${serviceAdminSection()}
         <section class="panel span-all">
           <div class="toolbar">
@@ -3295,6 +3341,101 @@ function stat(label, value, note, iconName = "activity") {
 
 function statusMetric(label, value, note) {
   return `<article class="status-metric"><span>${label}</span><strong>${value}</strong><small>${note}</small></article>`;
+}
+
+function websiteIntegrationSection() {
+  const script = websiteIntegrationScript();
+  const iframe = websiteIntegrationIframe();
+  return `
+    <section class="panel span-all website-integration-panel">
+      <div class="toolbar">
+        <div>
+          <h2>Integrácia aplikácie s web stránkou</h2>
+          <p class="muted">Kód môžete vložiť na externú web stránku bytového domu. Návštevníkovi zobrazí tlačidlo, cez ktoré sa otvorí e-housing solutions.</p>
+        </div>
+        <span class="tag document">JavaScript embed</span>
+      </div>
+      <div class="grid two">
+        <article class="service-card">
+          <div class="message-head">
+            <div>
+              <div class="card-icon">${icon("code-2")}</div>
+              <h3>Plávajúce tlačidlo aplikácie</h3>
+              <p class="muted">Odporúčané riešenie pre bežný web. Kód pridá tlačidlo vpravo dole a aplikáciu otvorí v systémovom okne nad stránkou.</p>
+            </div>
+            <button class="ghost" data-copy-code="websiteWidgetCode" type="button">${icon("copy")}<span>Kopírovať</span></button>
+          </div>
+          <textarea id="websiteWidgetCode" class="code-snippet" readonly>${escapeHtml(script)}</textarea>
+          <p class="muted" id="websiteWidgetCodeStatus"></p>
+        </article>
+        <article class="service-card">
+          <div class="message-head">
+            <div>
+              <div class="card-icon">${icon("panel-top")}</div>
+              <h3>Jednoduché vloženie cez iframe</h3>
+              <p class="muted">Alternatíva pre stránku, kde chcete mať aplikáciu priamo vloženú v konkrétnej časti webu.</p>
+            </div>
+            <button class="ghost" data-copy-code="websiteIframeCode" type="button">${icon("copy")}<span>Kopírovať</span></button>
+          </div>
+          <textarea id="websiteIframeCode" class="code-snippet" readonly>${escapeHtml(iframe)}</textarea>
+          <p class="muted" id="websiteIframeCodeStatus"></p>
+        </article>
+      </div>
+      <article class="notice">
+        <strong>Odporúčanie k bezpečnosti</strong>
+        <p>Na verejný web vkladajte iba tento embed kód. Supabase kľúče, Gmail tokeny ani administrátorské prístupy sa na externú stránku nevkladajú.</p>
+      </article>
+    </section>
+  `;
+}
+
+function websiteIntegrationScript() {
+  const appUrl = `${NOTIFICATION_APP_URL}/`;
+  return `<script>
+(function () {
+  var appUrl = "${appUrl}";
+  var widgetId = "ehousingSolutionsWidget";
+  if (document.getElementById(widgetId)) return;
+
+  var style = document.createElement("style");
+  style.textContent = [
+    "#ehousingSolutionsButton{position:fixed;right:22px;bottom:22px;z-index:2147483000;border:0;border-radius:999px;padding:14px 18px;background:#167f91;color:#fff;font:700 15px Arial,sans-serif;box-shadow:0 14px 34px rgba(0,0,0,.22);cursor:pointer}",
+    "#ehousingSolutionsOverlay{position:fixed;inset:0;z-index:2147483001;display:none;background:rgba(9,24,31,.62);padding:24px;box-sizing:border-box}",
+    "#ehousingSolutionsOverlay.is-open{display:block}",
+    "#ehousingSolutionsFrame{width:min(1180px,100%);height:min(820px,100%);margin:0 auto;display:block;border:0;border-radius:14px;background:#fff;box-shadow:0 24px 80px rgba(0,0,0,.35)}",
+    "#ehousingSolutionsClose{position:absolute;top:18px;right:18px;border:0;border-radius:999px;padding:10px 14px;background:#fff;color:#102332;font:700 14px Arial,sans-serif;cursor:pointer}"
+  ].join("");
+  document.head.appendChild(style);
+
+  var wrapper = document.createElement("div");
+  wrapper.id = widgetId;
+  wrapper.innerHTML = '<button id="ehousingSolutionsButton" type="button">Otvoriť e-housing solutions</button><div id="ehousingSolutionsOverlay" role="dialog" aria-modal="true" aria-label="e-housing solutions"><button id="ehousingSolutionsClose" type="button">Zavrieť</button><iframe id="ehousingSolutionsFrame" title="e-housing solutions" loading="lazy"></iframe></div>';
+  document.body.appendChild(wrapper);
+
+  var button = document.getElementById("ehousingSolutionsButton");
+  var overlay = document.getElementById("ehousingSolutionsOverlay");
+  var frame = document.getElementById("ehousingSolutionsFrame");
+  var close = document.getElementById("ehousingSolutionsClose");
+
+  button.addEventListener("click", function () {
+    frame.src = appUrl;
+    overlay.classList.add("is-open");
+  });
+  close.addEventListener("click", function () {
+    overlay.classList.remove("is-open");
+    frame.src = "about:blank";
+  });
+})();
+</script>`;
+}
+
+function websiteIntegrationIframe() {
+  return `<iframe
+  src="${NOTIFICATION_APP_URL}/"
+  title="e-housing solutions"
+  loading="lazy"
+  style="width:100%;min-height:780px;border:0;border-radius:12px;background:#fff;"
+></iframe>`;
 }
 
 function serviceAdminSection() {
@@ -4890,6 +5031,14 @@ function bindViewActions() {
     button.addEventListener("click", () => saveLiveChatSettings());
   });
 
+  document.querySelectorAll("[data-save-loading-message]").forEach((button) => {
+    button.addEventListener("click", () => saveLoadingMessageSettings());
+  });
+
+  document.querySelectorAll("[data-copy-code]").forEach((button) => {
+    button.addEventListener("click", () => copyCodeSnippet(button.dataset.copyCode));
+  });
+
   const operationModePreset = document.querySelector("#operationModePreset");
   const operationModeText = document.querySelector("#operationModeText");
   if (operationModePreset && operationModeText) {
@@ -4905,6 +5054,25 @@ function bindViewActions() {
   document.querySelectorAll("[data-install-app]").forEach((button) => {
     button.addEventListener("click", () => installPwa(button.dataset.installApp));
   });
+}
+
+async function copyCodeSnippet(elementId) {
+  const input = document.getElementById(elementId);
+  const status = document.getElementById(`${elementId}Status`);
+  if (!input) return;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(input.value);
+    } else {
+      input.focus();
+      input.select();
+      document.execCommand("copy");
+      input.setSelectionRange(0, 0);
+    }
+    if (status) status.textContent = "Kód bol skopírovaný do schránky.";
+  } catch (error) {
+    if (status) status.textContent = "Kód sa nepodarilo automaticky skopírovať. Označte ho a skopírujte ručne.";
+  }
 }
 
 function shiftCalendarMonth(offset) {
@@ -6022,6 +6190,38 @@ async function saveLiveChatSettings() {
   state.liveChatEnabled = enabled;
   syncAppChrome();
   if (status) status.textContent = enabled ? "Live chat bol uložený a zapnutý." : "Live chat bol uložený a vypnutý.";
+}
+
+async function saveLoadingMessageSettings() {
+  const status = document.querySelector("#loadingMessageStatus");
+  if (!permissionFor(state.role, "settings").write) {
+    if (status) status.textContent = "Nemáte oprávnenie upravovať text nahrávania.";
+    return;
+  }
+  const value = document.querySelector("#loadingMessageText")?.value.trim() || defaultLoadingMessage();
+  if (supabaseClient && state.currentUserId) {
+    const { error } = await supabaseClient.from("app_settings").upsert({
+      key: LOADING_MESSAGE_SETTING_KEY,
+      value,
+      updated_by: state.currentUserId,
+      updated_at: new Date().toISOString()
+    });
+    if (error) {
+      if (status) status.textContent = `Text nahrávania sa nepodarilo uložiť: ${error.message}`;
+      return;
+    }
+    await writeActivityLog("settings", "Úprava textu pri nahrávaní login stránky", {
+      relatedTable: "app_settings",
+      relatedId: LOADING_MESSAGE_SETTING_KEY,
+      metadata: { value }
+    });
+  }
+  state.loadingMessage = value;
+  try {
+    localStorage.setItem(LOADING_MESSAGE_CACHE_KEY, value);
+  } catch {}
+  syncAppChrome();
+  if (status) status.textContent = "Text pri nahrávaní login stránky bol uložený.";
 }
 
 async function saveProfilePassword() {
