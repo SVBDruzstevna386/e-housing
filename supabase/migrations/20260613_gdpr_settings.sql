@@ -32,7 +32,7 @@ insert into public.app_settings (key, value, updated_at)
 values
   ('gdpr_notice_version', 'GDPR-SVB-2026-01', now()),
   ('gdpr_required', 'true', now()),
-  ('gdpr_notice_text', 'Informácie o spracúvaní osobných údajov pre aplikáciu e-housing solutions
+  ('gdpr_notice_text', 'Informácie o spracúvaní osobných údajov pre aplikáciu e - Housing Solutions Licence
 
 Prevádzkovateľ: SVB a NP Družstevná 386, zastúpené predsedom SVB alebo poverenou osobou správou domu.
 

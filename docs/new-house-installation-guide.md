@@ -1,6 +1,6 @@
-# e-housing solutions: instalacia pre dalsi bytovy dom
+# e - Housing Solutions Licence: instalacia pre dalsi bytovy dom
 
-Tento navod popisuje, ako nasadit samostatnu kopiu aplikacie e-housing solutions pre iny bytovy dom alebo ine SVB.
+Tento navod popisuje, ako nasadit samostatnu kopiu aplikacie e - Housing Solutions Licence pre iny bytovy dom alebo ine SVB.
 
 Vysledkom bude nova LIVE aplikacia s vlastnou URL, vlastnou Supabase databazou, vlastnym uloziskom suborov, vlastnym Gmail odosielacim uctom a vlastnym uctom predsedu SVB.
 

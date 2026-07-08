@@ -12,6 +12,7 @@ const state = {
   calendarMonth: new Date().toISOString().slice(0, 7),
   documentHistoryFilter: "all",
   messageFilter: "all",
+  classifiedFilter: "all",
   billingSettlements: [],
   financeEntries: [],
   executionCases: [],
@@ -20,6 +21,7 @@ const state = {
   voteComments: [],
   activityLogs: [],
   profiles: [],
+  classifiedCategories: ["Predám", "Kúpim", "Darujem", "Zháňam"],
   logRoleFilter: "all",
   logUserFilter: "all",
   logActivityFilter: "all",
@@ -72,6 +74,9 @@ const state = {
     { id: 2, title: "Pivničné priestory", category: "Spoločné priestory", author: "Dozorná rada", date: "2026-05-22", description: "Fotodokumentácia ku kontrole spoločných priestorov.", image: "building-placeholder.svg" },
     { id: 3, title: "Nástenka pri vstupe", category: "Oznamy", author: "Vlastník nehnuteľnosti", date: "2026-05-12", description: "Podklad k diskusii o úprave informačnej tabule.", image: "building-placeholder.svg" }
   ],
+  classifieds: [
+    { id: 1, title: "Darujem zachovalú poličku", category: "Darujem", author: "Vlastník nehnuteľnosti", createdBy: "", date: "2026-06-25", description: "Polička vhodná do pivnice alebo komory. Osobný odber v dome.", contact: "cez správu v aplikácii", price: "0 EUR", status: "Aktívne" }
+  ],
   owners: [
     { flat: "A-01", name: "Mária Nováková", share: "3,24 %", email: "maria@example.com", loginEmail: "maria@example.com", accountStatus: "Aktívny", approvalStatus: "approved", ownedFrom: "2020-04-01", isDebtor: false, debtAmount: 0, status: "Aktívny", note: "Bez poznámky", photoUrl: "" },
     { flat: "A-06", name: "Peter Kováč", share: "2,91 %", email: "peter@example.com", loginEmail: "peter@example.com", accountStatus: "Pozvánka odoslaná", approvalStatus: "pending", ownedFrom: "2024-02-15", isDebtor: true, debtAmount: 185.4, status: "Pozvánka odoslaná", note: "Neuhradený predpis za 05/2026", photoUrl: "" },
@@ -88,34 +93,34 @@ const state = {
     {
       id: "registration",
       title: "Registrácia vlastníka",
-      subject: "Vitajte v e-housing solutions pre SVB a NP Družstevná 386",
-      body: "Dobrý deň, bol Vám vytvorený prístup do aplikácie e-housing solutions. Po prihlásení nájdete dokumenty, oznamy, hlasovania a komunikáciu SVB."
+      subject: "Vitajte v e - Housing Solutions Licence pre SVB a NP Družstevná 386",
+      body: "Dobrý deň, bol Vám vytvorený prístup do aplikácie e - Housing Solutions Licence. Po prihlásení nájdete dokumenty, oznamy, hlasovania a komunikáciu SVB."
     },
     {
       id: "event",
       title: "Nová udalosť",
       subject: "Nová udalosť v dome: {{title}}",
-      body: "Dobrý deň, v aplikácii e-housing solutions bola pridaná nová udalosť {{title}}. Prosíme, prihláste sa a pozrite si detail."
+      body: "Dobrý deň, v aplikácii e - Housing Solutions Licence bola pridaná nová udalosť {{title}}. Prosíme, prihláste sa a pozrite si detail."
     },
     {
       id: "document",
       title: "Nový dokument",
       subject: "Nový dokument: {{title}}",
-      body: "Dobrý deň, v aplikácii e-housing solutions bol zverejnený nový dokument {{title}}. Dokument si môžete pozrieť alebo stiahnuť po prihlásení."
+      body: "Dobrý deň, v aplikácii e - Housing Solutions Licence bol zverejnený nový dokument {{title}}. Dokument si môžete pozrieť alebo stiahnuť po prihlásení."
     },
     {
       id: "notification-detail",
       key: "notification-detail",
       title: "Notifikácia udalosti s odkazom",
       subject: "{{eventType}}: {{title}}",
-      body: "Dobrý deň,\n\nv aplikácii e-housing solutions bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}"
+      body: "Dobrý deň,\n\nv aplikácii e - Housing Solutions Licence bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}"
     },
     {
       id: "password-reset",
       key: "password-reset",
       title: "Reset hesla",
-      subject: "Obnova hesla do e-housing solutions",
-      body: "Dobrý deň, požiadali ste o obnovu hesla do aplikácie e-housing solutions. Otvorte odkaz zo systémového emailu Supabase a nastavte si nové heslo. Ak ste o obnovu hesla nežiadali, túto správu ignorujte."
+      subject: "Obnova hesla do e - Housing Solutions Licence",
+      body: "Dobrý deň, požiadali ste o obnovu hesla do aplikácie e - Housing Solutions Licence. Otvorte odkaz zo systémového emailu Supabase a nastavte si nové heslo. Ak ste o obnovu hesla nežiadali, túto správu ignorujte."
     }
   ],
   notificationLog: [
@@ -148,6 +153,7 @@ const titles = {
   calendar: "Kalendár",
   activities: "Denník",
   photoAlbum: "Fotoalbum",
+  classifieds: "Inzercia",
   profile: "Profil",
   owners: "Vlastníci a byty",
   emails: "E-mail šablóny",
@@ -199,6 +205,10 @@ const HELP_TEXTS = {
   photoAlbum: {
     title: "Nápoveda pre Fotoalbum",
     body: "Fotoalbum zhromažďuje fotografie domu, spoločných priestorov, opráv, revízií alebo podnetov. Používatelia môžu fotografie prezerať, po kliknutí sa zobrazí väčší náhľad. Pridávanie a vymazávanie fotografií sa riadi nastavenými právami."
+  },
+  classifieds: {
+    title: "Nápoveda pre Inzerciu",
+    body: "Inzercia slúži na interné ponuky a dopyty medzi používateľmi domu, napríklad Predám, Kúpim, Darujem alebo Zháňam. Inzerát môže vytvoriť každá rola podľa nastavených práv. Autor svoj inzerát môže upraviť alebo vymazať. Predseda SVB spravuje položky výberu kategórií."
   },
   owners: {
     title: "Nápoveda pre Vlastníkov",
@@ -284,6 +294,7 @@ const PERMISSION_VIEWS = [
   "calendar",
   "activities",
   "photoAlbum",
+  "classifieds",
   "owners",
   "emails",
   "logs",
@@ -432,22 +443,24 @@ function defaultRolePermissions() {
     owner: empty()
   };
 
-  ["overview", "documents", "documentHistory", "votes", "billing", "executions", "finance", "messages", "calendar", "activities", "photoAlbum", "profile"].forEach((view) => {
+  ["overview", "documents", "documentHistory", "votes", "billing", "executions", "finance", "messages", "calendar", "activities", "photoAlbum", "classifieds", "profile"].forEach((view) => {
     permissions.board[view].read = true;
     permissions.owner[view].read = true;
   });
-  ["messages", "activities", "photoAlbum"].forEach((view) => {
+  ["messages", "activities", "photoAlbum", "classifieds"].forEach((view) => {
     permissions.board[view].write = true;
   });
   permissions.board.activities.delete = true;
   permissions.board.messages.delete = true;
+  permissions.board.classifieds.delete = true;
 
-  ["messages", "finance", "photoAlbum"].forEach((view) => {
+  ["messages", "finance", "photoAlbum", "classifieds"].forEach((view) => {
     permissions.owner[view].write = true;
   });
   permissions.owner.messages.delete = false;
   permissions.owner.finance.delete = false;
   permissions.owner.photoAlbum.delete = false;
+  permissions.owner.classifieds.delete = true;
 
   return permissions;
 }
@@ -492,7 +505,7 @@ function communicationPermissionFor(role = state.role, action = "publicDiscussio
 }
 
 function defaultGdprText() {
-  return `Informácie o spracúvaní osobných údajov pre aplikáciu e-housing solutions
+  return `Informácie o spracúvaní osobných údajov pre aplikáciu e - Housing Solutions Licence
 
 Prevádzkovateľ: SVB a NP Družstevná 386, zastúpené predsedom SVB alebo poverenou osobou správou domu.
 
@@ -514,7 +527,7 @@ Kontakt pre uplatnenie práv: predseda SVB alebo poverená osoba správy domu na
 }
 
 function defaultWelcomeText() {
-  return "Vitajte v aplikácii e-housing solutions pre SVB a NP Družstevná 386. Táto aplikácia slúži na prehľadnú komunikáciu, dokumenty, hlasovanie, vyúčtovanie a správu informácií súvisiacich s bytovým domom.";
+  return "Vitajte v aplikácii e - Housing Solutions Licence pre SVB a NP Družstevná 386. Táto aplikácia slúži na prehľadnú komunikáciu, dokumenty, hlasovanie, vyúčtovanie a správu informácií súvisiacich s bytovým domom.";
 }
 
 function defaultLoadingMessage() {
@@ -608,28 +621,28 @@ function openInstallHelp(platform = "desktop") {
     android: [
       "Otvorte aplikáciu v prehliadači Chrome na Androide.",
       "V menu prehliadača zvoľte Pridať na plochu alebo Inštalovať aplikáciu.",
-      "Potvrďte inštaláciu. Ikona e-housing solutions sa zobrazí medzi aplikáciami."
+      "Potvrďte inštaláciu. Ikona e - Housing Solutions Licence sa zobrazí medzi aplikáciami."
     ],
     macos: [
       "Otvorte aplikáciu v Chrome alebo Edge na macOS.",
-      "Kliknite na ikonu inštalácie v adresnom riadku alebo v menu prehliadača zvoľte Inštalovať e-housing solutions.",
-      "Po potvrdení sa e-housing solutions otvorí ako samostatná aplikácia."
+      "Kliknite na ikonu inštalácie v adresnom riadku alebo v menu prehliadača zvoľte Inštalovať e - Housing Solutions Licence.",
+      "Po potvrdení sa e - Housing Solutions Licence otvorí ako samostatná aplikácia."
     ],
     windows: [
       "Otvorte aplikáciu v Chrome alebo Edge na počítači s Windows.",
-      "Kliknite na ikonu inštalácie v adresnom riadku alebo v menu prehliadača zvoľte Aplikácie a Inštalovať e-housing solutions.",
+      "Kliknite na ikonu inštalácie v adresnom riadku alebo v menu prehliadača zvoľte Aplikácie a Inštalovať e - Housing Solutions Licence.",
       "Po potvrdení sa aplikácia spustí v samostatnom okne a ikonu nájdete v ponuke Štart."
     ],
     ios: [
       "Otvorte aplikáciu v Safari na iPhone alebo iPade.",
       "Klepnite na tlačidlo Zdieľať.",
-      "Vyberte Pridať na plochu a potvrďte názov e-housing solutions.",
+      "Vyberte Pridať na plochu a potvrďte názov e - Housing Solutions Licence.",
       "Pre systémové notifikácie otvorte aplikáciu z ikony na ploche a v Profile povoľte notifikácie."
     ],
     desktop: [
       "Otvorte aplikáciu v Chrome alebo Edge.",
       "Použite ikonu inštalácie v adresnom riadku alebo menu prehliadača.",
-      "Po potvrdení bude e-housing solutions dostupný ako samostatná aplikácia."
+      "Po potvrdení bude e - Housing Solutions Licence dostupný ako samostatná aplikácia."
     ]
   }[platform] || [];
 
@@ -951,6 +964,12 @@ function roleLabel() {
   return { chair: "Predseda SVB", vice_chair: "Podpredseda SVB", economic: "Ekonomická správa", board: "Dozorná rada", owner: "Vlastník nehnuteľnosti" }[state.role];
 }
 
+function currentUserDisplayName() {
+  const owner = state.owners.find((item) => item.profileId === state.currentUserId || item.loginEmail === state.currentUserEmail || item.email === state.currentUserEmail);
+  const profile = state.profiles.find((item) => item.id === state.currentUserId || item.email === state.currentUserEmail);
+  return owner?.name || profile?.full_name || state.currentUserEmail || roleLabel() || "Používateľ";
+}
+
 function roleFieldToAppRole(value, fallback = "board") {
   if (value === "Predseda SVB") return "chair";
   if (value === "Podpredseda SVB") return "vice_chair";
@@ -1147,17 +1166,18 @@ async function ensureCurrentProfile(user) {
 
 async function loadSupabaseData() {
   if (!supabaseClient || !state.loggedIn) return;
-  const [profiles, ownerRecords, categories, documents, billingSettlements, executionCases, financeEntries, innovationIdeas, innovationComments, announcements, events, messages, votes, voteQuestions, voteAnswers, voteComments, activities, photos, templates, notifications, activityLogs] = await Promise.all([
+  const [profiles, ownerRecords, categories, classifiedCategories, documents, billingSettlements, executionCases, financeEntries, innovationIdeas, innovationComments, announcements, events, messages, votes, voteQuestions, voteAnswers, voteComments, activities, photos, classifieds, templates, notifications, activityLogs] = await Promise.all([
     supabaseClient.from("profiles").select("*").order("created_at", { ascending: true }),
     supabaseClient.from("owner_records").select("*").order("flat_number", { ascending: true }),
     supabaseClient.from("document_categories").select("*").order("sort_order", { ascending: true }),
+    supabaseClient.from("classified_categories").select("*").order("sort_order", { ascending: true }),
     supabaseClient.from("documents").select("*").order("published_at", { ascending: false }).order("created_at", { ascending: false }),
     supabaseClient.from("billing_settlements").select("*, owner:profiles!billing_settlements_owner_profile_id_fkey(full_name, flat_number, email), owner_record:owner_records!billing_settlements_owner_record_id_fkey(full_name, flat_number, login_email)").order("settlement_year", { ascending: false }).order("created_at", { ascending: false }),
     supabaseClient.from("execution_cases").select("*").order("updated_at", { ascending: false }).order("created_at", { ascending: false }),
     supabaseClient.from("finance_entries").select("*").order("finance_year", { ascending: false }).order("entry_date", { ascending: false }).order("created_at", { ascending: false }),
     supabaseClient.from("innovation_ideas").select("*, creator:profiles!innovation_ideas_created_by_fkey(full_name, role, flat_number)").order("created_at", { ascending: false }),
     supabaseClient.from("innovation_comments").select("*, author:profiles!innovation_comments_profile_id_fkey(full_name, role, flat_number)").order("created_at", { ascending: true }),
-    supabaseClient.from("announcements").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("announcements").select("*, creator:profiles!announcements_created_by_fkey(full_name, role, flat_number)").order("created_at", { ascending: false }),
     supabaseClient.from("events").select("*").order("starts_at", { ascending: true }),
     supabaseClient.from("messages").select("*, sender:profiles!messages_sender_id_fkey(full_name, role), recipient:profiles!messages_recipient_id_fkey(full_name, flat_number)").order("created_at", { ascending: false }),
     supabaseClient.from("votes").select("*").order("created_at", { ascending: false }),
@@ -1166,6 +1186,7 @@ async function loadSupabaseData() {
     supabaseClient.from("vote_comments").select("*, author:profiles!vote_comments_profile_id_fkey(full_name, role, flat_number), recipient:profiles!vote_comments_recipient_id_fkey(full_name, role)").order("created_at", { ascending: true }),
     supabaseClient.from("activities").select("*").order("created_at", { ascending: false }),
     supabaseClient.from("photos").select("*, creator:profiles!photos_created_by_fkey(full_name, role)").order("created_at", { ascending: false }),
+    supabaseClient.from("classifieds").select("*, creator:profiles!classifieds_created_by_fkey(full_name, role, flat_number, email)").order("created_at", { ascending: false }),
     supabaseClient.from("email_templates").select("*").order("title", { ascending: true }),
     supabaseClient.from("notification_log").select("*").order("created_at", { ascending: false }),
     supabaseClient.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(500)
@@ -1183,6 +1204,7 @@ async function loadSupabaseData() {
     state.boardMembers = profiles.data.filter((item) => item.role !== "owner").map(profileToBoardMember);
   }
   if (categories.data) state.documentCategories = categories.data.map((item) => item.name);
+  if (classifiedCategories.data) state.classifiedCategories = classifiedCategories.data.map((item) => item.title);
   if (documents.data) {
     const documentCards = await Promise.all(documents.data.map(dbDocumentToCard));
     state.documents = documentCards.filter((item) => !item.isHistory && isCurrentYearDocument(item)).sort(sortByDocumentDateDesc);
@@ -1200,6 +1222,7 @@ async function loadSupabaseData() {
   if (votes.data) state.votes = votes.data.map((item) => dbVoteToCard(item, voteAnswers.data || [], voteQuestions.data || [], state.voteComments));
   if (activities.data) state.activities = activities.data.map(dbActivityToCard);
   if (photos.data) state.photos = await Promise.all(photos.data.map(dbPhotoToCard));
+  if (classifieds.data) state.classifieds = await Promise.all(classifieds.data.map(dbClassifiedToCard));
   if (templates.data) state.emailTemplates = templates.data.map(dbTemplateToCard);
   ensureDefaultEmailTemplates();
   if (notifications.data) state.notificationLog = notifications.data.map((item) => ({
@@ -1435,7 +1458,13 @@ function documentToHistoryCard(item) {
 
 async function dbAnnouncementToCard(item) {
   const fileUrl = await signedStorageUrl(item.storage_path);
-  return { id: item.id, title: item.title, body: item.body, date: item.created_at, category: item.category, urgent: item.is_urgent, storagePath: item.storage_path, fileUrl, youtubeUrl: item.youtube_url || "" };
+  return { id: item.id, title: item.title, body: item.body, date: item.created_at, category: item.category, urgent: item.is_urgent, createdBy: item.created_by, authorName: announcementAuthorName(item), storagePath: item.storage_path, fileUrl, youtubeUrl: item.youtube_url || "" };
+}
+
+function announcementAuthorName(item = {}) {
+  const profile = item.creator || state.profiles.find((profileItem) => profileItem.id === item.created_by);
+  const owner = state.owners.find((ownerItem) => ownerItem.profileId === item.created_by);
+  return owner?.name || profile?.full_name || item.authorName || "Používateľ";
 }
 
 function dbEventToCard(item) {
@@ -1519,6 +1548,27 @@ async function dbPhotoToCard(item) {
     image = await signedStorageUrl(item.storage_path) || image;
   }
   return { id: item.id, title: item.title, category: item.category, author: item.creator?.full_name || "Používateľ", date: item.created_at, description: item.description || "", image, storagePath: item.storage_path };
+}
+
+async function dbClassifiedToCard(item) {
+  const fileUrl = await signedStorageUrl(item.storage_path);
+  return {
+    id: item.id,
+    title: item.title,
+    category: item.category || "Predám",
+    author: item.creator?.full_name || "Používateľ",
+    authorRole: item.creator?.role || "",
+    authorFlat: item.creator?.flat_number || "",
+    createdBy: item.created_by || "",
+    date: item.created_at,
+    description: item.description || "",
+    contact: item.contact || "",
+    price: item.price || "",
+    status: item.status || "Aktívne",
+    storagePath: item.storage_path || "",
+    fileUrl,
+    youtubeUrl: item.youtube_url || ""
+  };
 }
 
 async function dbBillingSettlementToCard(item) {
@@ -1662,7 +1712,7 @@ function ensureDefaultEmailTemplates() {
       key: "notification-detail",
       title: "Notifikácia udalosti s odkazom",
       subject: "{{eventType}}: {{title}}",
-      body: "Dobrý deň,\n\nv aplikácii e-housing solutions bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}"
+      body: "Dobrý deň,\n\nv aplikácii e - Housing Solutions Licence bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}"
     });
   }
   if (!hasPasswordReset) {
@@ -1670,8 +1720,8 @@ function ensureDefaultEmailTemplates() {
       id: "password-reset",
       key: "password-reset",
       title: "Reset hesla",
-      subject: "Obnova hesla do e-housing solutions",
-      body: "Dobrý deň, požiadali ste o obnovu hesla do aplikácie e-housing solutions. Otvorte odkaz zo systémového emailu Supabase a nastavte si nové heslo. Ak ste o obnovu hesla nežiadali, túto správu ignorujte."
+      subject: "Obnova hesla do e - Housing Solutions Licence",
+      body: "Dobrý deň, požiadali ste o obnovu hesla do aplikácie e - Housing Solutions Licence. Otvorte odkaz zo systémového emailu Supabase a nastavte si nové heslo. Ak ste o obnovu hesla nežiadali, túto správu ignorujte."
     });
   }
   if (!hasMessageToChair) {
@@ -1680,7 +1730,7 @@ function ensureDefaultEmailTemplates() {
       key: "message-to-chair",
       title: "Notifikácia predsedovi o správe",
       subject: "Nová správa pre predsedu SVB: {{subject}}",
-      body: "Dobrý deň,\n\nv aplikácii e-housing solutions bola vytvorená správa, ktorú má predseda SVB preveriť.\n\nTyp správy: {{scope}}\nOdosielateľ: {{sender}}\nPredmet: {{subject}}\nKomu: {{recipient}}\n\nText správy:\n{{message}}\n\nProsíme, prihláste sa do aplikácie e-housing solutions a pozrite si detail komunikácie."
+      body: "Dobrý deň,\n\nv aplikácii e - Housing Solutions Licence bola vytvorená správa, ktorú má predseda SVB preveriť.\n\nTyp správy: {{scope}}\nOdosielateľ: {{sender}}\nPredmet: {{subject}}\nKomu: {{recipient}}\n\nText správy:\n{{message}}\n\nProsíme, prihláste sa do aplikácie e - Housing Solutions Licence a pozrite si detail komunikácie."
     });
   }
 }
@@ -1733,6 +1783,7 @@ function canAccessView(view = state.view) {
 
 function canCreateInView(view = state.view) {
   if (view === "votes") return state.role === "chair";
+  if (view === "overview" && state.role === "owner") return true;
   return permissionFor(state.role, view).write;
 }
 
@@ -1749,6 +1800,7 @@ function firstAccessibleView() {
     "calendar",
     "activities",
     "photoAlbum",
+    "classifieds",
     "owners",
     "emails",
     "logs",
@@ -1758,13 +1810,28 @@ function firstAccessibleView() {
   return orderedViews.find((view) => canAccessView(view)) || "profile";
 }
 
-function canEditItem(type) {
+function canManageAnnouncement(item = null) {
+  if (canManageAll()) return true;
+  if (state.role !== "owner" || !item) return false;
+  return item.category === "Oznam" && item.createdBy === state.currentUserId;
+}
+
+function canManageClassified(item = null) {
+  if (canManageAll()) return true;
+  return Boolean(item?.createdBy && item.createdBy === state.currentUserId);
+}
+
+function canEditItem(type, item = null) {
   if (type === "vote") return state.role === "chair";
+  if (type === "announcement") return canManageAnnouncement(item);
+  if (type === "classified") return canManageClassified(item);
   return permissionFor(state.role, viewForItemType(type)).write;
 }
 
 function canDeleteItem(type, item = null) {
   if (type === "vote") return state.role === "chair";
+  if (type === "announcement") return canManageAnnouncement(item);
+  if (type === "classified") return canManageClassified(item);
   return permissionFor(state.role, viewForItemType(type)).delete;
 }
 
@@ -1782,6 +1849,7 @@ function viewForItemType(type) {
     event: "calendar",
     activity: "activities",
     photo: "photoAlbum",
+    classified: "classifieds",
     owner: "owners",
     boardMember: "owners",
     emailTemplate: "emails",
@@ -1799,6 +1867,7 @@ function notificationMetaFor(relatedTable, relatedId, options = {}) {
     events: { view: "calendar", detailType: "event", sectionLabel: titles.calendar },
     activities: { view: "activities", detailType: "activity", sectionLabel: titles.activities },
     photos: { view: "photoAlbum", detailType: "photo", sectionLabel: titles.photoAlbum },
+    classifieds: { view: "classifieds", detailType: "classified", sectionLabel: titles.classifieds },
     votes: { view: "votes", detailType: "vote", sectionLabel: titles.votes },
     vote_comments: { view: "votes", detailType: "vote", sectionLabel: titles.votes },
     owner_records: { view: "owners", detailType: "owner", sectionLabel: titles.owners }
@@ -1874,7 +1943,7 @@ async function enableAppNotifications() {
   localStorage.setItem(APP_NOTIFICATIONS_KEY, "true");
   state.appNotificationsEnabled = true;
   saveNotificationSeenAt(new Date().toISOString());
-  await registration.showNotification("e-housing solutions notifikácie zapnuté", {
+  await registration.showNotification("e - Housing Solutions Licence notifikácie zapnuté", {
     body: "Odteraz sa nové notifikácie pre váš účet zobrazia aj ako systémové upozornenie.",
     icon: "./icon-192.png",
     badge: "./icon-192.png",
@@ -1933,7 +2002,7 @@ async function checkForNewAppNotifications({ silent = false } = {}) {
 async function showSystemNotificationForLog(item) {
   const meta = notificationMetaFor(item.related_table, item.related_id, {});
   const registration = await navigator.serviceWorker.ready;
-  await registration.showNotification(item.subject || "Nová notifikácia v e-housing solutions", {
+  await registration.showNotification(item.subject || "Nová notifikácia v e - Housing Solutions Licence", {
     body: `Záložka: ${meta.sectionLabel}. Kliknutím otvoríte detail v aplikácii.`,
     icon: "./icon-192.png",
     badge: "./icon-192.png",
@@ -2020,6 +2089,10 @@ function ownersForCurrentUser() {
   ));
 }
 
+function propertyOwnerKey(owner) {
+  return String(owner?.id || owner?.profileId || `${owner?.loginEmail || owner?.email || ""}|${owner?.flat || ""}`);
+}
+
 function propertyOptionLabel(owner) {
   const status = owner?.approvalStatus === "approved" ? "" : " - čaká na schválenie";
   return `${owner?.flat || "Bez čísla"}${status}`;
@@ -2052,11 +2125,11 @@ function syncActiveOwnerRecordSelection() {
   } catch {
     stored = "";
   }
-  const current = owners.find((owner) => String(owner.id) === String(state.activeOwnerRecordId));
-  const saved = owners.find((owner) => String(owner.id) === String(stored));
+  const current = owners.find((owner) => propertyOwnerKey(owner) === String(state.activeOwnerRecordId));
+  const saved = owners.find((owner) => propertyOwnerKey(owner) === String(stored));
   const fallback = owners.find((owner) => owner.approvalStatus === "approved") || owners[0];
   const next = current || saved || fallback;
-  state.activeOwnerRecordId = next?.id || "";
+  state.activeOwnerRecordId = propertyOwnerKey(next);
   if (state.activeOwnerRecordId) rememberActiveOwnerRecordId(state.activeOwnerRecordId);
   return next || null;
 }
@@ -2071,11 +2144,12 @@ function syncProfileChrome() {
     if (owners.length > 1) {
       const active = syncActiveOwnerRecordSelection();
       sidebarPropertySelect.innerHTML = owners
-        .map((owner) => `<option value="${escapeHtml(owner.id)}">${escapeHtml(propertyOptionLabel(owner))}</option>`)
+        .map((owner) => `<option value="${escapeAttr(propertyOwnerKey(owner))}">${escapeHtml(propertyOptionLabel(owner))}</option>`)
         .join("");
-      sidebarPropertySelect.value = active?.id || owners[0]?.id || "";
+      sidebarPropertySelect.value = propertyOwnerKey(active || owners[0]);
       sidebarPropertySelect.disabled = false;
       sidebarPropertySelect.hidden = false;
+      sidebarPropertySelect.title = propertyDisplayLabel(active || owners[0]);
       if (sidebarPropertyText) sidebarPropertyText.hidden = true;
     } else if (owners.length === 1) {
       const active = syncActiveOwnerRecordSelection();
@@ -2146,7 +2220,7 @@ function syncLiveChatWidget() {
 function currentOwner() {
   const owners = ownersForCurrentUser();
   if (!owners.length) return null;
-  return owners.find((owner) => String(owner.id) === String(state.activeOwnerRecordId))
+  return owners.find((owner) => propertyOwnerKey(owner) === String(state.activeOwnerRecordId))
     || syncActiveOwnerRecordSelection()
     || owners[0];
 }
@@ -2226,7 +2300,7 @@ function isPendingOwner() {
 
 const COPYRIGHT_LEGAL_TEXT = `Autorské práva a ochrana aplikácie
 
-Aplikácia e-housing solutions, jej názov, grafické rozhranie, dizajn, texty, databázy, funkcionality, štruktúra, zdrojový kód, používateľské prvky, dokumentácia, logo, vizuálna identita a ďalší obsah sú chránené autorským právom a ďalšími príslušnými právnymi predpismi.
+Aplikácia e - Housing Solutions Licence, jej názov, grafické rozhranie, dizajn, texty, databázy, funkcionality, štruktúra, zdrojový kód, používateľské prvky, dokumentácia, logo, vizuálna identita a ďalší obsah sú chránené autorským právom a ďalšími príslušnými právnymi predpismi.
 
 Všetky práva k aplikácii patria jej autorovi, prevádzkovateľovi alebo oprávnenému držiteľovi práv, pokiaľ nie je výslovne uvedené inak. Používateľovi sa sprístupnením aplikácie neudeľuje žiadne vlastnícke právo k aplikácii, jej zdrojovému kódu, dizajnu, databázam ani k iným chráneným prvkom. Používateľ získava iba obmedzené, nevýhradné, neprenosné a odvolateľné oprávnenie používať aplikáciu na účel, na ktorý bola vytvorená a sprístupnená.
 
@@ -2242,10 +2316,10 @@ Je zakázané používať aplikáciu na vytváranie, šírenie alebo spracovanie
 
 V prípade porušenia autorských práv, licenčných podmienok alebo neoprávneného zásahu do aplikácie si autor alebo prevádzkovateľ vyhradzuje právo uplatniť všetky dostupné právne prostriedky ochrany, vrátane nároku na náhradu škody, vydanie bezdôvodného obohatenia, odstránenie protiprávneho stavu a ďalšie nároky podľa platných právnych predpisov.
 
-© 2026 e-housing solutions / Martin Nagy - ITS. Všetky práva vyhradené.`;
+© 2026 e - Housing Solutions Licence / Martin Nagy - ITS. Všetky práva vyhradené.`;
 
 function copyrightFooter() {
-  return `<p class="app-copyright"><button type="button" data-copyright-legal>© 2026 e-housing solutions / Martin Nagy - ITS. Všetky práva vyhradené.</button></p>`;
+  return `<p class="app-copyright"><button type="button" data-copyright-legal>© 2026 e - Housing Solutions Licence / Martin Nagy - ITS. Všetky práva vyhradené.</button></p>`;
 }
 
 function openCopyrightDialog() {
@@ -2470,6 +2544,7 @@ function actionLabel() {
   if (state.view === "calendar") return "Pridať udalosť";
   if (state.view === "activities") return "Pridať záznam";
   if (state.view === "photoAlbum") return "Pridať fotku";
+  if (state.view === "classifieds") return "Pridať inzerát";
   if (state.view === "messages") return "Napísať správu";
   if (state.view === "owners") return "Pridať vlastníka";
   if (state.view === "emails") return "Nová šablóna";
@@ -2953,6 +3028,54 @@ const views = {
       </section>
     `;
   },
+  classifieds() {
+    const items = state.classifiedFilter === "all"
+      ? state.classifieds
+      : state.classifieds.filter((item) => item.category === state.classifiedFilter);
+    const categoryAdmin = state.role === "chair" ? `
+      <section class="panel classified-categories-panel">
+        <div class="toolbar">
+          <div>
+            <h2>Kategórie inzercie</h2>
+            <p class="muted">Predseda SVB môže upraviť položky výberu kategórií.</p>
+          </div>
+          <button class="primary" data-add-classified-category type="button">${icon("plus")}<span>Pridať kategóriu</span></button>
+        </div>
+        <div class="list">${classifiedCategoryOptions().map(classifiedCategoryRow).join("")}</div>
+      </section>
+    ` : "";
+    return `
+      <section class="panel classifieds-panel">
+        <div class="toolbar">
+          <div>
+            <h2>Inzercia domu</h2>
+            <p class="muted">Interné ponuky a dopyty používateľov domu. Autor inzerátu môže svoj záznam upraviť alebo vymazať.</p>
+          </div>
+          <span class="tag document">${items.length} inzeráty</span>
+        </div>
+        <div class="classifieds-filter-row">
+          <select class="search below-title-select" data-classified-filter aria-label="Filter podľa typu inzercie">
+            <option value="all" ${state.classifiedFilter === "all" ? "selected" : ""}>Všetky typy inzercie</option>
+            ${classifiedCategoryOptions().map((category) => `<option value="${escapeAttr(category)}" ${state.classifiedFilter === category ? "selected" : ""}>${escapeHtml(category)}</option>`).join("")}
+          </select>
+        </div>
+        <div class="${state.role === "chair" ? "grid two classifieds-content-grid" : "classifieds-content-grid"}">
+          <section class="panel classified-list-panel">
+            <div class="toolbar compact-toolbar">
+              <div>
+                <h3>Aktuálne ponuky</h3>
+                <p class="muted">Zobrazené podľa vybraného typu inzercie.</p>
+              </div>
+            </div>
+          <div class="list">
+            ${items.length ? items.map(classifiedCard).join("") : systemCard("Bez inzercie", "Pre vybraný typ zatiaľ nie je vytvorený žiadny inzerát.", "badge-euro")}
+          </div>
+          </section>
+          ${categoryAdmin}
+        </div>
+      </section>
+    `;
+  },
   logs() {
     const logs = filteredActivityLogs();
     return `
@@ -3171,7 +3294,7 @@ const views = {
           </div>
           <div class="list">
             ${systemCard("Stav zariadenia", notificationPermissionText())}
-            ${systemCard("iPhone a iPad", "Na iOS fungujú notifikácie pre webové aplikácie až po nainštalovaní aplikácie na plochu a otvorení cez ikonu e-housing solutions.")}
+            ${systemCard("iPhone a iPad", "Na iOS fungujú notifikácie pre webové aplikácie až po nainštalovaní aplikácie na plochu a otvorení cez ikonu e - Housing Solutions Licence.")}
           </div>
           <div class="row-actions">
             <button class="primary" data-enable-app-notifications type="button">${icon("bell-ring")}<span>Zapnúť notifikácie</span></button>
@@ -3180,7 +3303,7 @@ const views = {
         </section>
         <section class="profile-merged-section">
           <h2>Inštalácia aplikácie</h2>
-          <p class="muted">e-housing solutions je pripravený ako webová aplikácia PWA. Po inštalácii sa otvorí ako samostatná aplikácia s vlastnou ikonou.</p>
+          <p class="muted">e - Housing Solutions Licence je pripravený ako webová aplikácia PWA. Po inštalácii sa otvorí ako samostatná aplikácia s vlastnou ikonou.</p>
           <div class="install-grid">
             <button class="primary" data-install-app="android" type="button">${icon("smartphone")}<span>Stiahnuť pre Android</span></button>
             <button class="ghost" data-install-app="windows" type="button">${icon("monitor-down")}<span>Nainštalovať pre PC</span></button>
@@ -3351,7 +3474,7 @@ function websiteIntegrationSection() {
       <div class="toolbar">
         <div>
           <h2>Integrácia aplikácie s web stránkou</h2>
-          <p class="muted">Kód môžete vložiť na externú web stránku bytového domu. Návštevníkovi zobrazí tlačidlo, cez ktoré sa otvorí e-housing solutions.</p>
+          <p class="muted">Kód môžete vložiť na externú web stránku bytového domu. Návštevníkovi zobrazí tlačidlo, cez ktoré sa otvorí e - Housing Solutions Licence.</p>
         </div>
         <span class="tag document">JavaScript embed</span>
       </div>
@@ -3409,7 +3532,7 @@ function websiteIntegrationScript() {
 
   var wrapper = document.createElement("div");
   wrapper.id = widgetId;
-  wrapper.innerHTML = '<button id="ehousingSolutionsButton" type="button">Otvoriť e-housing solutions</button><div id="ehousingSolutionsOverlay" role="dialog" aria-modal="true" aria-label="e-housing solutions"><button id="ehousingSolutionsClose" type="button">Zavrieť</button><iframe id="ehousingSolutionsFrame" title="e-housing solutions" loading="lazy"></iframe></div>';
+  wrapper.innerHTML = '<button id="ehousingSolutionsButton" type="button">Otvoriť e - Housing Solutions Licence</button><div id="ehousingSolutionsOverlay" role="dialog" aria-modal="true" aria-label="e - Housing Solutions Licence"><button id="ehousingSolutionsClose" type="button">Zavrieť</button><iframe id="ehousingSolutionsFrame" title="e - Housing Solutions Licence" loading="lazy"></iframe></div>';
   document.body.appendChild(wrapper);
 
   var button = document.getElementById("ehousingSolutionsButton");
@@ -3432,7 +3555,7 @@ function websiteIntegrationScript() {
 function websiteIntegrationIframe() {
   return `<iframe
   src="${NOTIFICATION_APP_URL}/"
-  title="e-housing solutions"
+  title="e - Housing Solutions Licence"
   loading="lazy"
   style="width:100%;min-height:780px;border:0;border-radius:12px;background:#fff;"
 ></iframe>`;
@@ -3449,12 +3572,12 @@ function serviceAdminSection() {
       manageUrl: "https://vercel.com/dashboard",
       values: [
         ["Produkčná URL", LIVE_APP_URL],
-        ["Projekt", "e-housing solutions"],
+        ["Projekt", "e - Housing Solutions Licence"],
         ["Konfigurácia", "vercel.json"],
         ["Aktuálny typ deploya", "Static web/PWA"]
       ],
       steps: [
-        "Vytvorte alebo otvorte Vercel účet a projekt e-housing solutions.",
+        "Vytvorte alebo otvorte Vercel účet a projekt e - Housing Solutions Licence.",
         "Prepojte projekt s GitHub repozitárom alebo použite Vercel CLI z priečinka aplikácie.",
         "Skontrolujte, že v projekte existuje súbor vercel.json s rewrite pravidlom na /index.html.",
         "V prípade potreby doplňte produkčné environment variables pre funkcie alebo build.",
@@ -3553,7 +3676,7 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=158"],
+        ["Manifest", "manifest.webmanifest?v=170"],
         ["Service worker", "sw.js"],
         ["Cache", "e-housing-v102"]
       ],
@@ -3689,16 +3812,30 @@ function activitySummaryCard(label, hours) {
   return `<article class="card stat"><strong>${Number(hours).toFixed(1)}</strong><span>${label}</span><p class="muted">hodín v evidencii</p></article>`;
 }
 
-function adminEditButton(type, id) {
-  return canEditItem(type) ? `<button class="ghost" data-edit="${type}" data-id="${id}">${icon("pencil")}<span>Upraviť</span></button>` : "";
+function adminEditButton(type, id, item = null) {
+  return canEditItem(type, item) ? `<button class="ghost" data-edit="${type}" data-id="${id}">${icon("pencil")}<span>Upraviť</span></button>` : "";
 }
 
 function deleteButton(type, id, item = null) {
   return canDeleteItem(type, item) ? `<button class="ghost" data-delete-item="${type}" data-id="${id}">${icon("trash-2")}<span>Vymazať</span></button>` : "";
 }
 
+function classifiedCategoryOptions() {
+  return [...new Set(["Predám", "Kúpim", "Darujem", "Zháňam", ...state.classifiedCategories])].filter(Boolean);
+}
+
+function classifiedCategoryRow(category) {
+  return `<article class="item compact"><div><strong>${escapeHtml(category)}</strong><p class="muted">Položka výberu pre typ inzercie.</p></div><div class="row-actions"><button class="ghost" data-edit-classified-category="${escapeAttr(category)}">${icon("pencil")}<span>Upraviť</span></button><button class="ghost" data-delete-classified-category="${escapeAttr(category)}">${icon("trash-2")}<span>Vymazať</span></button></div></article>`;
+}
+
+function classifiedCard(item) {
+  const author = item.authorFlat ? `${item.author} · ${item.authorFlat}` : item.author;
+  return `<article class="item"><div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.description || "Bez popisu.")}</p><div class="tag-row"><span class="tag">${formatDate(item.date)}</span><span class="tag">${escapeHtml(author || "Používateľ")}</span></div></div><div class="row-actions">${adminEditButton("classified", item.id, item)}<button class="ghost" data-detail="classified" data-id="${item.id}">${icon("info")}<span>Detail</span></button>${deleteButton("classified", item.id, item)}</div></article>`;
+}
+
 function announcementCard(item) {
-  return `<article class="item"><div><h3>${item.title}</h3><p>${item.body}</p><div class="tag-row"><span class="tag">${item.category}</span><span class="tag">${formatDate(item.date)}</span>${item.urgent ? '<span class="tag urgent">Urgentné</span>' : ""}</div></div><div class="row-actions">${adminEditButton("announcement", item.id)}<button class="ghost" data-detail="announcement" data-id="${item.id}">${icon("info")}<span>Detail</span></button>${deleteButton("announcement", item.id, item)}</div></article>`;
+  const authorTag = item.authorName ? `<span class="tag">${escapeHtml(item.authorName)}</span>` : "";
+  return `<article class="item"><div><h3>${item.title}</h3><p>${item.body}</p><div class="tag-row"><span class="tag">${item.category}</span><span class="tag">${formatDate(item.date)}</span>${authorTag}${item.urgent ? '<span class="tag urgent">Urgentné</span>' : ""}</div></div><div class="row-actions">${adminEditButton("announcement", item.id, item)}<button class="ghost" data-detail="announcement" data-id="${item.id}">${icon("info")}<span>Detail</span></button>${deleteButton("announcement", item.id, item)}</div></article>`;
 }
 
 function documentCard(doc) {
@@ -4789,7 +4926,6 @@ function bindViewActions() {
 
   document.querySelectorAll("[data-edit]").forEach((button) => {
     button.addEventListener("click", () => {
-      if (!canEditItem(button.dataset.edit)) return;
       openEditDialog(button.dataset.edit, button.dataset.id);
     });
   });
@@ -4876,6 +5012,13 @@ function bindViewActions() {
   document.querySelectorAll("[data-message-filter]").forEach((select) => {
     select.addEventListener("change", () => {
       state.messageFilter = select.value;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-classified-filter]").forEach((select) => {
+    select.addEventListener("change", () => {
+      state.classifiedFilter = select.value;
       render();
     });
   });
@@ -4988,6 +5131,18 @@ function bindViewActions() {
     });
   });
 
+  document.querySelectorAll("[data-add-classified-category]").forEach((button) => {
+    button.addEventListener("click", () => saveClassifiedCategory());
+  });
+
+  document.querySelectorAll("[data-edit-classified-category]").forEach((button) => {
+    button.addEventListener("click", () => saveClassifiedCategory(button.dataset.editClassifiedCategory));
+  });
+
+  document.querySelectorAll("[data-delete-classified-category]").forEach((button) => {
+    button.addEventListener("click", () => deleteClassifiedCategory(button.dataset.deleteClassifiedCategory));
+  });
+
   document.querySelectorAll("[data-delete-item]").forEach((button) => {
     button.addEventListener("click", () => deleteItem(button.dataset.deleteItem, button.dataset.id));
   });
@@ -5098,9 +5253,9 @@ function openCreateDialog(defaults = {}) {
 }
 
 function openEditDialog(type, id) {
-  if (!canEditItem(type)) return;
   const item = findEditable(type, id);
   if (!item) return;
+  if (!canEditItem(type, item)) return;
   dialogSave.hidden = false;
   dialogTitle.textContent = `Upraviť: ${editTitle(type, item)}`;
   dialogBody.innerHTML = editFormFor(type, item);
@@ -5162,6 +5317,44 @@ function openCategoryDialog(category = "") {
   enhanceIcons();
 }
 
+async function saveClassifiedCategory(category = "") {
+  if (state.role !== "chair") return;
+  const nextName = window.prompt(category ? "Upravte názov kategórie inzercie:" : "Nová kategória inzercie:", category || "Nová kategória");
+  if (!nextName?.trim()) return;
+  const cleanName = nextName.trim();
+  if (supabaseClient && state.currentUserId) {
+    if (category) {
+      const { error } = await supabaseClient.from("classified_categories").update({ title: cleanName }).eq("title", category);
+      if (error) {
+        window.alert(`Úprava kategórie inzercie zlyhala: ${error.message}`);
+        return;
+      }
+      await supabaseClient.from("classifieds").update({ category: cleanName }).eq("category", category);
+    } else {
+      const { error } = await supabaseClient.from("classified_categories").insert({ title: cleanName, sort_order: state.classifiedCategories.length * 10 + 10 });
+      if (error) {
+        window.alert(`Pridanie kategórie inzercie zlyhalo: ${error.message}`);
+        return;
+      }
+    }
+    await writeActivityLog(category ? "update" : "create", category ? `Úprava kategórie inzercie: ${category} -> ${cleanName}` : `Vytvorenie kategórie inzercie: ${cleanName}`, {
+      relatedTable: "classified_categories",
+      relatedId: cleanName,
+      metadata: { previousName: category || null, nextName: cleanName }
+    });
+    await loadSupabaseData();
+  } else if (category) {
+    state.classifiedCategories = state.classifiedCategories.map((item) => item === category ? cleanName : item);
+    state.classifieds.forEach((item) => {
+      if (item.category === category) item.category = cleanName;
+    });
+    if (state.classifiedFilter === category) state.classifiedFilter = cleanName;
+  } else {
+    state.classifiedCategories.push(cleanName);
+  }
+  render();
+}
+
 function openDetailDialog(type, id) {
   const item = findEditable(type, id);
   if (!item) return;
@@ -5177,7 +5370,6 @@ function openDetailDialog(type, id) {
 function bindDialogActions() {
   dialogBody.querySelectorAll("[data-edit]").forEach((button) => {
     button.addEventListener("click", () => {
-      if (!canEditItem(button.dataset.edit)) return;
       openEditDialog(button.dataset.edit, button.dataset.id);
     });
   });
@@ -5327,9 +5519,26 @@ function detailBody(type, item) {
       <div class="detail-grid">
         ${readonlyField("Kategória", item.category || "Oznam")}
         ${readonlyField("Dátum", formatDate(item.date))}
+        ${readonlyField("Vytvoril", item.authorName || "Používateľ")}
         ${readonlyField("Stav", item.urgent ? "Urgentné" : "Bežné")}
       </div>
       <article class="card"><p>${escapeHtml(item.body || "Bez textu")}</p></article>
+      ${mediaPreviewBlock(item)}
+      <div class="row-actions">${documentFileActions(item)}</div>
+    `;
+  }
+  if (type === "classified") {
+    const author = item.authorFlat ? `${item.author} · ${item.authorFlat}` : item.author;
+    return `
+      <div class="detail-grid">
+        ${readonlyField("Typ inzercie", item.category || "Inzercia")}
+        ${readonlyField("Dátum", formatDate(item.date))}
+        ${readonlyField("Vytvoril", author || "Používateľ")}
+        ${readonlyField("Cena / dohoda", item.price || "Neuvedené")}
+        ${readonlyField("Kontakt", item.contact || "Cez aplikáciu")}
+        ${readonlyField("Stav", item.status || "Aktívne")}
+      </div>
+      <article class="card"><p>${escapeHtml(item.description || "Bez popisu.")}</p></article>
       ${mediaPreviewBlock(item)}
       <div class="row-actions">${documentFileActions(item)}</div>
     `;
@@ -5741,6 +5950,31 @@ async function deleteCategory(category) {
   render();
 }
 
+async function deleteClassifiedCategory(category) {
+  if (state.role !== "chair" || !category) return;
+  const usedCount = state.classifieds.filter((item) => item.category === category).length;
+  const warning = usedCount ? `\n\nKategória je použitá pri ${usedCount} inzerátoch. Inzeráty ostanú uložené, ale ich kategóriu bude vhodné upraviť.` : "";
+  const confirmed = window.confirm(`Vymazať kategóriu inzercie "${category}"?${warning}`);
+  if (!confirmed) return;
+  if (supabaseClient && state.currentUserId) {
+    const { error } = await supabaseClient.from("classified_categories").delete().eq("title", category);
+    if (error) {
+      window.alert(`Vymazanie kategórie inzercie zlyhalo: ${error.message}`);
+      return;
+    }
+    await writeActivityLog("delete", `Vymazanie kategórie inzercie: ${category}`, {
+      relatedTable: "classified_categories",
+      relatedId: category,
+      metadata: { category, usedCount }
+    });
+    await loadSupabaseData();
+  } else {
+    state.classifiedCategories = state.classifiedCategories.filter((item) => item !== category);
+    if (state.classifiedFilter === category) state.classifiedFilter = "all";
+  }
+  render();
+}
+
 async function deleteItem(type, id) {
   const item = findEditable(type, id)
     || (type === "photo" ? state.photos.find((photo) => String(photo.id) === String(id)) : null)
@@ -5863,6 +6097,12 @@ async function deleteItemFromSupabase(type, item) {
     if (error) throw new Error(error.message);
     return;
   }
+  if (type === "classified") {
+    if (item.storagePath) await supabaseClient.storage.from(STORAGE_BUCKET).remove([item.storagePath]);
+    const { error } = await supabaseClient.from("classifieds").delete().eq("id", item.id);
+    if (error) throw new Error(error.message);
+    return;
+  }
   if (type === "emailTemplate") {
     const { error } = await supabaseClient.from("email_templates").delete().eq("id", item.id);
     if (error) throw new Error(error.message);
@@ -5901,6 +6141,7 @@ function deleteItemFromState(type, id) {
   if (type === "innovationIdea") state.innovationIdeas = state.innovationIdeas.filter(matches);
   if (type === "vote") state.votes = state.votes.filter(matches);
   if (type === "photo") state.photos = state.photos.filter(matches);
+  if (type === "classified") state.classifieds = state.classifieds.filter(matches);
   if (type === "emailTemplate") state.emailTemplates = state.emailTemplates.filter(matches);
   if (type === "boardMember") state.boardMembers = state.boardMembers.filter(matches);
 }
@@ -6324,6 +6565,7 @@ function findEditable(type, id) {
   if (type === "billingSettlement") return state.billingSettlements.find((item) => String(item.id) === String(id));
   if (type === "executionCase") return state.executionCases.find((item) => String(item.id) === String(id));
   if (type === "innovationIdea") return state.innovationIdeas.find((item) => String(item.id) === String(id));
+  if (type === "classified") return state.classifieds.find((item) => String(item.id) === String(id));
   return null;
 }
 
@@ -6390,7 +6632,7 @@ function formFor(type, defaults = {}) {
     return `
       <article class="notice">
         <strong>Informačné upozornenie</strong>
-        <p>Toto hlasovanie predstavuje elektronické hlasovanie v aplikácii e-housing solutions. Platné hlasovanie bude zaznamenané až počas domovej schôdze po úplnom odhlasovaní všetkých vlastníkov bytov prítomných na schôdzi.</p>
+        <p>Toto hlasovanie predstavuje elektronické hlasovanie v aplikácii e - Housing Solutions Licence. Platné hlasovanie bude zaznamenané až počas domovej schôdze po úplnom odhlasovaní všetkých vlastníkov bytov prítomných na schôdzi.</p>
       </article>
     ` + fieldsWithValues([
       ["title", "Názov hlasovania", "Hlasovanie o opravách domu"],
@@ -6414,6 +6656,16 @@ function formFor(type, defaults = {}) {
       ["category", "Kategória", "Spoločné priestory", "select", ["Exteriér", "Spoločné priestory", "Opravy", "Revízie", "Oznamy", "Iné"]],
       ["note", "Popis", "Stručný popis fotky.", "textarea"]
     ]) + uploadField("Fotka alebo obrázok") + notificationFields("all");
+  }
+  if (type === "classifieds") {
+    return fieldsWithValues([
+      ["title", "Názov inzerátu", "Nový inzerát"],
+      ["category", "Typ inzercie", classifiedCategoryOptions()[0] || "Predám", "select", classifiedCategoryOptions()],
+      ["price", "Cena / dohoda", "Dohodou"],
+      ["contact", "Kontakt", currentUserDisplayName()],
+      ["youtubeUrl", "YouTube video link", ""],
+      ["note", "Popis", "Popíšte ponuku alebo dopyt.", "textarea"]
+    ]) + uploadField("Obrázok k inzerátu");
   }
   if (type === "owners") {
     return fieldsWithValues([
@@ -6451,8 +6703,16 @@ function formFor(type, defaults = {}) {
     return fields([
       ["title", "Názov šablóny", "Nová emailová šablóna"],
       ["category", "Predmet", "Nová správa zo SVB"],
-      ["note", "Text emailu", "Dobrý deň, v aplikácii e-housing solutions pribudla nová informácia.", "textarea"]
+      ["note", "Text emailu", "Dobrý deň, v aplikácii e - Housing Solutions Licence pribudla nová informácia.", "textarea"]
     ]);
+  }
+  if (type === "overview" && state.role === "owner") {
+    return fieldsWithValues([
+      ["title", "Názov", "Nový oznam"],
+      ["category", "Kategória", "Oznam", "select", ["Oznam"]],
+      ["youtubeUrl", "YouTube video link", ""],
+      ["note", "Text", "Text oznamu pre vlastníkov.", "textarea"]
+    ]) + uploadField("Príloha k oznamu");
   }
   return fieldsWithValues([
     ["title", "Názov", "Nové oznámenie"],
@@ -6593,6 +6853,17 @@ function editFormFor(type, item) {
       ["note", "Správa", item.text, "textarea"]
     ]);
   }
+  if (type === "classified") {
+    return fieldsWithValues([
+      ["title", "Názov inzerátu", item.title],
+      ["category", "Typ inzercie", item.category || "Predám", "select", classifiedCategoryOptions()],
+      ["price", "Cena / dohoda", item.price || ""],
+      ["contact", "Kontakt", item.contact || ""],
+      ["youtubeUrl", "YouTube video link", item.youtubeUrl || ""],
+      ["status", "Stav", item.status || "Aktívne", "select", ["Aktívne", "Rezervované", "Vybavené", "Archivované"]],
+      ["note", "Popis", item.description || "", "textarea"]
+    ]) + uploadField("Nahradiť alebo doplniť obrázok k inzerátu");
+  }
   if (type === "innovationIdea") {
     return fieldsWithValues([
       ["title", "Názov podnetu", item.title],
@@ -6620,6 +6891,14 @@ function editFormFor(type, item) {
       ["youtubeUrl", "YouTube video link", item.youtubeUrl || ""],
       ["note", "Poznámka", item.note, "textarea"]
     ]) + uploadField("Doplniť prílohu do histórie");
+  }
+  if (type === "announcement" && state.role === "owner") {
+    return fieldsWithValues([
+      ["title", "N\u00e1zov", item.title],
+      ["category", "Kateg\u00f3ria", "Oznam", "select", ["Oznam"]],
+      ["youtubeUrl", "YouTube video link", item.youtubeUrl || ""],
+      ["note", "Text", item.body, "textarea"]
+    ]) + uploadField("Nahradi\u0165 alebo doplni\u0165 pr\u00edlohu k ozn\u00e1meniu");
   }
   return fieldsWithValues([
     ["title", "Názov", item.title],
@@ -6921,7 +7200,9 @@ async function refreshVoteCounts(voteId) {
 async function saveDialog(type) {
   if (!canCreateInView(type)) return;
   const titleValue = document.querySelector("#title")?.value.trim() || "Nová položka";
-  const categoryValue = document.querySelector("#category")?.value.trim() || "Prevádzka";
+  const categoryValue = type === "overview" && state.role === "owner"
+    ? "Oznam"
+    : document.querySelector("#category")?.value.trim() || "Prevádzka";
   const noteValue = document.querySelector("#note")?.value.trim() || "Bez doplňujúceho textu.";
   const loginEmailValue = document.querySelector("#ownerLoginEmail")?.value.trim();
   const accountStatusValue = document.querySelector("#accountStatus")?.value.trim();
@@ -6943,17 +7224,21 @@ async function saveDialog(type) {
   const settlementYearValue = document.querySelector("#settlementYear")?.value.trim();
   const documentDateValue = document.querySelector("#documentDate")?.value.trim();
   const youtubeUrlValue = document.querySelector("#youtubeUrl")?.value.trim();
+  const priceValue = document.querySelector("#price")?.value.trim();
+  const contactValue = document.querySelector("#contact")?.value.trim();
   const ownedFromValue = document.querySelector("#ownedFrom")?.value.trim();
   const debtAmountValue = document.querySelector("#debtAmount")?.value.trim();
   const isDebtorValue = document.querySelector("#isDebtor")?.value.trim().toLowerCase();
   const voteDeadlineValue = document.querySelector("#voteDeadline")?.value.trim();
   const voteQuestionsValue = document.querySelector("#voteQuestions")?.value.trim();
-  const notification = collectNotificationOptions();
+  const notification = type === "overview" && state.role === "owner"
+    ? { target: "all", ownerId: "" }
+    : collectNotificationOptions();
 
   if (supabaseClient && state.currentUserId) {
     try {
-      await saveDialogToSupabase(type, { titleValue, categoryValue, noteValue, loginEmailValue, accountStatusValue, approvalStatusValue, statusValue, legalStatusValue, executionTitleStatusValue, nextStepDateValue, personValue, roleFieldValue, monthValue, hoursValue, financeKindValue, financeYearValue, amountValue, settlementYearValue, documentDateValue, youtubeUrlValue, ownedFromValue, debtAmountValue, isDebtorValue, voteDeadlineValue, voteQuestionsValue, notification });
-      await writeActivityLog("create", `Vytvorenie položky: ${titleValue}`, {
+      await saveDialogToSupabase(type, { titleValue, categoryValue, noteValue, loginEmailValue, accountStatusValue, approvalStatusValue, statusValue, legalStatusValue, executionTitleStatusValue, nextStepDateValue, personValue, roleFieldValue, monthValue, hoursValue, financeKindValue, financeYearValue, amountValue, settlementYearValue, documentDateValue, youtubeUrlValue, priceValue, contactValue, ownedFromValue, debtAmountValue, isDebtorValue, voteDeadlineValue, voteQuestionsValue, notification });
+      await writeActivityLog("create", `${type === "overview" && state.role === "owner" ? "Vytvorenie oznamu vlastníkom" : "Vytvorenie položky"}: ${titleValue}`, {
         relatedTable: type,
         metadata: {
           view: type,
@@ -7029,8 +7314,10 @@ async function saveDialog(type) {
     state.activities.unshift({ id: Date.now(), month: monthValue || new Date().toISOString().slice(0, 7), person: personValue || diaryPersonName(), role: roleFieldValue || diaryRoleLabel(), title: titleValue, hours: Number.parseFloat(hoursValue || "0"), status: document.querySelector("#status")?.value.trim() || "Dokončené", note: noteValue });
   } else if (type === "photoAlbum") {
     state.photos.unshift({ id: Date.now(), title: titleValue, category: categoryValue, author: roleLabel(), date: new Date().toISOString(), description: noteValue, image: "building-placeholder.svg" });
+  } else if (type === "classifieds") {
+    state.classifieds.unshift({ id: Date.now(), title: titleValue, category: categoryValue, author: currentUserDisplayName(), createdBy: state.currentUserId, date: new Date().toISOString(), description: noteValue, contact: contactValue || currentUserDisplayName(), price: priceValue || "", status: "Aktívne", youtubeUrl: youtubeUrlValue || "" });
   } else {
-    state.announcements.unshift({ id: Date.now(), title: titleValue, body: noteValue, date: new Date().toISOString(), category: categoryValue, urgent: false, youtubeUrl: youtubeUrlValue || "" });
+    state.announcements.unshift({ id: Date.now(), title: titleValue, body: noteValue, date: new Date().toISOString(), category: state.role === "owner" ? "Oznam" : categoryValue, urgent: false, createdBy: state.currentUserId, authorName: currentUserDisplayName(), youtubeUrl: youtubeUrlValue || "" });
   }
 
   dialog.close();
@@ -7162,6 +7449,20 @@ async function saveDialogToSupabase(type, values) {
   } else if (type === "photoAlbum") {
     const response = assertSupabaseOk(await supabaseClient.from("photos").insert({ created_by: state.currentUserId, title: values.titleValue, category: values.categoryValue, description: values.noteValue, storage_path: filePath }).select("id").single());
     await notifyByChoice("Nová fotka vo fotoalbume", values.titleValue, values.noteValue, values.notification, "photos", response.data.id);
+  } else if (type === "classifieds") {
+    const response = assertSupabaseOk(await supabaseClient.from("classifieds").insert({
+      building_id: BUILDING_ID,
+      created_by: state.currentUserId,
+      title: values.titleValue,
+      category: values.categoryValue,
+      description: values.noteValue,
+      contact: values.contactValue || currentUserDisplayName(),
+      price: values.priceValue || null,
+      storage_path: filePath,
+      youtube_url: values.youtubeUrlValue || null,
+      status: "Aktívne"
+    }).select("id").single());
+    await notifyByChoice("Nový inzerát", values.titleValue, values.noteValue, { target: "chair", ownerId: "" }, "classifieds", response.data.id);
   } else if (type === "emails") {
     assertSupabaseOk(await supabaseClient.from("email_templates").insert({ key: `custom-${Date.now()}`, title: values.titleValue, subject: values.categoryValue, body: values.noteValue }));
   } else if (type === "votes") {
@@ -7206,7 +7507,12 @@ async function saveDialogToSupabase(type, values) {
     await notifyByChoice("Nový vlastník v evidencii", values.titleValue, values.noteValue, ownerNotification, "owner_records", data?.id);
   } else {
     const response = assertSupabaseOk(await supabaseClient.from("announcements").insert({ created_by: state.currentUserId, title: values.titleValue, body: values.noteValue, category: values.categoryValue, storage_path: filePath, youtube_url: values.youtubeUrlValue || null }).select("id").single());
-    await notifyByChoice("Nové oznámenie", values.titleValue, values.noteValue, values.notification, "announcements", response.data.id);
+    const ownerCreatedAnnouncement = state.role === "owner" && values.categoryValue === "Oznam";
+    const subject = ownerCreatedAnnouncement ? "Nový oznam od vlastníka nehnuteľnosti" : "Nové oznámenie";
+    const message = ownerCreatedAnnouncement
+      ? `Oznam vytvoril vlastník nehnuteľnosti: ${currentUserDisplayName()}.\n\n${values.noteValue}`
+      : values.noteValue;
+    await notifyByChoice(subject, values.titleValue, message, values.notification, "announcements", response.data.id);
   }
 }
 
@@ -7242,7 +7548,8 @@ function findProfileRecipient(label) {
 }
 
 async function notifyByChoice(subject, titleText, messageText, notification = {}, relatedTable = null, relatedId = null, metadata = {}) {
-  if (!supabaseClient || !canSendEmailNotifications()) return;
+  const isAllowedClassifiedChairNotice = notification.target === "chair" && relatedTable === "classifieds";
+  if (!supabaseClient || (!canSendEmailNotifications() && !isAllowedClassifiedChairNotice)) return;
   const target = notification.target || "none";
   if (target === "none") return;
   if (target === "individual" && !notification.ownerId) {
@@ -7260,7 +7567,7 @@ async function notifyByChoice(subject, titleText, messageText, notification = {}
     sender: roleLabel() || state.currentUserEmail || "Používateľ"
   };
   const emailSubject = fillEmailTemplate(template.subject || "{{eventType}}: {{title}}", replacements);
-  const emailBody = fillEmailTemplate(template.body || "Dobrý deň,\n\nv aplikácii e-housing solutions bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}", replacements);
+  const emailBody = fillEmailTemplate(template.body || "Dobrý deň,\n\nv aplikácii e - Housing Solutions Licence bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}", replacements);
   try {
     const { data, error } = await supabaseClient.functions.invoke("send-notification", {
       body: {
@@ -7300,7 +7607,7 @@ async function notifyChairAboutMessage({ subject, message, scope, recipient, rel
     sender: roleLabel() || state.currentUserEmail || "Používateľ"
   };
   const emailSubject = fillEmailTemplate(template.subject || "Nová správa pre predsedu SVB: {{subject}}", replacements);
-  const emailBody = fillEmailTemplate(template.body || "V aplikácii e-housing solutions bola vytvorená nová správa.\n\nOdosielateľ: {{sender}}\nPredmet: {{subject}}\nText správy:\n{{message}}", replacements);
+  const emailBody = fillEmailTemplate(template.body || "V aplikácii e - Housing Solutions Licence bola vytvorená nová správa.\n\nOdosielateľ: {{sender}}\nPredmet: {{subject}}\nText správy:\n{{message}}", replacements);
   const meta = notificationMetaFor(relatedTable, relatedId, {
     view,
     detailType,
@@ -7335,9 +7642,9 @@ async function notifyChairAboutMessage({ subject, message, scope, recipient, rel
 }
 
 async function saveEditDialog(type, id) {
-  if (!canEditItem(type)) return;
   const item = findEditable(type, id);
   if (!item) return;
+  if (!canEditItem(type, item)) return;
   const titleValue = document.querySelector("#title")?.value.trim() || editTitle(type, item);
   const categoryValue = document.querySelector("#category")?.value.trim() || "";
   const loginEmailValue = document.querySelector("#ownerLoginEmail")?.value.trim();
@@ -7356,6 +7663,8 @@ async function saveEditDialog(type, id) {
   const ownedFromValue = document.querySelector("#ownedFrom")?.value.trim();
   const documentDateValue = document.querySelector("#documentDate")?.value.trim();
   const youtubeUrlValue = document.querySelector("#youtubeUrl")?.value.trim();
+  const priceValue = document.querySelector("#price")?.value.trim();
+  const contactValue = document.querySelector("#contact")?.value.trim();
   const voteDeadlineValue = document.querySelector("#voteDeadline")?.value.trim();
   const legalStatusValue = document.querySelector("#legalStatus")?.value.trim();
   const executionTitleStatusValue = document.querySelector("#executionTitleStatus")?.value.trim();
@@ -7391,6 +7700,8 @@ async function saveEditDialog(type, id) {
         ownedFromValue,
         documentDateValue,
         youtubeUrlValue,
+        priceValue,
+        contactValue,
         voteDeadlineValue,
         legalStatusValue,
         executionTitleStatusValue,
@@ -7494,6 +7805,14 @@ async function saveEditDialog(type, id) {
     item.legalStatus = legalStatusValue || item.legalStatus;
     item.debtHistory = noteValue || item.debtHistory;
     item.nextStepDate = nextStepDateValue || item.nextStepDate;
+  } else if (type === "classified") {
+    item.title = titleValue;
+    item.category = categoryValue || item.category;
+    item.description = noteValue || item.description;
+    item.contact = contactValue || item.contact;
+    item.price = priceValue || item.price;
+    item.status = statusValue || item.status;
+    item.youtubeUrl = youtubeUrlValue || item.youtubeUrl;
   } else {
     item.title = titleValue;
     item.category = categoryValue || item.category;
@@ -7511,6 +7830,24 @@ async function saveEditToSupabase(type, item, values) {
       subject: values.titleValue,
       body: values.noteValue || item.text
     }).eq("id", item.id).eq("sender_id", state.currentUserId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  if (type === "classified") {
+    const filePath = await uploadSelectedFile(type);
+    const update = {
+      title: values.titleValue,
+      category: values.categoryValue || item.category,
+      description: values.noteValue || null,
+      contact: values.contactValue || null,
+      price: values.priceValue || null,
+      status: values.statusValue || item.status || "Aktívne",
+      youtube_url: values.youtubeUrlValue || null,
+      updated_at: new Date().toISOString()
+    };
+    if (filePath) update.storage_path = filePath;
+    const { error } = await supabaseClient.from("classifieds").update(update).eq("id", item.id);
     if (error) throw new Error(error.message);
     return;
   }
@@ -7667,9 +8004,10 @@ async function saveEditToSupabase(type, item, values) {
   }
 
   const filePath = await uploadSelectedFile(type);
+  const nextAnnouncementCategory = type === "announcement" && state.role === "owner" ? "Oznam" : values.categoryValue || item.category;
   const update = {
     title: values.titleValue,
-    category: values.categoryValue || item.category,
+    category: nextAnnouncementCategory,
     body: values.noteValue || item.body,
     youtube_url: values.youtubeUrlValue || null
   };

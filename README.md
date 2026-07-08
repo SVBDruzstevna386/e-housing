@@ -1,4 +1,4 @@
-# e-housing solutions
+# e - Housing Solutions Licence
 
 Webova PWA aplikacia pre spravu spolocenstva vlastnikov bytov a nebytovych priestorov.
 

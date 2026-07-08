@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     .maybeSingle();
   const body = await req.json().catch(() => ({}));
   const target: NotificationTarget = ["none", "all", "individual", "chair"].includes(body.target) ? body.target : "all";
-  const subject = String(body.subject || "Nova informacia v e-housing solutions").trim();
+  const subject = String(body.subject || "Nova informacia v e - Housing Solutions Licence").trim();
   const title = String(body.title || "").trim();
   const message = String(body.message || "").trim();
   const eventType = String(body.eventType || subject).trim();
@@ -51,7 +51,31 @@ Deno.serve(async (req) => {
   if (senderError) return json({ error: senderError.message }, 500);
   const isBoardSender = ["chair", "vice_chair", "economic", "board"].includes(sender?.role || "");
   const isMessageToChairNotice = target === "chair" && ["messages", "vote_comments"].includes(relatedTable || "") && Boolean(relatedId);
-  if (!isBoardSender && !isMessageToChairNotice) return json({ error: "Only chairman or board can send notifications" }, 403);
+  const isOwnerAnnouncementNotice = target === "all" && relatedTable === "announcements" && Boolean(relatedId) && sender?.role === "owner";
+  const isClassifiedChairNotice = target === "chair" && relatedTable === "classifieds" && Boolean(relatedId);
+  if (!isBoardSender && !isMessageToChairNotice && !isOwnerAnnouncementNotice && !isClassifiedChairNotice) return json({ error: "Only chairman or board can send notifications" }, 403);
+  if (!isBoardSender && isClassifiedChairNotice) {
+    const { data: relatedClassified, error: relatedClassifiedError } = await admin
+      .from("classifieds")
+      .select("id, created_by")
+      .eq("id", relatedId)
+      .maybeSingle();
+    if (relatedClassifiedError) return json({ error: relatedClassifiedError.message }, 500);
+    if (!relatedClassified || relatedClassified.created_by !== userData.user.id) {
+      return json({ error: "Classified notification is allowed only for own classified item" }, 403);
+    }
+  }
+  if (isOwnerAnnouncementNotice) {
+    const { data: relatedAnnouncement, error: relatedAnnouncementError } = await admin
+      .from("announcements")
+      .select("id, created_by, category")
+      .eq("id", relatedId)
+      .maybeSingle();
+    if (relatedAnnouncementError) return json({ error: relatedAnnouncementError.message }, 500);
+    if (!relatedAnnouncement || relatedAnnouncement.created_by !== userData.user.id || relatedAnnouncement.category !== "Oznam") {
+      return json({ error: "Owner announcement notification is allowed only for own Oznam announcement" }, 403);
+    }
+  }
   if (!isBoardSender && isMessageToChairNotice) {
     if (relatedTable === "messages") {
       const { data: relatedMessage, error: relatedMessageError } = await admin
@@ -158,13 +182,19 @@ async function resolveRecipients(admin: ReturnType<typeof createClient>, target:
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data || [])
+  const recipients = (data || [])
     .map((owner) => ({
       profile_id: owner.profile_id,
       name: owner.full_name,
       email: String(owner.login_email || "").trim()
     }))
     .filter((owner) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(owner.email));
+  const uniqueRecipients = new Map<string, { profile_id: string | null; name: string; email: string }>();
+  for (const recipient of recipients) {
+    const key = recipient.profile_id || recipient.email.toLowerCase();
+    if (!uniqueRecipients.has(key)) uniqueRecipients.set(key, recipient);
+  }
+  return [...uniqueRecipients.values()];
 }
 
 async function logNotification(
@@ -277,7 +307,7 @@ function bytesToBase64(bytes: Uint8Array) {
 function renderEmail({ subject, title, message, senderName, eventType, section, actionUrl }: { subject: string; title: string; message: string; senderName: string; eventType: string; section: string; actionUrl: string }) {
   const safeSubject = escapeHtml(subject);
   const safeTitle = escapeHtml(title || subject);
-  const safeMessage = escapeHtml(message || "V aplikacii e-housing solutions pribudla nova informacia.").replace(/\n/g, "<br>");
+  const safeMessage = escapeHtml(message || "V aplikacii e - Housing Solutions Licence pribudla nova informacia.").replace(/\n/g, "<br>");
   const safeSender = escapeHtml(senderName);
   const safeEventType = escapeHtml(eventType || subject);
   const safeSection = escapeHtml(section || "Aplikacia");
@@ -293,7 +323,7 @@ function renderEmail({ subject, title, message, senderName, eventType, section, 
       <p>${safeMessage}</p>
       <p style="color:#607277">Odosielatel: ${safeSender}</p>
       <p style="margin:22px 0">
-        <a href="${safeActionUrl}" style="display:inline-block;background:#1f6f78;color:#ffffff;text-decoration:none;padding:11px 16px;border-radius:8px;font-weight:bold">Otvorit detail v e-housing solutions</a>
+        <a href="${safeActionUrl}" style="display:inline-block;background:#1f6f78;color:#ffffff;text-decoration:none;padding:11px 16px;border-radius:8px;font-weight:bold">Otvorit detail v e - Housing Solutions Licence</a>
       </p>
       <p style="font-size:12px;color:#607277">Ak tlacidlo nefunguje, otvorte tento odkaz: <br><a href="${safeActionUrl}" style="color:#1f6f78">${safeActionUrl}</a></p>
     </div>

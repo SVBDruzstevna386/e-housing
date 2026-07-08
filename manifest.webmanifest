@@ -1,8 +1,8 @@
 {
-  "name": "e-housing solutions",
-  "short_name": "e-housing solutions",
+  "name": "e - Housing Solutions Licence",
+  "short_name": "e - Housing Solutions Licence",
   "description": "Správa SVB a NP Družstevná 386",
-  "start_url": "/?v=158",
+  "start_url": "/?v=170",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f7f4",

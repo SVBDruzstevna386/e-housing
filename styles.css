@@ -62,7 +62,7 @@ body.theme-cartoon_3d .sidebar-summary {
 }
 
 body.theme-cartoon_3d .brand-logo {
-  content: url("./assets/cartoon/logo-e-housing-cartoon.png?v=158");
+  content: url("./assets/cartoon/logo-e-housing-cartoon.png?v=170");
 }
 
 body.theme-cartoon_3d .nav-item {
@@ -85,22 +85,23 @@ body.theme-cartoon_3d .nav-item::before {
   filter: none;
 }
 
-body.theme-cartoon_3d .nav-item[data-view="overview"]::before { background-image: url("./assets/cartoon/icon-overview.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="documents"]::before { background-image: url("./assets/cartoon/icon-documents.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="documentHistory"]::before { background-image: url("./assets/cartoon/icon-documentHistory.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="votes"]::before { background-image: url("./assets/cartoon/icon-votes.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="billing"]::before { background-image: url("./assets/cartoon/icon-billing.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="executions"]::before { background-image: url("./assets/cartoon/icon-executions.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="finance"]::before { background-image: url("./assets/cartoon/icon-finance.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="messages"]::before { background-image: url("./assets/cartoon/icon-messages.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="calendar"]::before { background-image: url("./assets/cartoon/icon-calendar.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="activities"]::before { background-image: url("./assets/cartoon/icon-activities.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="photoAlbum"]::before { background-image: url("./assets/cartoon/icon-photoAlbum.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="owners"]::before { background-image: url("./assets/cartoon/icon-owners.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="emails"]::before { background-image: url("./assets/cartoon/icon-emails.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="logs"]::before { background-image: url("./assets/cartoon/icon-logs.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="settings"]::before { background-image: url("./assets/cartoon/icon-settings.png?v=158"); }
-body.theme-cartoon_3d .nav-item[data-view="profile"]::before { background-image: url("./assets/cartoon/icon-profile.png?v=158"); }
+body.theme-cartoon_3d .nav-item[data-view="overview"]::before { background-image: url("./assets/cartoon/icon-overview.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="documents"]::before { background-image: url("./assets/cartoon/icon-documents.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="documentHistory"]::before { background-image: url("./assets/cartoon/icon-documentHistory.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="votes"]::before { background-image: url("./assets/cartoon/icon-votes.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="billing"]::before { background-image: url("./assets/cartoon/icon-billing.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="executions"]::before { background-image: url("./assets/cartoon/icon-executions.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="finance"]::before { background-image: url("./assets/cartoon/icon-finance.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="messages"]::before { background-image: url("./assets/cartoon/icon-messages.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="calendar"]::before { background-image: url("./assets/cartoon/icon-calendar.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="activities"]::before { background-image: url("./assets/cartoon/icon-activities.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="photoAlbum"]::before { background-image: url("./assets/cartoon/icon-photoAlbum.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="classifieds"]::before { background-image: url("./assets/cartoon/icon-classifieds.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="owners"]::before { background-image: url("./assets/cartoon/icon-owners.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="emails"]::before { background-image: url("./assets/cartoon/icon-emails.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="logs"]::before { background-image: url("./assets/cartoon/icon-logs.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="settings"]::before { background-image: url("./assets/cartoon/icon-settings.png?v=170"); }
+body.theme-cartoon_3d .nav-item[data-view="profile"]::before { background-image: url("./assets/cartoon/icon-profile.png?v=170"); }
 
 body.theme-cartoon_3d .nav-item svg {
   display: none;
@@ -303,25 +304,25 @@ body.theme-cartoon_3d .grid.stats .stat:nth-child(4) {
 
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="users"]::after,
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="home"]::after {
-  background-image: url("./assets/cartoon/icon-owners.png?v=158");
+  background-image: url("./assets/cartoon/icon-owners.png?v=170");
 }
 
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="file-text"]::after,
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="file-check"]::after {
-  background-image: url("./assets/cartoon/icon-documents.png?v=158");
+  background-image: url("./assets/cartoon/icon-documents.png?v=170");
 }
 
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="vote"]::after {
-  background-image: url("./assets/cartoon/icon-votes.png?v=158");
+  background-image: url("./assets/cartoon/icon-votes.png?v=170");
 }
 
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="mail"]::after,
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="mail-open"]::after {
-  background-image: url("./assets/cartoon/icon-emails.png?v=158");
+  background-image: url("./assets/cartoon/icon-emails.png?v=170");
 }
 
 body.theme-cartoon_3d .grid.stats .stat[data-stat-icon="notebook-tabs"]::after {
-  background-image: url("./assets/cartoon/icon-activities.png?v=158");
+  background-image: url("./assets/cartoon/icon-activities.png?v=170");
 }
 
 body.theme-cartoon_3d .system-cards {
@@ -404,15 +405,15 @@ body.theme-cartoon_3d .system-cards .icon-card[data-system-icon="smartphone"] {
 }
 
 body.theme-cartoon_3d .system-cards .icon-card[data-system-icon="folder-open"]::after {
-  background-image: url("./assets/cartoon/icon-documents.png?v=158");
+  background-image: url("./assets/cartoon/icon-documents.png?v=170");
 }
 
 body.theme-cartoon_3d .system-cards .icon-card[data-system-icon="messages-square"]::after {
-  background-image: url("./assets/cartoon/icon-messages.png?v=158");
+  background-image: url("./assets/cartoon/icon-messages.png?v=170");
 }
 
 body.theme-cartoon_3d .system-cards .icon-card[data-system-icon="smartphone"]::after {
-  background-image: url("./assets/cartoon/icon-pwa.png?v=158");
+  background-image: url("./assets/cartoon/icon-pwa.png?v=170");
 }
 
 body.theme-cartoon_3d .documents-active-panel {
@@ -433,7 +434,7 @@ body.theme-cartoon_3d .documents-active-panel::after {
   z-index: -1;
   width: min(180px, 28%);
   aspect-ratio: 1;
-  background: url("./assets/cartoon/icon-documents.png?v=158") center / contain no-repeat;
+  background: url("./assets/cartoon/icon-documents.png?v=170") center / contain no-repeat;
   opacity: 0.94;
 }
 
@@ -552,23 +553,23 @@ body.theme-cartoon_3d[data-view="documentHistory"] .below-title-select {
 }
 
 body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-documentHistory.png?v=158");
+  background-image: url("./assets/cartoon/icon-documentHistory.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-billing.png?v=158");
+  background-image: url("./assets/cartoon/icon-billing.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-executions.png?v=158");
+  background-image: url("./assets/cartoon/icon-executions.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-finance.png?v=158");
+  background-image: url("./assets/cartoon/icon-finance.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-messages.png?v=158");
+  background-image: url("./assets/cartoon/icon-messages.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child::after {
@@ -579,15 +580,15 @@ body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .pane
 }
 
 body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-votes.png?v=158");
+  background-image: url("./assets/cartoon/icon-votes.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-calendar.png?v=158");
+  background-image: url("./assets/cartoon/icon-calendar.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-activities.png?v=158");
+  background-image: url("./assets/cartoon/icon-activities.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="activities"] .activities-overview-panel {
@@ -609,7 +610,7 @@ body.theme-cartoon_3d[data-view="activities"] .activities-overview-panel::after 
   z-index: -1;
   width: min(220px, 28%);
   aspect-ratio: 1;
-  background: url("./assets/cartoon/icon-activities.png?v=158") center / contain no-repeat;
+  background: url("./assets/cartoon/icon-activities.png?v=170") center / contain no-repeat;
   opacity: 0.9;
 }
 
@@ -625,11 +626,71 @@ body.theme-cartoon_3d[data-view="activities"] .activities-overview-panel > .tool
 }
 
 body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-photoAlbum.png?v=158");
+  background-image: url("./assets/cartoon/icon-photoAlbum.png?v=170");
+}
+
+body.theme-cartoon_3d[data-view="classifieds"] .view-root > div:first-child > .panel:first-child::after {
+  background-image: url("./assets/cartoon/icon-classifieds.png?v=170");
+}
+
+body.theme-cartoon_3d[data-view="classifieds"] .classifieds-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 360px;
+  border: 0;
+  background: linear-gradient(145deg, rgba(255, 216, 94, 0.78) 0%, rgba(239, 180, 54, 0.58) 100%);
+  color: #111;
+  box-shadow: 0 18px 30px rgba(20, 58, 74, 0.28), inset 0 2px 0 rgba(255, 255, 255, 0.28);
+}
+
+body.theme-cartoon_3d[data-view="classifieds"] .classifieds-panel::after {
+  content: "";
+  position: absolute;
+  right: 42px;
+  top: 34px;
+  z-index: -1;
+  width: min(280px, 34%);
+  aspect-ratio: 1;
+  background: url("./assets/cartoon/icon-classifieds.png?v=170") center / contain no-repeat;
+  opacity: 0.95;
+}
+
+body.theme-cartoon_3d[data-view="classifieds"] .classifieds-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+body.theme-cartoon_3d[data-view="classifieds"] .classifieds-panel > .toolbar:first-child {
+  min-height: 310px;
+  align-items: flex-start;
+  padding-right: min(350px, 44%);
+}
+
+body.theme-cartoon_3d[data-view="classifieds"] .classifieds-filter-row {
+  width: min(100%, 420px);
+  margin: -72px 0 18px;
+}
+
+body.theme-cartoon_3d[data-view="classifieds"] .classifieds-panel .search {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+body.theme-cartoon_3d[data-view="classifieds"] .classifieds-content-grid {
+  position: relative;
+  z-index: 1;
+}
+
+body.theme-cartoon_3d[data-view="classifieds"] .classified-list-panel,
+body.theme-cartoon_3d[data-view="classifieds"] .classified-categories-panel {
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink);
+  box-shadow: 0 12px 22px rgba(20, 58, 74, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.78);
 }
 
 body.theme-cartoon_3d[data-view="owners"] .view-root > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-owners.png?v=158");
+  background-image: url("./assets/cartoon/icon-owners.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="owners"] .owners-overview-panel::after {
@@ -672,7 +733,7 @@ body.theme-cartoon_3d[data-view="owners"] .owner-table tbody td:last-child {
 }
 
 body.theme-cartoon_3d[data-view="emails"] .view-root > div:first-child > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-emails.png?v=158");
+  background-image: url("./assets/cartoon/icon-emails.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="emails"] .emails-overview-panel {
@@ -694,7 +755,7 @@ body.theme-cartoon_3d[data-view="emails"] .emails-overview-panel::after {
   z-index: -1;
   width: min(220px, 28%);
   aspect-ratio: 1;
-  background: url("./assets/cartoon/icon-emails.png?v=158") center / contain no-repeat;
+  background: url("./assets/cartoon/icon-emails.png?v=170") center / contain no-repeat;
   opacity: 0.9;
 }
 
@@ -713,11 +774,11 @@ body.theme-cartoon_3d[data-view="emails"] .emails-overview-head h2 {
 }
 
 body.theme-cartoon_3d[data-view="logs"] .view-root > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-logs.png?v=158");
+  background-image: url("./assets/cartoon/icon-logs.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="settings"] .view-root > div:first-child > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-settings.png?v=158");
+  background-image: url("./assets/cartoon/icon-settings.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="settings"] .settings-overview-panel {
@@ -739,7 +800,7 @@ body.theme-cartoon_3d[data-view="settings"] .settings-overview-panel::after {
   z-index: -1;
   width: min(210px, 30%);
   aspect-ratio: 1;
-  background: url("./assets/cartoon/icon-settings.png?v=158") center / contain no-repeat;
+  background: url("./assets/cartoon/icon-settings.png?v=170") center / contain no-repeat;
   opacity: 0.92;
 }
 
@@ -777,7 +838,7 @@ body.theme-cartoon_3d[data-view="settings"] .settings-overview-content > .panel 
 }
 
 body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel:first-child::after {
-  background-image: url("./assets/cartoon/icon-profile.png?v=158");
+  background-image: url("./assets/cartoon/icon-profile.png?v=170");
 }
 
 body.theme-cartoon_3d[data-view="profile"] .profile-overview-panel {
@@ -799,7 +860,7 @@ body.theme-cartoon_3d[data-view="profile"] .profile-overview-panel::after {
   z-index: -1;
   width: min(220px, 28%);
   aspect-ratio: 1;
-  background: url("./assets/cartoon/icon-profile.png?v=158") center / contain no-repeat;
+  background: url("./assets/cartoon/icon-profile.png?v=170") center / contain no-repeat;
   opacity: 0.9;
 }
 
@@ -1404,6 +1465,17 @@ body:not(.app-loading) .app-loading-screen {
 
 .sidebar-property-select option {
   color: #172033;
+}
+
+body.theme-cartoon_3d .sidebar .sidebar-property-select {
+  border-color: rgba(23, 72, 90, 0.28);
+  background: rgba(255, 250, 250, 0.96);
+  color: #172033;
+}
+
+body.theme-cartoon_3d .sidebar .sidebar-property-select option {
+  color: #172033;
+  background: #fffafa;
 }
 
 .sidebar-property-select:disabled {
@@ -2472,7 +2544,7 @@ body.theme-cartoon_3d[data-view="messages"] .message-filter-select {
 }
 
 body.theme-cartoon_3d .system-cards .message-recipient-card[data-system-icon="info"]::after {
-  background-image: url("./assets/cartoon/icon-info.png?v=158");
+  background-image: url("./assets/cartoon/icon-info.png?v=170");
 }
 
 body.theme-cartoon_3d .system-cards .message-recipient-card.public {
