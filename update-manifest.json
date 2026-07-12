@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v172",
+  "latestVersion": "v175",
   "releasedAt": "2026-07-12",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v172 dopĺňa viditeľné filtre v záložke Denník a zároveň núti service worker rýchlejšie prevziať novú produkčnú verziu.",
+  "summary": "Verzia v175 pridáva oddelenú Partnerskú zónu pre Platform Admina, sprievodcu novou inštaláciou a auditovaný servisný prístup k samostatným partnerským inštaláciám.",
   "changes": [
-    "Do záložky Denník bol doplnený filter podľa role.",
-    "Do záložky Denník bol doplnený filter podľa mesiacov v roku vrátane možnosti Všetky mesiace.",
-    "Prehľad hodín v Denníku sa prepočítava podľa zvolených filtrov.",
-    "Service worker po novej verzii okamžite preberá otvorené stránky, aby sa obmedzilo držanie starej cache."
+    "Platform Admin má samostatnú Partnerskú zónu so zoznamom inštalácií, vyhľadávaním, stavmi a detailom služieb.",
+    "Nová inštalácia používa kontrolovaný postup pre samostatný GitHub, Supabase, Vercel a Gmail účet konkrétneho domu.",
+    "Servisný vstup používa krátkodobý podpísaný odkaz, povinný dôvod vstupu a auditný log.",
+    "Čistý inštalačný balík automaticky vypína centrálnu Partnerskú zónu a neobsahuje jej vydávaciu funkciu."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",

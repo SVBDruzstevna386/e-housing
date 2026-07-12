@@ -142,6 +142,14 @@ const state = {
   systemUpdateStatus: "not_checked",
   systemUpdateMessage: "",
   systemUpdateInfo: null,
+  isPlatformAdmin: false,
+  isPlatformSupportSession: false,
+  partnerInstallations: [],
+  partnerProvisioningJobs: [],
+  partnerInstallationEvents: [],
+  platformAccessLogs: [],
+  partnerSearch: "",
+  partnerStatusFilter: "all",
   pendingDeepLink: null,
   appNotificationsEnabled: false,
   lastNotificationSeenAt: ""
@@ -164,6 +172,7 @@ const titles = {
   owners: "Vlastníci a byty",
   emails: "E-mail šablóny",
   logs: "Logy",
+  partners: "Partnerská zóna",
   settings: "Nastavenia"
 };
 
@@ -228,6 +237,10 @@ const HELP_TEXTS = {
     title: "Nápoveda pre Logy",
     body: "Logy zobrazujú záznamy o aktivitách používateľov v aplikácii, napríklad prihlásenia, vytváranie, úpravy alebo vymazávanie položiek. Predseda SVB môže filtrovať logy podľa role, používateľa a typu aktivity a otvárať detail súvisiacej položky."
   },
+  partners: {
+    title: "Nápoveda pre Partnerskú zónu",
+    body: "Partnerská zóna je dostupná iba Platform Adminovi tejto centrálnej inštalácie. Slúži na evidenciu samostatných partnerských inštalácií, riadenie ich inštalačných krokov, kontrolu verzie a auditovaný servisný prístup. Partnerské domy používajú vlastné GitHub, Vercel, Supabase a Gmail služby a ich údaje sa nemiešajú s údajmi domu Družstevná 386."
+  },
   settings: {
     title: "Nápoveda pre Nastavenia",
     body: "Nastavenia slúžia na správu prístupových práv, komunikačných pravidiel, live chatu a technických pripojení aplikácie. Predseda SVB tu určuje, ktoré role vidia jednotlivé záložky a či môžu čítať, zapisovať alebo vymazávať záznamy."
@@ -256,7 +269,8 @@ const HELP_TEXTS_SETTING_KEY = "help_text_overrides";
 const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
-const APP_VERSION = "v172";
+const PLATFORM_CONTROL_ENABLED = true;
+const APP_VERSION = "v175";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
@@ -276,6 +290,7 @@ const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBL
 
 let notificationPollTimer = null;
 let notificationPollBusy = false;
+let platformSupportExpiryTimer = null;
 
 const ROLE_DEFINITIONS = [
   ["chair", "Predseda SVB"],
@@ -940,6 +955,9 @@ logoutBtn.addEventListener("click", () => {
   if (supabaseClient) supabaseClient.auth.signOut();
   stopAppNotificationWatcher();
   state.loggedIn = false;
+  state.isPlatformSupportSession = false;
+  if (platformSupportExpiryTimer) window.clearTimeout(platformSupportExpiryTimer);
+  platformSupportExpiryTimer = null;
   mobileViewOpen = false;
   render();
 });
@@ -973,6 +991,7 @@ helpBtn?.addEventListener("click", () => openHelpDialog(state.view));
 welcomeBtn?.addEventListener("click", () => openWelcomeDialog());
 
 function roleLabel() {
+  if (state.isPlatformSupportSession) return "Platform Admin – servisný prístup";
   return { chair: "Predseda SVB", vice_chair: "Podpredseda SVB", economic: "Ekonomická správa", board: "Dozorná rada", owner: "Vlastník nehnuteľnosti" }[state.role];
 }
 
@@ -1133,6 +1152,14 @@ async function applySupabaseSession(session) {
   state.currentUserId = user.id;
   state.currentUserEmail = user.email;
   state.authEmail = user.email;
+  state.isPlatformSupportSession = Boolean(user.app_metadata?.platform_support);
+  if (state.isPlatformSupportSession && !schedulePlatformSupportExpiry(user)) {
+    await supabaseClient.auth.signOut();
+    state.loggedIn = false;
+    state.isPlatformSupportSession = false;
+    window.alert("Servisný prístup Platform Admina už vypršal. Vytvorte nový auditovaný vstup z Partnerskej zóny.");
+    return false;
+  }
   loadNotificationPreferences();
   loginEmail.value = user.email;
   const profileReady = await ensureCurrentProfile(user);
@@ -1158,6 +1185,23 @@ async function applySupabaseSession(session) {
   applyDeepLinkView();
   await writeActivityLog("login", "Prihlásenie používateľa do aplikácie", { relatedTable: "profiles", relatedId: state.currentUserId });
   startAppNotificationWatcher();
+  return true;
+}
+
+function schedulePlatformSupportExpiry(user) {
+  if (platformSupportExpiryTimer) window.clearTimeout(platformSupportExpiryTimer);
+  platformSupportExpiryTimer = null;
+  const expiresAt = Date.parse(user?.app_metadata?.platform_support_expires_at || "");
+  if (!Number.isFinite(expiresAt)) return false;
+  const remaining = expiresAt - Date.now();
+  if (remaining <= 0) return false;
+  platformSupportExpiryTimer = window.setTimeout(async () => {
+    await supabaseClient?.auth.signOut();
+    state.loggedIn = false;
+    state.isPlatformSupportSession = false;
+    window.alert("Časovo obmedzený servisný prístup Platform Admina vypršal.");
+    render();
+  }, Math.min(remaining, 2_147_000_000));
   return true;
 }
 
@@ -1248,6 +1292,77 @@ async function loadSupabaseData() {
     recipientId: item.recipient_id
   }));
   if (activityLogs.data) state.activityLogs = activityLogs.data.map(dbActivityLogToCard);
+  await loadPlatformData();
+}
+
+async function loadPlatformData() {
+  state.isPlatformAdmin = false;
+  state.partnerInstallations = [];
+  state.partnerProvisioningJobs = [];
+  state.partnerInstallationEvents = [];
+  state.platformAccessLogs = [];
+  if (!PLATFORM_CONTROL_ENABLED || !supabaseClient || !state.currentUserId) return;
+
+  const { data: membership, error: membershipError } = await supabaseClient
+    .from("platform_admins")
+    .select("user_id, display_name, active")
+    .eq("user_id", state.currentUserId)
+    .eq("active", true)
+    .maybeSingle();
+  if (membershipError || !membership) return;
+  state.isPlatformAdmin = true;
+
+  const [installations, jobs, events, accessLogs] = await Promise.all([
+    supabaseClient.from("partner_installations").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("partner_provisioning_jobs").select("*").order("created_at", { ascending: false }).limit(200),
+    supabaseClient.from("partner_installation_events").select("*").order("created_at", { ascending: false }).limit(300),
+    supabaseClient.from("platform_access_logs").select("*").order("requested_at", { ascending: false }).limit(200)
+  ]);
+
+  if (installations.data) state.partnerInstallations = installations.data.map(partnerInstallationFromDb);
+  if (jobs.data) state.partnerProvisioningJobs = jobs.data.map(partnerProvisioningJobFromDb);
+  if (events.data) state.partnerInstallationEvents = events.data;
+  if (accessLogs.data) state.platformAccessLogs = accessLogs.data;
+}
+
+function partnerInstallationFromDb(item) {
+  return {
+    id: item.id,
+    slug: item.slug,
+    name: item.name,
+    address: item.building_address || "",
+    chairName: item.chair_name || "",
+    chairEmail: item.chair_email || "",
+    status: item.status || "draft",
+    plan: item.plan || "pilot_free",
+    appVersion: item.app_version || "v175",
+    githubRepositoryUrl: item.github_repository_url || "",
+    vercelProjectId: item.vercel_project_id || "",
+    productionUrl: item.production_url || "",
+    supabaseProjectRef: item.supabase_project_ref || "",
+    gmailSenderEmail: item.gmail_sender_email || "",
+    serviceState: item.service_state || {},
+    supportAccessStatus: item.support_access_status || "not_configured",
+    notes: item.notes || "",
+    createdBy: item.created_by,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+    archivedAt: item.archived_at
+  };
+}
+
+function partnerProvisioningJobFromDb(item) {
+  return {
+    id: item.id,
+    installationId: item.installation_id,
+    status: item.status,
+    currentStep: item.current_step,
+    steps: Array.isArray(item.steps) ? item.steps : [],
+    errorMessage: item.error_message || "",
+    createdAt: item.created_at,
+    startedAt: item.started_at,
+    finishedAt: item.finished_at
+  };
 }
 
 async function loadPublicSettings() {
@@ -1791,10 +1906,12 @@ function canViewLogs() {
 }
 
 function canAccessView(view = state.view) {
+  if (view === "partners") return PLATFORM_CONTROL_ENABLED && state.isPlatformAdmin;
   return permissionFor(state.role, view).read;
 }
 
 function canCreateInView(view = state.view) {
+  if (view === "partners") return PLATFORM_CONTROL_ENABLED && state.isPlatformAdmin;
   if (view === "votes") return state.role === "chair";
   if (view === "overview" && state.role === "owner") return true;
   return permissionFor(state.role, view).write;
@@ -2516,11 +2633,16 @@ function render() {
   }
   newItemBtn.hidden = !canCreateInView();
   newItemBtn.innerHTML = `${icon("plus")}<span>${actionLabel()}</span>`;
-  root.innerHTML = `${views[state.view]()}${copyrightFooter()}`;
+  root.innerHTML = `${platformSupportBanner()}${views[state.view]()}${copyrightFooter()}`;
   bindViewActions();
   syncMobileLayout();
   enhanceIcons();
   schedulePendingDeepLinkDetail();
+}
+
+function platformSupportBanner() {
+  if (!state.isPlatformSupportSession) return "";
+  return `<section class="platform-support-banner" role="status">${icon("shield-check")}<div><strong>Platform Admin – servisný prístup</strong><span>Pracujete v auditovanom servisnom režime partnerskej inštalácie. Všetky vykonané zmeny sa zaznamenávajú.</span></div></section>`;
 }
 
 function updateSidebarSummary() {
@@ -2548,6 +2670,7 @@ function pendingAuthorizationView() {
 }
 
 function actionLabel() {
+  if (state.view === "partners") return "Nová inštalácia";
   if (state.view === "documents") return "Nahrať dokument";
   if (state.view === "documentHistory") return "Pridať do histórie";
   if (state.view === "billing") return "Pridať vyúčtovanie";
@@ -3396,6 +3519,60 @@ const views = {
       </section>
     `;
   },
+  partners() {
+    const items = filteredPartnerInstallations();
+    const activeCount = state.partnerInstallations.filter((item) => item.status === "active").length;
+    const setupCount = state.partnerInstallations.filter((item) => ["draft", "awaiting_connections", "provisioning", "testing"].includes(item.status)).length;
+    const attentionCount = state.partnerInstallations.filter((item) => ["failed", "suspended"].includes(item.status)).length;
+    return `
+      <section class="panel partners-overview-panel">
+        <div class="toolbar partners-overview-head">
+          <div>
+            <span class="tag vote">Platform Admin – servisný prístup</span>
+            <h2>Partnerská zóna</h2>
+            <p class="muted">Oddelená evidencia samostatných inštalácií e - Housing Solutions Licence. Každý partnerský dom používa vlastný GitHub, Vercel, Supabase a Gmail účet.</p>
+          </div>
+          <div class="card-icon partners-zone-icon">${icon("network")}</div>
+        </div>
+        <div class="grid three partner-stats">
+          ${systemCard("Aktívne inštalácie", String(activeCount), "circle-check-big")}
+          ${systemCard("V príprave", String(setupCount), "loader-circle")}
+          ${systemCard("Vyžaduje pozornosť", String(attentionCount), "triangle-alert")}
+        </div>
+        <div class="partner-filter-row">
+          <div class="field">
+            <label for="partnerSearch">Hľadať partnerskú inštaláciu</label>
+            <input id="partnerSearch" value="${escapeAttr(state.partnerSearch)}" placeholder="Názov domu, email predsedu alebo URL" data-partner-search>
+          </div>
+          <div class="field">
+            <label for="partnerStatusFilter">Stav inštalácie</label>
+            <select id="partnerStatusFilter" data-partner-status-filter>
+              ${partnerStatusOptions(true).map(([value, label]) => `<option value="${escapeAttr(value)}" ${state.partnerStatusFilter === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+        <div class="partner-installation-list">
+          ${items.length ? items.map(partnerInstallationCard).join("") : `<article class="notice"><strong>Žiadna partnerská inštalácia</strong><p>Pre zadaný filter sa nenašla inštalácia. Novú vytvoríte tlačidlom v hlavičke stránky.</p></article>`}
+        </div>
+      </section>
+      <div class="grid two partner-audit-grid">
+        <section class="panel">
+          <div class="toolbar">
+            <div><h2>Posledné inštalačné úlohy</h2><p class="muted">Stav krokov vytvorenia oddelených cloudových služieb.</p></div>
+            <span class="tag document">${state.partnerProvisioningJobs.length}</span>
+          </div>
+          <div class="list">${state.partnerProvisioningJobs.slice(0, 8).map(partnerJobCard).join("") || `<p class="muted">Zatiaľ nebola spustená inštalačná úloha.</p>`}</div>
+        </section>
+        <section class="panel">
+          <div class="toolbar">
+            <div><h2>Servisné prístupy</h2><p class="muted">Každý vstup Platform Admina je pomenovaný, časovo obmedzený a auditovaný.</p></div>
+            <span class="tag document">${state.platformAccessLogs.length}</span>
+          </div>
+          <div class="list">${state.platformAccessLogs.slice(0, 8).map(platformAccessLogCard).join("") || `<p class="muted">Zatiaľ nebol vytvorený servisný prístup.</p>`}</div>
+        </section>
+      </div>
+    `;
+  },
   settings() {
     return `
       <section class="panel settings-overview-panel span-all">
@@ -3756,9 +3933,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=172"],
+        ["Manifest", "manifest.webmanifest?v=175"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v172"]
+        ["Cache", "e-housing-v175"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -4797,6 +4974,300 @@ function notificationRow(item) {
   return `<article class="notification-row"><span class="tag">${escapeHtml(item.type || "Email")}</span><div><strong>${escapeHtml(item.subject || "Emailová udalosť")}</strong><p class="muted">${escapeHtml(item.status || "")}</p></div><span class="muted">${escapeHtml(item.time || "")}</span>${actions ? `<div class="row-actions compact">${actions}</div>` : ""}</article>`;
 }
 
+function partnerStatusOptions(includeAll = false) {
+  const options = [
+    ["draft", "Koncept"],
+    ["awaiting_connections", "Čaká na pripojenie služieb"],
+    ["provisioning", "Inštalácia prebieha"],
+    ["testing", "Testovanie"],
+    ["active", "Aktívna"],
+    ["suspended", "Pozastavená"],
+    ["failed", "Chyba inštalácie"],
+    ["archived", "Archivovaná"]
+  ];
+  return includeAll ? [["all", "Všetky stavy"], ...options] : options;
+}
+
+function partnerStatusLabel(status) {
+  return partnerStatusOptions().find(([value]) => value === status)?.[1] || status || "Neznámy stav";
+}
+
+function partnerStatusClass(status) {
+  if (status === "active") return "vote";
+  if (["failed", "suspended"].includes(status)) return "urgent";
+  return "document";
+}
+
+function filteredPartnerInstallations() {
+  const search = state.partnerSearch.trim().toLowerCase();
+  return state.partnerInstallations.filter((item) => {
+    const statusMatches = state.partnerStatusFilter === "all" || item.status === state.partnerStatusFilter;
+    const searchText = [item.name, item.address, item.chairName, item.chairEmail, item.productionUrl, item.slug].join(" ").toLowerCase();
+    return statusMatches && (!search || searchText.includes(search));
+  });
+}
+
+function partnerServiceEntries(item) {
+  const labels = {
+    github: "GitHub",
+    supabase: "Supabase",
+    vercel: "Vercel",
+    gmail: "Gmail",
+    database: "Databáza",
+    functions: "Funkcie",
+    chair_invite: "Predseda",
+    support_access: "Servis",
+    verification: "Test"
+  };
+  return Object.entries(labels).map(([key, label]) => [key, label, item.serviceState?.[key] || "pending"]);
+}
+
+function partnerServiceIsReady(status) {
+  return ["connected", "ready", "completed", "verified"].includes(status);
+}
+
+function partnerInstallationCard(item) {
+  const services = partnerServiceEntries(item);
+  const ready = services.filter(([, , status]) => partnerServiceIsReady(status)).length;
+  const progress = Math.round((ready / services.length) * 100);
+  const visitDisabled = !item.productionUrl || item.supportAccessStatus !== "ready" || item.status !== "active";
+  return `
+    <article class="partner-installation-card searchable" data-text="${escapeAttr([item.name, item.address, item.chairName, item.chairEmail, item.productionUrl].join(" "))}">
+      <div class="partner-card-head">
+        <div>
+          <div class="tag-row">
+            <span class="tag ${partnerStatusClass(item.status)}">${escapeHtml(partnerStatusLabel(item.status))}</span>
+            <span class="tag document">${escapeHtml(item.appVersion)}</span>
+            <span class="tag ${item.supportAccessStatus === "ready" ? "vote" : "document"}">Servis: ${escapeHtml(item.supportAccessStatus === "ready" ? "pripravený" : "nepripravený")}</span>
+          </div>
+          <h3>${escapeHtml(item.name)}</h3>
+          <p class="muted">${escapeHtml(item.address || "Adresa zatiaľ nebola zadaná")}</p>
+        </div>
+        <div class="partner-progress" aria-label="Priebeh inštalácie ${progress} percent">
+          <strong>${progress} %</strong><span>${ready}/${services.length} krokov</span>
+        </div>
+      </div>
+      <div class="partner-service-strip">
+        ${services.map(([, label, status]) => `<span class="partner-service ${partnerServiceIsReady(status) ? "is-ready" : status === "failed" ? "is-failed" : ""}">${escapeHtml(label)}</span>`).join("")}
+      </div>
+      <div class="partner-card-meta">
+        <span>${icon("user-round")} ${escapeHtml(item.chairName || "Predseda neurčený")}</span>
+        <span>${icon("mail")} ${escapeHtml(item.chairEmail)}</span>
+        <span>${icon("globe-2")} ${escapeHtml(item.productionUrl || "URL zatiaľ nepridelená")}</span>
+      </div>
+      <div class="row-actions">
+        <button class="primary" data-partner-visit="${escapeAttr(item.id)}" ${visitDisabled ? "disabled" : ""}>${icon("log-in")}<span>Visit</span></button>
+        <button class="ghost" data-partner-setup="${escapeAttr(item.id)}">${icon("list-checks")}<span>Inštalácia</span></button>
+        <button class="ghost" data-partner-detail="${escapeAttr(item.id)}">${icon("info")}<span>Detail</span></button>
+        <button class="ghost" data-partner-edit="${escapeAttr(item.id)}">${icon("pencil")}<span>Upraviť</span></button>
+        ${item.status !== "archived" ? `<button class="ghost" data-partner-archive="${escapeAttr(item.id)}">${icon("archive")}<span>Archivovať</span></button>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+function partnerJobCard(job) {
+  const installation = state.partnerInstallations.find((item) => item.id === job.installationId);
+  return `<article class="item compact"><div><strong>${escapeHtml(installation?.name || "Partnerská inštalácia")}</strong><p class="muted">${escapeHtml(job.currentStep || "Príprava")} · ${formatDateTime(job.createdAt)}</p>${job.errorMessage ? `<p class="error-text">${escapeHtml(job.errorMessage)}</p>` : ""}</div><span class="tag ${job.status === "completed" ? "vote" : job.status === "failed" ? "urgent" : "document"}">${escapeHtml(job.status)}</span></article>`;
+}
+
+function platformAccessLogCard(log) {
+  const installation = state.partnerInstallations.find((item) => item.id === log.installation_id);
+  return `<article class="item compact"><div><strong>${escapeHtml(installation?.name || "Partnerská inštalácia")}</strong><p class="muted">${escapeHtml(log.reason || "Servisný prístup")} · ${formatDateTime(log.requested_at)}</p></div><span class="tag ${log.status === "opened" ? "vote" : log.status === "failed" ? "urgent" : "document"}">${escapeHtml(log.status || "requested")}</span></article>`;
+}
+
+function partnerInstallationById(id) {
+  return state.partnerInstallations.find((item) => String(item.id) === String(id));
+}
+
+function openPartnerDetailDialog(id) {
+  const item = partnerInstallationById(id);
+  if (!item || !state.isPlatformAdmin) return;
+  const latestEvents = state.partnerInstallationEvents.filter((event) => event.installation_id === item.id).slice(0, 12);
+  const latestAccess = state.platformAccessLogs.filter((event) => event.installation_id === item.id).slice(0, 8);
+  dialogSave.hidden = true;
+  dialogTitle.textContent = `Partnerská inštalácia: ${item.name}`;
+  dialogBody.innerHTML = `
+    <div class="partner-detail-grid">
+      ${detailItem("Stav", partnerStatusLabel(item.status))}
+      ${detailItem("Verzia", item.appVersion)}
+      ${detailItem("Adresa", item.address)}
+      ${detailItem("Predseda SVB", `${item.chairName} · ${item.chairEmail}`)}
+      ${detailItem("Produkčná URL", item.productionUrl || "Zatiaľ nepridelená")}
+      ${detailItem("GitHub", item.githubRepositoryUrl || "Zatiaľ nepripojený")}
+      ${detailItem("Supabase project ref", item.supabaseProjectRef || "Zatiaľ nepripojený")}
+      ${detailItem("Gmail odosielateľ", item.gmailSenderEmail || "Zatiaľ nepripojený")}
+      ${detailItem("Servisný prístup", item.supportAccessStatus)}
+      ${detailItem("Vytvorené", formatDateTime(item.createdAt))}
+    </div>
+    <h3>Stav služieb</h3>
+    <div class="partner-service-detail">${partnerServiceEntries(item).map(([, label, status]) => `<article class="item compact"><strong>${escapeHtml(label)}</strong><span class="tag ${partnerServiceIsReady(status) ? "vote" : status === "failed" ? "urgent" : "document"}">${escapeHtml(status)}</span></article>`).join("")}</div>
+    <h3>História inštalácie</h3>
+    <div class="list">${latestEvents.map((event) => `<article class="item compact"><div><strong>${escapeHtml(event.summary)}</strong><p class="muted">${escapeHtml(event.event_type)} · ${formatDateTime(event.created_at)}</p></div></article>`).join("") || `<p class="muted">Bez udalostí.</p>`}</div>
+    <h3>Servisné prístupy</h3>
+    <div class="list">${latestAccess.map(platformAccessLogCard).join("") || `<p class="muted">Bez servisných prístupov.</p>`}</div>
+  `;
+  dialog.showModal();
+  enhanceIcons();
+}
+
+function openPartnerEditDialog(id) {
+  const item = partnerInstallationById(id);
+  if (!item || !state.isPlatformAdmin) return;
+  dialogSave.hidden = false;
+  dialogTitle.textContent = `Upraviť partnerskú inštaláciu: ${item.name}`;
+  dialogBody.innerHTML = formFor("partners", item) + fieldsWithValues([
+    ["partnerStatus", "Stav inštalácie", item.status, "select", partnerStatusOptions()],
+    ["partnerGithub", "GitHub repozitár", item.githubRepositoryUrl || ""],
+    ["partnerSupabaseRef", "Supabase project ref", item.supabaseProjectRef || ""],
+    ["partnerVercelProject", "Vercel project ID", item.vercelProjectId || ""]
+  ]);
+  dialogSave.onclick = async (event) => {
+    event.preventDefault();
+    try {
+      await savePartnerInstallationEdit(item);
+      dialog.close();
+      await loadSupabaseData();
+      render();
+    } catch (error) {
+      window.alert(`Úprava partnerskej inštalácie zlyhala: ${error.message}`);
+    }
+  };
+  dialog.showModal();
+  enhanceIcons();
+}
+
+async function savePartnerInstallationEdit(item) {
+  const name = document.querySelector("#title")?.value.trim() || item.name;
+  const address = document.querySelector("#category")?.value.trim() || item.address;
+  const chairName = document.querySelector("#partnerChairName")?.value.trim() || item.chairName;
+  const chairEmail = document.querySelector("#partnerChairEmail")?.value.trim().toLowerCase() || item.chairEmail;
+  const slug = normalizePartnerSlug(document.querySelector("#partnerSlug")?.value || item.slug);
+  const productionUrl = document.querySelector("#partnerProductionUrl")?.value.trim() || null;
+  const status = document.querySelector("#partnerStatus")?.value || item.status;
+  const { error } = await supabaseClient.from("partner_installations").update({
+    name,
+    building_address: address,
+    chair_name: chairName,
+    chair_email: chairEmail,
+    slug,
+    status,
+    plan: document.querySelector("#partnerPlan")?.value || item.plan,
+    gmail_sender_email: document.querySelector("#partnerGmail")?.value.trim().toLowerCase() || null,
+    production_url: productionUrl,
+    github_repository_url: document.querySelector("#partnerGithub")?.value.trim() || null,
+    supabase_project_ref: document.querySelector("#partnerSupabaseRef")?.value.trim() || null,
+    vercel_project_id: document.querySelector("#partnerVercelProject")?.value.trim() || null,
+    notes: document.querySelector("#note")?.value.trim() || null,
+    archived_at: status === "archived" ? new Date().toISOString() : null
+  }).eq("id", item.id);
+  if (error) throw new Error(error.message);
+  await createPartnerEvent(item.id, "installation_updated", `Upravená partnerská inštalácia ${name}`, { status });
+}
+
+function openPartnerSetupDialog(id) {
+  const item = partnerInstallationById(id);
+  if (!item || !state.isPlatformAdmin) return;
+  const job = state.partnerProvisioningJobs.find((entry) => entry.installationId === item.id);
+  const steps = job?.steps?.length ? job.steps : partnerProvisioningSteps();
+  dialogSave.hidden = true;
+  dialogTitle.textContent = `Inštalácia: ${item.name}`;
+  dialogBody.innerHTML = `
+    <article class="notice"><strong>Samostatné služby nového domu</strong><p>Krok potvrďte až po vytvorení alebo autorizovaní účtu patriaceho novému domu. Citlivé tokeny sa nevkladajú do formulára ani do databázy Partnerskej zóny.</p></article>
+    <div class="partner-setup-list">
+      ${steps.map((step, index) => {
+        const currentStatus = item.serviceState?.[step.key] || step.status || "pending";
+        return `<article class="partner-setup-step ${partnerServiceIsReady(currentStatus) ? "is-ready" : ""}"><div class="partner-step-number">${index + 1}</div><div><strong>${escapeHtml(step.label)}</strong><p class="muted">${escapeHtml(currentStatus)}</p></div><div class="row-actions">${partnerServiceIsReady(currentStatus) ? `<button class="ghost" data-partner-step-status="${escapeAttr(item.id)}" data-step-key="${escapeAttr(step.key)}" data-step-value="pending">${icon("rotate-ccw")}<span>Obnoviť</span></button>` : `<button class="primary" data-partner-step-status="${escapeAttr(item.id)}" data-step-key="${escapeAttr(step.key)}" data-step-value="completed">${icon("check")}<span>Potvrdiť krok</span></button>`}</div></article>`;
+      }).join("")}
+    </div>
+  `;
+  if (!dialog.open) dialog.showModal();
+  bindDialogActions();
+  enhanceIcons();
+}
+
+async function updatePartnerStep(installationId, stepKey, stepValue) {
+  const item = partnerInstallationById(installationId);
+  if (!item || !state.isPlatformAdmin) return;
+  const nextState = { ...item.serviceState, [stepKey]: stepValue };
+  const allReady = partnerProvisioningSteps().every((step) => partnerServiceIsReady(nextState[step.key]));
+  const nextStatus = allReady ? "active" : item.status === "draft" ? "awaiting_connections" : item.status;
+  const supportStatus = stepKey === "support_access" && partnerServiceIsReady(stepValue) ? "ready" : stepKey === "support_access" ? "not_configured" : item.supportAccessStatus;
+  const { error } = await supabaseClient.from("partner_installations").update({
+    service_state: nextState,
+    status: nextStatus,
+    support_access_status: supportStatus
+  }).eq("id", item.id);
+  if (error) throw new Error(error.message);
+
+  const job = state.partnerProvisioningJobs.find((entry) => entry.installationId === item.id);
+  if (job) {
+    const nextSteps = partnerProvisioningSteps().map((step) => ({ ...step, status: nextState[step.key] || "pending" }));
+    await supabaseClient.from("partner_provisioning_jobs").update({
+      steps: nextSteps,
+      current_step: allReady ? "completed" : stepKey,
+      status: allReady ? "completed" : "awaiting_authorization",
+      finished_at: allReady ? new Date().toISOString() : null
+    }).eq("id", job.id);
+  }
+  await createPartnerEvent(item.id, "provisioning_step_updated", `Aktualizovaný krok ${stepKey}: ${stepValue}`, { stepKey, stepValue });
+  await loadPlatformData();
+  openPartnerSetupDialog(item.id);
+  render();
+}
+
+async function archivePartnerInstallation(id) {
+  const item = partnerInstallationById(id);
+  if (!item || !state.isPlatformAdmin) return;
+  if (!window.confirm(`Archivovať partnerskú inštaláciu "${item.name}"? Cloudové služby ani dáta sa tým nevymažú.`)) return;
+  const { error } = await supabaseClient.from("partner_installations").update({ status: "archived", archived_at: new Date().toISOString(), support_access_status: "suspended" }).eq("id", item.id);
+  if (error) {
+    window.alert(`Archivácia zlyhala: ${error.message}`);
+    return;
+  }
+  await createPartnerEvent(item.id, "installation_archived", `Archivovaná partnerská inštalácia ${item.name}`);
+  await loadSupabaseData();
+  render();
+}
+
+async function createPartnerEvent(installationId, eventType, summary, metadata = {}) {
+  if (!state.isPlatformAdmin || !state.currentUserId) return;
+  const { error } = await supabaseClient.from("partner_installation_events").insert({ installation_id: installationId, actor_id: state.currentUserId, event_type: eventType, summary, metadata });
+  if (error) throw new Error(error.message);
+}
+
+async function requestPartnerVisit(id) {
+  const item = partnerInstallationById(id);
+  if (!item || !state.isPlatformAdmin || item.supportAccessStatus !== "ready") return;
+  const reason = window.prompt("Uveďte dôvod servisného vstupu do partnerskej inštalácie:", "Technická podpora a kontrola konfigurácie");
+  if (!reason?.trim()) return;
+  const { data: accessLog, error: logError } = await supabaseClient.from("platform_access_logs").insert({
+    installation_id: item.id,
+    platform_admin_id: state.currentUserId,
+    reason: reason.trim(),
+    target_url: item.productionUrl,
+    status: "requested",
+    user_agent: navigator.userAgent
+  }).select("id, session_id").single();
+  if (logError) {
+    window.alert(`Servisný prístup sa nepodarilo zaevidovať: ${logError.message}`);
+    return;
+  }
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("platform-support-session", {
+      body: { installationId: item.id, accessLogId: accessLog.id, reason: reason.trim() }
+    });
+    if (error || data?.error || !data?.actionUrl) throw new Error(data?.error || error?.message || "Partnerská inštalácia zatiaľ nemá nakonfigurovanú servisnú bránu.");
+    await supabaseClient.from("platform_access_logs").update({ status: "issued", metadata: { sessionId: accessLog.session_id } }).eq("id", accessLog.id);
+    window.open(data.actionUrl, "_blank", "noopener");
+  } catch (error) {
+    await supabaseClient.from("platform_access_logs").update({ status: "failed", ended_at: new Date().toISOString(), metadata: { error: error.message } }).eq("id", accessLog.id);
+    window.alert(`Servisný vstup zatiaľ nie je pripravený: ${error.message}`);
+  }
+  await loadPlatformData();
+  render();
+}
+
 function permissionMatrix() {
   const permissions = rolePermissions();
   const communication = communicationPermissions();
@@ -4999,6 +5470,43 @@ function messageThreads() {
 }
 
 function bindViewActions() {
+  document.querySelectorAll("[data-partner-search]").forEach((input) => {
+    input.addEventListener("input", () => {
+      state.partnerSearch = input.value;
+      render();
+      const nextInput = document.querySelector("[data-partner-search]");
+      nextInput?.focus();
+      nextInput?.setSelectionRange(state.partnerSearch.length, state.partnerSearch.length);
+    });
+  });
+
+  document.querySelectorAll("[data-partner-status-filter]").forEach((select) => {
+    select.addEventListener("change", () => {
+      state.partnerStatusFilter = select.value;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-partner-detail]").forEach((button) => {
+    button.addEventListener("click", () => openPartnerDetailDialog(button.dataset.partnerDetail));
+  });
+
+  document.querySelectorAll("[data-partner-edit]").forEach((button) => {
+    button.addEventListener("click", () => openPartnerEditDialog(button.dataset.partnerEdit));
+  });
+
+  document.querySelectorAll("[data-partner-setup]").forEach((button) => {
+    button.addEventListener("click", () => openPartnerSetupDialog(button.dataset.partnerSetup));
+  });
+
+  document.querySelectorAll("[data-partner-archive]").forEach((button) => {
+    button.addEventListener("click", () => archivePartnerInstallation(button.dataset.partnerArchive));
+  });
+
+  document.querySelectorAll("[data-partner-visit]").forEach((button) => {
+    button.addEventListener("click", () => requestPartnerVisit(button.dataset.partnerVisit));
+  });
+
   document.querySelectorAll("[data-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       state.filter = button.dataset.filter;
@@ -5517,6 +6025,17 @@ function bindDialogActions() {
       dialogBody.innerHTML = detailBody("vote", vote);
       bindDialogActions();
       enhanceIcons();
+    });
+  });
+  dialogBody.querySelectorAll("[data-partner-step-status]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        await updatePartnerStep(button.dataset.partnerStepStatus, button.dataset.stepKey, button.dataset.stepValue);
+      } catch (error) {
+        window.alert(`Krok inštalácie sa nepodarilo uložiť: ${error.message}`);
+        button.disabled = false;
+      }
     });
   });
 }
@@ -6801,6 +7320,24 @@ function editTitle(type, item) {
 }
 
 function formFor(type, defaults = {}) {
+  if (type === "partners") {
+    return `
+      <article class="notice partner-install-notice">
+        <strong>Samostatná partnerská inštalácia</strong>
+        <p>Nový dom nebude používať databázu ani cloudové účty SVB Družstevná 386. Sprievodca vytvorí inštalačnú úlohu a bude čakať na pripojenie nového GitHub, Supabase, Vercel a Gmail účtu.</p>
+      </article>
+    ` + fieldsWithValues([
+      ["title", "Názov SVB alebo bytového domu", defaults.name || ""],
+      ["category", "Adresa bytového domu", defaults.address || ""],
+      ["partnerSlug", "Technický názov inštalácie", defaults.slug || "", "text"],
+      ["partnerChairName", "Meno predsedu SVB", defaults.chairName || ""],
+      ["partnerChairEmail", "Email predsedu SVB", defaults.chairEmail || "", "email"],
+      ["partnerPlan", "Režim prevádzky", defaults.plan || "pilot_free", "select", [["pilot_free", "Pilotná bezplatná prevádzka"], ["commercial", "Komerčná prevádzka"], ["internal", "Interná inštalácia"]]],
+      ["partnerGmail", "Nový Gmail odosielací účet", defaults.gmailSenderEmail || "", "email"],
+      ["partnerProductionUrl", "Plánovaná alebo pridelená Vercel URL", defaults.productionUrl || ""],
+      ["note", "Poznámka k inštalácii", defaults.notes || "", "textarea"]
+    ]);
+  }
   if (type === "documents") {
     return fieldsWithValues([
       ["title", "Názov dokumentu", "Pozvánka na schôdzu"],
@@ -7421,8 +7958,103 @@ async function refreshVoteCounts(voteId) {
   if (error) throw new Error(error.message);
 }
 
+function normalizePartnerSlug(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 63);
+}
+
+function partnerProvisioningSteps() {
+  return [
+    { key: "github", label: "Pripojiť nový GitHub účet a vytvoriť súkromný repozitár", status: "pending" },
+    { key: "supabase", label: "Autorizovať nový Supabase účet a vytvoriť projekt", status: "pending" },
+    { key: "vercel", label: "Autorizovať nový Vercel účet a vytvoriť projekt", status: "pending" },
+    { key: "gmail", label: "Vytvoriť a autorizovať nový Gmail účet", status: "pending" },
+    { key: "database", label: "Aplikovať databázové migrácie a Storage pravidlá", status: "pending" },
+    { key: "functions", label: "Nasadiť serverové funkcie a bezpečné secrets", status: "pending" },
+    { key: "chair_invite", label: "Vytvoriť predsedu a odoslať bezpečnú pozvánku", status: "pending" },
+    { key: "support_access", label: "Nakonfigurovať auditovaný servisný prístup Platform Admina", status: "pending" },
+    { key: "verification", label: "Otestovať login, súbory, emaily, PWA a servisný prístup", status: "pending" }
+  ];
+}
+
+async function saveNewPartnerInstallation() {
+  if (!state.isPlatformAdmin || !supabaseClient || !state.currentUserId) return;
+  const name = document.querySelector("#title")?.value.trim() || "";
+  const address = document.querySelector("#category")?.value.trim() || "";
+  const chairName = document.querySelector("#partnerChairName")?.value.trim() || "";
+  const chairEmail = document.querySelector("#partnerChairEmail")?.value.trim().toLowerCase() || "";
+  const slug = normalizePartnerSlug(document.querySelector("#partnerSlug")?.value || name);
+  const plan = document.querySelector("#partnerPlan")?.value || "pilot_free";
+  const gmailSenderEmail = document.querySelector("#partnerGmail")?.value.trim().toLowerCase() || "";
+  const productionUrl = document.querySelector("#partnerProductionUrl")?.value.trim() || "";
+  const notes = document.querySelector("#note")?.value.trim() || "";
+
+  if (!name || !address || !chairName || !chairEmail) throw new Error("Vyplňte názov domu, adresu, meno a email predsedu SVB.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(chairEmail)) throw new Error("Email predsedu SVB nemá platný formát.");
+  if (slug.length < 3) throw new Error("Technický názov inštalácie musí mať aspoň tri znaky.");
+  if (productionUrl && !/^https:\/\//i.test(productionUrl)) throw new Error("Vercel URL musí začínať na https://.");
+
+  const steps = partnerProvisioningSteps();
+  const { data: installation, error } = await supabaseClient.from("partner_installations").insert({
+    slug,
+    name,
+    building_address: address,
+    chair_name: chairName,
+    chair_email: chairEmail,
+    status: "awaiting_connections",
+    plan,
+    app_version: APP_VERSION,
+    production_url: productionUrl || null,
+    gmail_sender_email: gmailSenderEmail || null,
+    service_state: Object.fromEntries(steps.map((step) => [step.key, step.status])),
+    notes: notes || null,
+    created_by: state.currentUserId
+  }).select("*").single();
+  if (error) throw new Error(error.message);
+
+  const { error: jobError } = await supabaseClient.from("partner_provisioning_jobs").insert({
+    installation_id: installation.id,
+    requested_by: state.currentUserId,
+    status: "awaiting_authorization",
+    current_step: "connect_services",
+    steps
+  });
+  if (jobError) {
+    await supabaseClient.from("partner_installations").delete().eq("id", installation.id);
+    throw new Error(jobError.message);
+  }
+
+  const { error: eventError } = await supabaseClient.from("partner_installation_events").insert({
+    installation_id: installation.id,
+    actor_id: state.currentUserId,
+    event_type: "installation_created",
+    summary: `Vytvorená požiadavka na novú inštaláciu ${name}`,
+    metadata: { slug, chairEmail, plan }
+  });
+  if (eventError) {
+    await supabaseClient.from("partner_installations").delete().eq("id", installation.id);
+    throw new Error(eventError.message);
+  }
+}
+
 async function saveDialog(type) {
   if (!canCreateInView(type)) return;
+  if (type === "partners") {
+    try {
+      await saveNewPartnerInstallation();
+      dialog.close();
+      await loadSupabaseData();
+      render();
+    } catch (error) {
+      window.alert(`Novú inštaláciu sa nepodarilo vytvoriť: ${error.message}`);
+    }
+    return;
+  }
   const titleValue = document.querySelector("#title")?.value.trim() || "Nová položka";
   const categoryValue = type === "overview" && state.role === "owner"
     ? "Oznam"

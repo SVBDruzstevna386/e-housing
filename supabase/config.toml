@@ -10,3 +10,9 @@ additional_redirect_urls = ["https://e-housing-zeta.vercel.app/**", "http://127.
 
 [storage]
 enabled = true
+
+[functions.platform-support-session]
+verify_jwt = true
+
+[functions.platform-support-login]
+verify_jwt = false

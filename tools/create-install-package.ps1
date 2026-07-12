@@ -1,6 +1,6 @@
 param(
   [string]$PackageName = "e-Housing-Solutions-Licence-clean-install",
-  [string]$AppVersion = "v172"
+  [string]$AppVersion = "v175"
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,8 +12,8 @@ $stagingDir = Join-Path ([System.IO.Path]::GetTempPath()) $fullPackageName
 $zipPath = Join-Path $releaseDir "$fullPackageName.zip"
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
-$excludedPathParts = @(".git", ".vercel", "node_modules", "dist", "build", "release", ".temp")
-$excludedFileNames = @(".env", ".env.local", "gmail-oauth-url.txt", "gmail-oauth-success.txt")
+$excludedPathParts = @(".git", ".vercel", "node_modules", "dist", "build", "release", ".temp", "platform-support-session")
+$excludedFileNames = @(".env", ".env.local", "gmail-oauth-url.txt", "gmail-oauth-success.txt", "20260712020930_platform_partner_zone.sql", "20260712042000_platform_partner_indexes.sql")
 $excludedPackageTools = @("create-install-package.ps1")
 $textExtensions = @(".css", ".env", ".example", ".html", ".js", ".json", ".md", ".ps1", ".sql", ".svg", ".toml", ".ts", ".txt", ".webmanifest")
 
@@ -94,6 +94,8 @@ $sanitizers = @(
 Get-ChildItem -LiteralPath $stagingDir -Recurse -File | Where-Object { Test-IsTextFile $_.FullName } | ForEach-Object {
   $content = [IO.File]::ReadAllText($_.FullName)
   foreach ($entry in $sanitizers) { $content = $content.Replace($entry[0], $entry[1]) }
+  $content = $content.Replace("const PLATFORM_CONTROL_ENABLED = true;", "const PLATFORM_CONTROL_ENABLED = false;")
+  $content = $content -replace '(?ms)^\[functions\.platform-support-session\]\r?\nverify_jwt\s*=\s*true\r?\n?', ''
   Set-Utf8Text -Path $_.FullName -Content $content
 }
 
