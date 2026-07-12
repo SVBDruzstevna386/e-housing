@@ -26,6 +26,23 @@ Medzi databazou SVB Druzstevna 386 a databazou partnerskeho domu sa nekopiruju p
 8. Vytvori sa ucet predsedu, vykona sa kontrola prihlasenia, suborov, emailov, RLS a PWA.
 9. Po uspesnej kontrole sa instalacia oznaci ako aktivna a predsedovi sa odoslu pristupove udaje.
 
+## Inicializacia GitHub repozitara z Partnerskej zony
+
+Pri kroku `GitHub` je v instalacnom okne dostupna akcia `Nahrat cistu instalaciu`. Akcia je urcena pre novy prazdny sukromny repozitar partnerskeho domu.
+
+Centralna Supabase instalacia potrebuje tieto serverove secrets:
+
+```text
+GITHUB_BOOTSTRAP_TOKEN=github_token_s_pristupom_do_cieloveho_repozitara
+GITHUB_TEMPLATE_REPOSITORY=SVBDruzstevna386/e-housing
+GITHUB_TEMPLATE_REF=main
+APP_VERSION=v176
+```
+
+Token musi mat opravnenie zapisovat do cieloveho GitHub repozitara. Neuklada sa do databazy ani do frontend kodu. Ak je repozitar uplne prazdny, funkcia najprv vytvori docasny bootstrap commit cez GitHub Contents API a nasledne ho nahradi cistou instalaciou aplikacie ako prvym pouzitelnym commitom.
+
+Do cistej instalacie sa nekopiruje centralna Partnerska zona, centralna servisna funkcia ani produkcne identifikatory povodneho domu. Hodnoty noveho domu sa doplnia zo zaznamu partnerskej instalacie.
+
 ## Servisny pristup
 
 Servisny pristup je volitelny, kratkodoby a auditovany. Nepouziva heslo predsedu domu.

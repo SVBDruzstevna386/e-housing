@@ -1,19 +1,19 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v175",
+  "latestVersion": "v176",
   "releasedAt": "2026-07-12",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v175 pridáva oddelenú Partnerskú zónu pre Platform Admina, sprievodcu novou inštaláciou a auditovaný servisný prístup k samostatným partnerským inštaláciám.",
+  "summary": "Verzia v176 dopĺňa možnosť nahrať čistú inštaláciu priamo do prázdneho GitHub repozitára z Partnerskej zóny.",
   "changes": [
-    "Platform Admin má samostatnú Partnerskú zónu so zoznamom inštalácií, vyhľadávaním, stavmi a detailom služieb.",
-    "Nová inštalácia používa kontrolovaný postup pre samostatný GitHub, Supabase, Vercel a Gmail účet konkrétneho domu.",
-    "Servisný vstup používa krátkodobý podpísaný odkaz, povinný dôvod vstupu a auditný log.",
-    "Čistý inštalačný balík automaticky vypína centrálnu Partnerskú zónu a neobsahuje jej vydávaciu funkciu."
+    "V inštalačnom kroku GitHub pribudlo tlačidlo na nahratie čistej inštalácie do prázdneho repozitára.",
+    "Nahratie prebieha cez bezpečnú Supabase Edge Function, takže GitHub token nie je nikdy vo frontend kóde.",
+    "Funkcia vie bezpečne inicializovať aj úplne prázdny GitHub repozitár cez bootstrap commit.",
+    "Čistý inštalačný balík naďalej vypína centrálnu Partnerskú zónu a neobsahuje centrálne servisné funkcie."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",
   "updateRequestUrl": "",
   "sourceRepository": "private",
-  "notes": "Aktualizáciu produkčnej inštalácie musí potvrdiť oprávnený správca a vykonať bezpečný deploy proces."
+  "notes": "Na serverovej strane musí byť nastavený Supabase secret GITHUB_BOOTSTRAP_TOKEN s právom zápisu do cieľového GitHub repozitára."
 }

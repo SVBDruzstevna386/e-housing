@@ -270,7 +270,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v175";
+const APP_VERSION = "v176";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
@@ -1335,7 +1335,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v175",
+    appVersion: item.app_version || "v176",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -3933,9 +3933,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=175"],
+        ["Manifest", "manifest.webmanifest?v=176"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v175"]
+        ["Cache", "e-housing-v176"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -5177,13 +5177,26 @@ function openPartnerSetupDialog(id) {
     <div class="partner-setup-list">
       ${steps.map((step, index) => {
         const currentStatus = item.serviceState?.[step.key] || step.status || "pending";
-        return `<article class="partner-setup-step ${partnerServiceIsReady(currentStatus) ? "is-ready" : ""}"><div class="partner-step-number">${index + 1}</div><div><strong>${escapeHtml(step.label)}</strong><p class="muted">${escapeHtml(currentStatus)}</p></div><div class="row-actions">${partnerServiceIsReady(currentStatus) ? `<button class="ghost" data-partner-step-status="${escapeAttr(item.id)}" data-step-key="${escapeAttr(step.key)}" data-step-value="pending">${icon("rotate-ccw")}<span>Obnoviť</span></button>` : `<button class="primary" data-partner-step-status="${escapeAttr(item.id)}" data-step-key="${escapeAttr(step.key)}" data-step-value="completed">${icon("check")}<span>Potvrdiť krok</span></button>`}</div></article>`;
+        return `<article class="partner-setup-step ${partnerServiceIsReady(currentStatus) ? "is-ready" : ""}"><div class="partner-step-number">${index + 1}</div><div><strong>${escapeHtml(step.label)}</strong><p class="muted">${escapeHtml(currentStatus)}</p></div><div class="row-actions">${partnerSetupActions(item, step, currentStatus)}</div></article>`;
       }).join("")}
     </div>
   `;
   if (!dialog.open) dialog.showModal();
   bindDialogActions();
   enhanceIcons();
+}
+
+function partnerSetupActions(item, step, currentStatus) {
+  const manualToggle = partnerServiceIsReady(currentStatus)
+    ? `<button class="ghost" data-partner-step-status="${escapeAttr(item.id)}" data-step-key="${escapeAttr(step.key)}" data-step-value="pending">${icon("rotate-ccw")}<span>Obnoviť</span></button>`
+    : `<button class="primary" data-partner-step-status="${escapeAttr(item.id)}" data-step-key="${escapeAttr(step.key)}" data-step-value="completed">${icon("check")}<span>Potvrdiť krok</span></button>`;
+  if (step.key !== "github" || partnerServiceIsReady(currentStatus)) return manualToggle;
+  const disabled = item.githubRepositoryUrl ? "" : "disabled";
+  const title = item.githubRepositoryUrl ? "Nahrá čistú inštalačnú šablónu do prázdneho repozitára." : "Najprv doplňte GitHub repozitár v detaile partnerskej inštalácie.";
+  return `
+    <button class="primary" data-partner-github-init="${escapeAttr(item.id)}" ${disabled} title="${escapeAttr(title)}">${icon("upload-cloud")}<span>Nahrať čistú inštaláciu</span></button>
+    ${manualToggle}
+  `;
 }
 
 async function updatePartnerStep(installationId, stepKey, stepValue) {
@@ -5214,6 +5227,29 @@ async function updatePartnerStep(installationId, stepKey, stepValue) {
   await loadPlatformData();
   openPartnerSetupDialog(item.id);
   render();
+}
+
+async function initializePartnerGithubRepository(installationId) {
+  const item = partnerInstallationById(installationId);
+  if (!item || !state.isPlatformAdmin) return;
+  if (!item.githubRepositoryUrl) {
+    window.alert("Najprv doplňte GitHub repozitár v detaile partnerskej inštalácie.");
+    return;
+  }
+  const publishableKey = window.prompt("Voliteľné: vložte Supabase publishable key nového projektu. Ak ho ešte nemáte, nechajte pole prázdne a doplníme ho neskôr počas konfigurácie.", "");
+  if (publishableKey === null) return;
+  if (!window.confirm(`Nahrať čistú inštaláciu do repozitára ${item.githubRepositoryUrl}? Repozitár musí byť prázdny.`)) return;
+  const { data, error } = await supabaseClient.functions.invoke("initialize-partner-github", {
+    body: {
+      installationId: item.id,
+      supabasePublishableKey: publishableKey.trim()
+    }
+  });
+  if (error || data?.error) throw new Error(data?.error || error?.message || "GitHub inicializácia zlyhala.");
+  window.alert(`Čistá inštalácia bola nahratá do GitHubu.\nCommit: ${data.commitSha}\nSúbory: ${data.fileCount}`);
+  await loadSupabaseData();
+  render();
+  openPartnerSetupDialog(item.id);
 }
 
 async function archivePartnerInstallation(id) {
@@ -6034,6 +6070,17 @@ function bindDialogActions() {
         await updatePartnerStep(button.dataset.partnerStepStatus, button.dataset.stepKey, button.dataset.stepValue);
       } catch (error) {
         window.alert(`Krok inštalácie sa nepodarilo uložiť: ${error.message}`);
+        button.disabled = false;
+      }
+    });
+  });
+  dialogBody.querySelectorAll("[data-partner-github-init]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        await initializePartnerGithubRepository(button.dataset.partnerGithubInit);
+      } catch (error) {
+        window.alert(`Nahratie čistej inštalácie do GitHubu zlyhalo: ${error.message}`);
         button.disabled = false;
       }
     });

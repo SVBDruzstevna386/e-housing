@@ -14,5 +14,8 @@ enabled = true
 [functions.platform-support-session]
 verify_jwt = true
 
+[functions.initialize-partner-github]
+verify_jwt = true
+
 [functions.platform-support-login]
 verify_jwt = false
