@@ -10,6 +10,8 @@ const state = {
   passwords: {},
   filter: "all",
   calendarMonth: new Date().toISOString().slice(0, 7),
+  activityRoleFilter: "all",
+  activityMonthFilter: new Date().toISOString().slice(0, 7),
   documentHistoryFilter: "all",
   messageFilter: "all",
   classifiedFilter: "all",
@@ -136,6 +138,10 @@ const state = {
   loadingMessage: "please wait, e-housing for SVB Družstevná 386 is loading",
   liveChatWidgetCode: "",
   liveChatEnabled: false,
+  systemUpdateManifestUrl: "",
+  systemUpdateStatus: "not_checked",
+  systemUpdateMessage: "",
+  systemUpdateInfo: null,
   pendingDeepLink: null,
   appNotificationsEnabled: false,
   lastNotificationSeenAt: ""
@@ -249,6 +255,8 @@ const LIVE_CHAT_ENABLED_SETTING_KEY = "live_chat_enabled";
 const HELP_TEXTS_SETTING_KEY = "help_text_overrides";
 const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
+const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
+const APP_VERSION = "v172";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
@@ -532,6 +540,10 @@ function defaultWelcomeText() {
 
 function defaultLoadingMessage() {
   return "please wait, e-housing for SVB Družstevná 386 is loading";
+}
+
+function defaultSystemUpdateManifestUrl() {
+  return `${NOTIFICATION_APP_URL}/update-manifest.json`;
 }
 
 const loginScreen = document.querySelector("#loginScreen");
@@ -1243,7 +1255,7 @@ async function loadPublicSettings() {
   const { data } = await supabaseClient
     .from("app_settings")
     .select("key, value")
-    .in("key", [BUILDING_PHOTO_SETTING_KEY, OPERATION_MODE_SETTING_KEY, GDPR_TEXT_SETTING_KEY, GDPR_VERSION_SETTING_KEY, GDPR_REQUIRED_SETTING_KEY, ROLE_PERMISSIONS_SETTING_KEY, COMMUNICATION_PERMISSIONS_SETTING_KEY, LIVE_CHAT_WIDGET_SETTING_KEY, LIVE_CHAT_ENABLED_SETTING_KEY, HELP_TEXTS_SETTING_KEY, WELCOME_TEXT_SETTING_KEY, LOADING_MESSAGE_SETTING_KEY]);
+    .in("key", [BUILDING_PHOTO_SETTING_KEY, OPERATION_MODE_SETTING_KEY, GDPR_TEXT_SETTING_KEY, GDPR_VERSION_SETTING_KEY, GDPR_REQUIRED_SETTING_KEY, ROLE_PERMISSIONS_SETTING_KEY, COMMUNICATION_PERMISSIONS_SETTING_KEY, LIVE_CHAT_WIDGET_SETTING_KEY, LIVE_CHAT_ENABLED_SETTING_KEY, HELP_TEXTS_SETTING_KEY, WELCOME_TEXT_SETTING_KEY, LOADING_MESSAGE_SETTING_KEY, SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY]);
   const settings = new Map((data || []).map((item) => [item.key, item.value]));
   const buildingPhotoPath = settings.get(BUILDING_PHOTO_SETTING_KEY);
   const operationModeText = settings.get(OPERATION_MODE_SETTING_KEY);
@@ -1259,6 +1271,7 @@ async function loadPublicSettings() {
   state.helpTextOverrides = parseHelpTextOverrides(settings.get(HELP_TEXTS_SETTING_KEY));
   state.welcomeText = settings.get(WELCOME_TEXT_SETTING_KEY) || defaultWelcomeText();
   state.loadingMessage = settings.get(LOADING_MESSAGE_SETTING_KEY) || defaultLoadingMessage();
+  state.systemUpdateManifestUrl = settings.get(SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY) || defaultSystemUpdateManifestUrl();
   try {
     localStorage.setItem(LOADING_MESSAGE_CACHE_KEY, state.loadingMessage);
   } catch {}
@@ -2981,8 +2994,10 @@ const views = {
     `;
   },
   activities() {
-    const month = new Date().toISOString().slice(0, 7);
-    const items = state.activities.filter((activity) => activity.month === month);
+    const items = filteredActivities();
+    const roleOptions = activityRoleOptions();
+    const monthOptions = activityMonthOptions();
+    const selectedMonthLabel = state.activityMonthFilter === "all" ? "Všetky mesiace" : formatMonthLabel(state.activityMonthFilter);
     return `
       <section class="panel activities-overview-panel">
         <div class="toolbar">
@@ -2990,20 +3005,34 @@ const views = {
             <h2>Denník predsedu a dozornej rady</h2>
             <p class="muted">Mesačný zápis vlastných aktivít vykonaných pre bytový dom. Záznamy vidia aj vlastníci nehnuteľností.</p>
           </div>
-          <span class="tag document">${month}</span>
+          <span class="tag document">${escapeHtml(selectedMonthLabel)}</span>
+        </div>
+        <div class="activity-filter-row">
+          <div class="field">
+            <label for="activityRoleFilter">Filter podľa role</label>
+            <select id="activityRoleFilter" data-activity-role-filter>
+              ${roleOptions.map(([value, label]) => `<option value="${escapeAttr(value)}" ${state.activityRoleFilter === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field">
+            <label for="activityMonthFilter">Filter podľa mesiaca</label>
+            <select id="activityMonthFilter" data-activity-month-filter>
+              ${monthOptions.map(([value, label]) => `<option value="${escapeAttr(value)}" ${state.activityMonthFilter === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}
+            </select>
+          </div>
         </div>
         <div class="activities-merged-content">
           <div class="activities-merged-section">
-            <div class="list">${(items.length ? items : state.activities).map(activityCard).join("")}</div>
+            <div class="list">${items.length ? items.map(activityCard).join("") : `<article class="notice"><strong>Žiadne záznamy</strong><p>Pre zvolenú rolu a mesiac nie je v denníku zatiaľ evidovaná žiadna aktivita.</p></article>`}</div>
           </div>
           <div class="activities-merged-section">
             <h2>Prehľad hodín</h2>
             <div class="grid three activity-hours-grid">
-              ${activitySummaryCard("Spolu", state.activities.reduce((sum, item) => sum + Number(item.hours || 0), 0))}
-              ${activitySummaryCard("Predseda", state.activities.filter((item) => item.role === "Predseda SVB").reduce((sum, item) => sum + Number(item.hours || 0), 0))}
-              ${activitySummaryCard("Podpredseda", state.activities.filter((item) => item.role === "Podpredseda SVB").reduce((sum, item) => sum + Number(item.hours || 0), 0))}
-              ${activitySummaryCard("Ekonomická správa", state.activities.filter((item) => item.role === "Ekonomická správa").reduce((sum, item) => sum + Number(item.hours || 0), 0))}
-              ${activitySummaryCard("Dozorná rada", state.activities.filter((item) => !["Predseda SVB", "Podpredseda SVB", "Ekonomická správa"].includes(item.role)).reduce((sum, item) => sum + Number(item.hours || 0), 0))}
+              ${activitySummaryCard("Spolu", activityHours(items))}
+              ${activitySummaryCard("Predseda", activityHours(items.filter((item) => item.role === "Predseda SVB")))}
+              ${activitySummaryCard("Podpredseda", activityHours(items.filter((item) => item.role === "Podpredseda SVB")))}
+              ${activitySummaryCard("Ekonomická správa", activityHours(items.filter((item) => item.role === "Ekonomická správa")))}
+              ${activitySummaryCard("Dozorná rada", activityHours(items.filter((item) => !["Predseda SVB", "Podpredseda SVB", "Ekonomická správa"].includes(item.role))))}
             </div>
             <h2>Vedenie a kontakty</h2>
             <div class="list">${state.boardMembers.map(boardMemberCard).join("")}</div>
@@ -3405,6 +3434,7 @@ const views = {
           </div>
           <p class="muted" id="loadingMessageStatus"></p>
         </section>
+        ${systemUpdatesSection()}
         ${websiteIntegrationSection()}
         ${serviceAdminSection()}
         <section class="panel span-all">
@@ -3561,6 +3591,56 @@ function websiteIntegrationIframe() {
 ></iframe>`;
 }
 
+function systemUpdatesSection() {
+  const updateInfo = state.systemUpdateInfo || {};
+  const statusText = state.systemUpdateMessage || "Kontrola aktualizácií ešte nebola spustená.";
+  const hasUpdate = state.systemUpdateStatus === "available";
+  const isCurrent = state.systemUpdateStatus === "current";
+  const statusClass = hasUpdate ? "urgent" : isCurrent ? "document" : "";
+  const releaseUrl = updateInfo.releaseUrl || updateInfo.updateRequestUrl || "";
+  const changes = Array.isArray(updateInfo.changes) ? updateInfo.changes : [];
+  return `
+    <section class="panel span-all system-updates-panel">
+      <div class="toolbar">
+        <div>
+          <h2>Aktualizácie systému</h2>
+          <p class="muted">Bezpečná kontrola dostupnej verzie pre túto aj ďalšie samostatné inštalácie aplikácie.</p>
+        </div>
+        <button class="primary" data-check-system-updates type="button">${icon("refresh-cw")}<span>Skontrolovať aktualizácie</span></button>
+      </div>
+      <div class="grid two">
+        <section class="service-card">
+          <div class="message-head">
+            <div>
+              <h3>Lokálna inštalácia</h3>
+              <p class="muted">Táto aplikácia porovnáva svoju verziu so zvoleným zdrojom aktualizácií.</p>
+            </div>
+            <span class="tag document">${escapeHtml(APP_VERSION)}</span>
+          </div>
+          <div class="field">
+            <label for="systemUpdateManifestUrl">URL manifestu aktualizácií</label>
+            <input id="systemUpdateManifestUrl" type="url" value="${escapeAttr(state.systemUpdateManifestUrl || defaultSystemUpdateManifestUrl())}">
+          </div>
+          <p class="muted">Pre ďalší bytový dom môže mať aplikácia vlastnú URL manifestu alebo spoločný centrálny update zdroj.</p>
+        </section>
+        <section class="service-card">
+          <div class="message-head">
+            <div>
+              <h3>Výsledok kontroly</h3>
+              <p class="muted">Aktualizácia sa nenasadzuje automaticky. Najprv sa len overí dostupná verzia.</p>
+            </div>
+            <span class="tag ${statusClass}">${escapeHtml(updateInfo.latestVersion || APP_VERSION)}</span>
+          </div>
+          <p id="systemUpdateStatus">${escapeHtml(statusText)}</p>
+          ${updateInfo.summary ? `<p>${escapeHtml(updateInfo.summary)}</p>` : ""}
+          ${changes.length ? `<ul class="compact-list">${changes.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+          ${releaseUrl ? `<a class="ghost inline-link" href="${escapeAttr(releaseUrl)}" target="_blank" rel="noopener">${icon("external-link")}<span>Otvoriť detail aktualizácie</span></a>` : ""}
+        </section>
+      </div>
+    </section>
+  `;
+}
+
 function serviceAdminSection() {
   const tawkSrc = extractTawkScriptSrc(state.liveChatWidgetCode);
   const services = [
@@ -3676,9 +3756,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=170"],
+        ["Manifest", "manifest.webmanifest?v=172"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v102"]
+        ["Cache", "e-housing-v172"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -3806,6 +3886,37 @@ function activityCard(activity) {
     </div>
     <div class="row-actions">${adminEditButton("activity", activity.id)}${deleteButton("activity", activity.id, activity)}</div>
   </article>`;
+}
+
+function filteredActivities() {
+  return state.activities.filter((activity) => {
+    const roleMatches = state.activityRoleFilter === "all" || activity.role === state.activityRoleFilter;
+    const monthMatches = state.activityMonthFilter === "all" || activity.month === state.activityMonthFilter;
+    return roleMatches && monthMatches;
+  });
+}
+
+function activityRoleOptions() {
+  const roles = [...new Set(state.activities.map((activity) => activity.role).filter(Boolean))].sort((a, b) => a.localeCompare(b, "sk"));
+  return [["all", "Všetky role"], ...roles.map((role) => [role, role])];
+}
+
+function activityMonthOptions() {
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const months = [...new Set([currentMonth, ...state.activities.map((activity) => activity.month).filter(Boolean)])]
+    .sort((a, b) => b.localeCompare(a));
+  return [["all", "Všetky mesiace"], ...months.map((month) => [month, formatMonthLabel(month)])];
+}
+
+function activityHours(items) {
+  return items.reduce((sum, item) => sum + Number(item.hours || 0), 0);
+}
+
+function formatMonthLabel(value) {
+  const [year, month] = String(value || "").split("-").map(Number);
+  if (!year || !month) return "Neuvedený mesiac";
+  const date = new Date(year, month - 1, 1);
+  return new Intl.DateTimeFormat("sk-SK", { month: "long", year: "numeric" }).format(date);
 }
 
 function activitySummaryCard(label, hours) {
@@ -5077,6 +5188,20 @@ function bindViewActions() {
     });
   });
 
+  document.querySelectorAll("[data-activity-role-filter]").forEach((select) => {
+    select.addEventListener("change", () => {
+      state.activityRoleFilter = select.value;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-activity-month-filter]").forEach((select) => {
+    select.addEventListener("change", () => {
+      state.activityMonthFilter = select.value;
+      render();
+    });
+  });
+
   document.querySelectorAll("[data-calendar-prev]").forEach((button) => {
     button.addEventListener("click", () => {
       shiftCalendarMonth(-1);
@@ -5188,6 +5313,10 @@ function bindViewActions() {
 
   document.querySelectorAll("[data-save-loading-message]").forEach((button) => {
     button.addEventListener("click", () => saveLoadingMessageSettings());
+  });
+
+  document.querySelectorAll("[data-check-system-updates]").forEach((button) => {
+    button.addEventListener("click", () => checkSystemUpdates());
   });
 
   document.querySelectorAll("[data-copy-code]").forEach((button) => {
@@ -6463,6 +6592,101 @@ async function saveLoadingMessageSettings() {
   } catch {}
   syncAppChrome();
   if (status) status.textContent = "Text pri nahrávaní login stránky bol uložený.";
+}
+
+function normalizeVersionNumber(version) {
+  const parts = String(version || "")
+    .replace(/^v/i, "")
+    .split(".")
+    .map((part) => Number.parseInt(part.replace(/\D/g, ""), 10))
+    .filter((part) => Number.isFinite(part));
+  return parts.length ? parts : [0];
+}
+
+function compareAppVersions(currentVersion, latestVersion) {
+  const current = normalizeVersionNumber(currentVersion);
+  const latest = normalizeVersionNumber(latestVersion);
+  const length = Math.max(current.length, latest.length);
+  for (let index = 0; index < length; index += 1) {
+    const currentPart = current[index] || 0;
+    const latestPart = latest[index] || 0;
+    if (latestPart > currentPart) return 1;
+    if (latestPart < currentPart) return -1;
+  }
+  return 0;
+}
+
+function normalizeManifestUrl(value) {
+  const url = new URL(value || defaultSystemUpdateManifestUrl(), window.location.href);
+  if (!["https:", "http:"].includes(url.protocol)) {
+    throw new Error("URL manifestu musí začínať na https:// alebo http://.");
+  }
+  return url.toString();
+}
+
+async function saveSystemUpdateManifestUrl(url) {
+  state.systemUpdateManifestUrl = url;
+  if (!supabaseClient || !state.currentUserId) return;
+  const { error } = await supabaseClient.from("app_settings").upsert({
+    key: SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY,
+    value: url,
+    updated_by: state.currentUserId,
+    updated_at: new Date().toISOString()
+  });
+  if (error) throw new Error(error.message);
+}
+
+async function checkSystemUpdates() {
+  const status = document.querySelector("#systemUpdateStatus");
+  if (!permissionFor(state.role, "settings").write) {
+    if (status) status.textContent = "Nemáte oprávnenie kontrolovať systémové aktualizácie.";
+    return;
+  }
+  let manifestUrl = "";
+  try {
+    manifestUrl = normalizeManifestUrl(document.querySelector("#systemUpdateManifestUrl")?.value.trim());
+  } catch (error) {
+    state.systemUpdateStatus = "error";
+    state.systemUpdateMessage = error.message;
+    state.systemUpdateInfo = null;
+    render();
+    return;
+  }
+  state.systemUpdateStatus = "checking";
+  state.systemUpdateMessage = "Kontrolujem dostupnú verziu systému...";
+  render();
+  try {
+    await saveSystemUpdateManifestUrl(manifestUrl);
+    const response = await fetch(`${manifestUrl}${manifestUrl.includes("?") ? "&" : "?"}t=${Date.now()}`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" }
+    });
+    if (!response.ok) throw new Error(`Manifest sa nepodarilo načítať (${response.status}).`);
+    const manifest = await response.json();
+    if (!manifest || !manifest.latestVersion) throw new Error("Manifest neobsahuje položku latestVersion.");
+    const comparison = compareAppVersions(APP_VERSION, manifest.latestVersion);
+    state.systemUpdateInfo = manifest;
+    if (comparison > 0) {
+      state.systemUpdateStatus = "available";
+      state.systemUpdateMessage = `Je dostupná novšia verzia ${manifest.latestVersion}. Aktuálna verzia tejto inštalácie je ${APP_VERSION}.`;
+    } else if (comparison < 0) {
+      state.systemUpdateStatus = "ahead";
+      state.systemUpdateMessage = `Táto inštalácia má verziu ${APP_VERSION}, ktorá je novšia ako manifest ${manifest.latestVersion}.`;
+    } else {
+      state.systemUpdateStatus = "current";
+      state.systemUpdateMessage = `Táto inštalácia je aktuálna. Používa verziu ${APP_VERSION}.`;
+    }
+    await writeActivityLog("settings", "Kontrola systémových aktualizácií", {
+      relatedTable: "app_settings",
+      relatedId: SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY,
+      metadata: { manifestUrl, currentVersion: APP_VERSION, latestVersion: manifest.latestVersion, status: state.systemUpdateStatus }
+    });
+  } catch (error) {
+    state.systemUpdateStatus = "error";
+    state.systemUpdateMessage = `Kontrola aktualizácií zlyhala: ${error.message}`;
+    state.systemUpdateInfo = null;
+  }
+  render();
 }
 
 async function saveProfilePassword() {

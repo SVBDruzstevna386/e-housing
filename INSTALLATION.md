@@ -4,13 +4,15 @@ Tento subor sluzi ako rychly postup pre vytvorenie samostatnej instalacie aplika
 
 ## 1. Pripravit ucty
 
-Pre kazdy novy dom odporucam samostatne ucty a projekty:
+Pre kazdy novy dom su potrebne samostatne nove ucty a projekty:
 
 - GitHub repozitar,
 - Vercel projekt,
 - Supabase projekt,
 - Gmail ucet pre odosielanie emailov,
 - Google Cloud projekt s Gmail API.
+
+Pouzivatel novej instalacie tieto ucty vytvori alebo k nim pocas instalacie udeli pristup. Nepouzivaju sa ucty ani databaza povodneho domu. Codex moze po udeleni pristupu vykonat technicke nastavenie; registraciu, 2FA, OAuth suhlas a potvrdenie pripadnych nakladov vykonava alebo potvrdzuje vlastnik novej instalacie.
 
 ## 2. Vytvorit GitHub repozitar
 
@@ -22,7 +24,7 @@ Pre kazdy novy dom odporucam samostatne ucty a projekty:
 
 1. Otvorte `https://supabase.com/dashboard`.
 2. Vytvorte novy projekt v EU regione.
-3. Spustite vsetky SQL migracie zo zlozky `supabase/migrations` v poradi podla nazvu suboru.
+3. Prepojte Supabase CLI s novym projektom a spustite `npx.cmd supabase db push`, ktory aplikuje migracie zo zlozky `supabase/migrations`.
 4. Overte, ze su aktivne RLS politiky.
 5. V Supabase Storage overte buckety pre dokumenty a obrazky.
 

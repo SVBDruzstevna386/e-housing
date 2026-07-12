@@ -6,7 +6,7 @@ Vysledkom bude nova LIVE aplikacia s vlastnou URL, vlastnou Supabase databazou, 
 
 ## 1. Co treba pripravit
 
-Pre novy dom odporucam pripravit:
+Pre novy dom treba pripravit alebo pocas instalacie spristupnit nove ucty a projekty:
 
 - nazov SVB alebo domu,
 - email predsedu SVB,
@@ -19,6 +19,8 @@ Pre novy dom odporucam pripravit:
 - Vercel ucet,
 - Supabase ucet,
 - Google Cloud pristup pre Gmail API.
+
+Nova instalacia sa nesmie pripojit k GitHub, Vercel, Supabase ani Gmail uctom povodneho domu. Pouzivatel novej instalacie vytvori nove ucty alebo udeli pristup k uz pripravenym uctom. Codex moze po udeleni pristupu vykonat technicku konfiguraciu, ale registraciu uctov, 2FA, OAuth suhlas a potvrdenie pripadnych nakladov musi vykonat alebo potvrdit vlastnik noveho domu.
 
 ## 2. Odporucana struktura
 
@@ -62,10 +64,11 @@ Tak sa data roznych domov nemiesaju a kazdy dom ma vlastne prihlasovanie, dokume
    - service role key,
    - project ref.
 
-5. Spustite migracie zo zlozky:
+5. Prepojte Supabase CLI s novym projektom a spustite migracie zo zlozky:
 
    ```text
-   supabase/migrations
+   npx.cmd supabase link --project-ref NOVY_PROJECT_REF
+   npx.cmd supabase db push
    ```
 
 6. Overte, ze su vytvorene tabulky:

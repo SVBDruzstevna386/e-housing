@@ -1,10 +1,11 @@
-const CACHE_NAME = "e-housing-v170";
+const CACHE_NAME = "e-housing-v172";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=170",
-  "./app.js?v=170",
-  "./manifest.webmanifest?v=170",
+  "./styles.css?v=172",
+  "./app.js?v=172",
+  "./manifest.webmanifest?v=172",
+  "./update-manifest.json",
   "./favicon.ico",
   "./favicon-16.png",
   "./favicon-32.png",
@@ -18,30 +19,31 @@ const ASSETS = [
   "./assets/cartoon/cartoon-background.webp",
   "./assets/cartoon/cartoon-header-banner.webp",
   "./assets/cartoon/cartoon-owner-overview-banner.webp",
-  "./assets/cartoon/logo-e-housing-cartoon.png?v=170",
-  "./assets/cartoon/icon-overview.png?v=170",
-  "./assets/cartoon/icon-documents.png?v=170",
-  "./assets/cartoon/icon-documentHistory.png?v=170",
-  "./assets/cartoon/icon-votes.png?v=170",
-  "./assets/cartoon/icon-billing.png?v=170",
-  "./assets/cartoon/icon-executions.png?v=170",
-  "./assets/cartoon/icon-finance.png?v=170",
-  "./assets/cartoon/icon-messages.png?v=170",
-  "./assets/cartoon/icon-calendar.png?v=170",
-  "./assets/cartoon/icon-activities.png?v=170",
-  "./assets/cartoon/icon-photoAlbum.png?v=170",
-  "./assets/cartoon/icon-classifieds.png?v=170",
-  "./assets/cartoon/icon-owners.png?v=170",
-  "./assets/cartoon/icon-emails.png?v=170",
-  "./assets/cartoon/icon-logs.png?v=170",
-  "./assets/cartoon/icon-settings.png?v=170",
-  "./assets/cartoon/icon-profile.png?v=170",
-  "./assets/cartoon/icon-pwa.png?v=170",
-  "./assets/cartoon/icon-info.png?v=170"
+  "./assets/cartoon/logo-e-housing-cartoon.png?v=172",
+  "./assets/cartoon/icon-overview.png?v=172",
+  "./assets/cartoon/icon-documents.png?v=172",
+  "./assets/cartoon/icon-documentHistory.png?v=172",
+  "./assets/cartoon/icon-votes.png?v=172",
+  "./assets/cartoon/icon-billing.png?v=172",
+  "./assets/cartoon/icon-executions.png?v=172",
+  "./assets/cartoon/icon-finance.png?v=172",
+  "./assets/cartoon/icon-messages.png?v=172",
+  "./assets/cartoon/icon-calendar.png?v=172",
+  "./assets/cartoon/icon-activities.png?v=172",
+  "./assets/cartoon/icon-photoAlbum.png?v=172",
+  "./assets/cartoon/icon-classifieds.png?v=172",
+  "./assets/cartoon/icon-owners.png?v=172",
+  "./assets/cartoon/icon-emails.png?v=172",
+  "./assets/cartoon/icon-logs.png?v=172",
+  "./assets/cartoon/icon-settings.png?v=172",
+  "./assets/cartoon/icon-profile.png?v=172",
+  "./assets/cartoon/icon-pwa.png?v=172",
+  "./assets/cartoon/icon-info.png?v=172"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -50,6 +52,7 @@ self.addEventListener("activate", (event) => {
       Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
     )
   );
+  event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener("fetch", (event) => {
