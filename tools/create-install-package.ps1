@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$PackageName = "e-Housing-Solutions-Licence-clean-install",
   [string]$AppVersion = "v176"
 )
@@ -13,8 +13,8 @@ $zipPath = Join-Path $releaseDir "$fullPackageName.zip"
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 $excludedPathParts = @(".git", ".vercel", "node_modules", "dist", "build", "release", ".temp", "platform-support-session", "initialize-partner-github")
-$excludedFileNames = @(".env", ".env.local", "gmail-oauth-url.txt", "gmail-oauth-success.txt", "20260712020930_platform_partner_zone.sql", "20260712042000_platform_partner_indexes.sql")
-$excludedPackageTools = @("create-install-package.ps1")
+$excludedFileNames = @(".env", ".env.local", "gmail-oauth-url.txt", "gmail-oauth-success.txt", "202606120001_initial_schema.sql", "20260712020930_platform_partner_zone.sql", "20260712042000_platform_partner_indexes.sql")
+$excludedPackageTools = @("create-install-package.ps1", "create-production-package.ps1")
 $textExtensions = @(".css", ".env", ".example", ".html", ".js", ".json", ".md", ".ps1", ".sql", ".svg", ".toml", ".ts", ".txt", ".webmanifest")
 
 function Get-RelativePath {
@@ -65,6 +65,64 @@ Get-ChildItem -LiteralPath $projectRoot -Recurse -Force | Where-Object {
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $targetPath) | Out-Null
     Copy-Item -LiteralPath $_.FullName -Destination $targetPath -Force
   }
+}
+
+# Supabase requires every migration version to be unique. The development
+# repository contains historical files with shared date prefixes, so the clean
+# package receives a deterministic order that can be pushed in one pass.
+$migrationOrder = @(
+  "20260612_live_app_schema.sql",
+  "20260612_announcements_policy.sql",
+  "20260612_documents_policy_and_links.sql",
+  "20260612_message_threads_parent.sql",
+  "20260612_owner_records.sql",
+  "20260612_role_policy_cleanup.sql",
+  "20260612_security_storage.sql",
+  "20260612_vote_recount_rpc.sql",
+  "20260613_billing_settlements.sql",
+  "20260613_delete_actions_and_operation_mode.sql",
+  "20260613_economic_role.sql",
+  "20260613_execution_cases.sql",
+  "20260613_finance_and_innovation.sql",
+  "20260613_finance_year.sql",
+  "20260613_gdpr_settings.sql",
+  "20260613_public_building_photo.sql",
+  "20260613_vote_questions.sql",
+  "20260614_fix_registration_owner_records.sql",
+  "20260618_owner_profile_correspondence_address.sql",
+  "20260622051911_message_to_chair_email_template.sql",
+  "20260622131212_notification_deep_link_email_template.sql",
+  "20260625150117_fix_admin_role_rls_for_announcements.sql",
+  "20260625150454_harden_announcements_admin_policy.sql",
+  "20260701023330_announcement_document_media_links.sql",
+  "20260702032005_profile_photo_path.sql",
+  "20260702043500_profile_photo_storage_policies.sql",
+  "20260702073500_multi_property_owner_records.sql",
+  "20260702093000_profile_ui_theme.sql",
+  "20260702101500_add_cartoon_3d_ui_theme.sql",
+  "20260703090000_notification_log_delete_policy.sql",
+  "20260707100000_owner_announcement_oznam_insert.sql",
+  "20260707103000_owner_announcement_oznam_update_delete.sql",
+  "20260707110000_classifieds.sql",
+  "20260707111000_classified_categories_chair_only.sql",
+  "20260707120000_classifieds_media.sql",
+  "20260708100000_rename_product_license_text.sql",
+  "20260712025351_platform_support_gateway.sql",
+  "20260712031010_activity_logs_baseline.sql",
+  "20260713004613_reconcile_runtime_schema.sql"
+)
+$stagedMigrations = Join-Path $stagingDir "supabase\migrations"
+$availableMigrations = @(Get-ChildItem -LiteralPath $stagedMigrations -File -Filter "*.sql")
+if ($availableMigrations.Count -ne $migrationOrder.Count) {
+  throw "Unexpected migration count. Expected $($migrationOrder.Count), found $($availableMigrations.Count)."
+}
+for ($index = 0; $index -lt $migrationOrder.Count; $index++) {
+  $source = Join-Path $stagedMigrations $migrationOrder[$index]
+  if (-not (Test-Path -LiteralPath $source)) { throw "Required migration is missing: $($migrationOrder[$index])" }
+  $suffix = $migrationOrder[$index] -replace '^\d+_', ''
+  $version = 20260612001010 + ($index * 10)
+  $target = Join-Path $stagedMigrations ("{0}_{1}" -f $version, $suffix)
+  Move-Item -LiteralPath $source -Destination $target
 }
 
 # Production-specific values are replaced only inside the staged clean-install copy.

@@ -120,13 +120,6 @@ on public.profiles for delete
 to authenticated
 using (app_private.is_chair());
 
-drop policy if exists "vote questions chair write" on public.vote_questions;
-create policy "vote questions chair write"
-on public.vote_questions for all
-to authenticated
-using (app_private.is_chair())
-with check (app_private.is_chair());
-
 drop policy if exists "votes chair write" on public.votes;
 create policy "votes chair write"
 on public.votes for all
