@@ -12,9 +12,9 @@
     <link rel="icon" href="./favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png">
-    <link rel="manifest" href="./manifest.webmanifest?v=179">
+    <link rel="manifest" href="./manifest.webmanifest?v=180">
     <link rel="apple-touch-icon" href="./apple-touch-icon.png">
-    <link rel="stylesheet" href="./styles.css?v=179">
+    <link rel="stylesheet" href="./styles.css?v=180">
   </head>
   <body class="app-loading">
     <div class="app-loading-screen" id="appLoadingScreen" role="status" aria-live="polite">
@@ -201,11 +201,11 @@
       <form method="dialog" class="dialog-card">
         <div class="dialog-head">
           <h2 id="dialogTitle">Nová položka</h2>
-          <button class="icon-btn" value="cancel" aria-label="Zavrieť"><i data-lucide="x"></i></button>
+          <button class="icon-btn" value="cancel" formnovalidate aria-label="Zavrieť"><i data-lucide="x"></i></button>
         </div>
         <div id="dialogBody"></div>
         <div class="dialog-actions">
-          <button class="ghost" value="cancel"><i data-lucide="x-circle"></i><span>Zrušiť</span></button>
+          <button class="ghost" value="cancel" formnovalidate><i data-lucide="x-circle"></i><span>Zrušiť</span></button>
           <button class="primary" id="dialogSave" value="default"><i data-lucide="save"></i><span>Uložiť</span></button>
         </div>
       </form>
@@ -213,6 +213,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./app.js?v=179" defer></script>
+    <script src="./app.js?v=180" defer></script>
   </body>
 </html>

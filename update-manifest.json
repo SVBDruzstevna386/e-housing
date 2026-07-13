@@ -1,15 +1,14 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v179",
+  "latestVersion": "v180",
   "releasedAt": "2026-07-13",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v179 pridáva správu splnomocnení priamo ku konkrétnemu hlasovaniu.",
+  "summary": "Verzia v180 opravuje zatváranie formulára splnomocnenia bez vyžadovania povinných polí.",
   "changes": [
-    "Pri každom hlasovaní je dostupné tlačidlo Splnomocnenie pre všetky prihlásené role.",
-    "Formulár vychádza zo vzoru SVB a je viazaný na konkrétne hlasovanie, používateľa a nehnuteľnosť.",
-    "Uložené splnomocnenie možno upraviť, vytlačiť alebo vymazať.",
-    "Citlivé údaje chráni RLS: používateľ spravuje vlastný záznam a predseda SVB má administrátorský prístup."
+    "Krížik X zatvorí formulár splnomocnenia aj pri nevyplnených povinných poliach.",
+    "Tlačidlo Zrušiť zatvorí formulár bez spustenia validácie.",
+    "Validácia povinných polí zostáva aktívna pri ukladaní splnomocnenia."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",
