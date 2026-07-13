@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v178",
-  "releasedAt": "2026-07-12",
+  "latestVersion": "v179",
+  "releasedAt": "2026-07-13",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v178 upravuje označenie finančného ukazovateľa v grafoch hospodárenia.",
+  "summary": "Verzia v179 pridáva správu splnomocnení priamo ku konkrétnemu hlasovaniu.",
   "changes": [
-    "V inštalačnom kroku GitHub pribudlo tlačidlo na nahratie čistej inštalácie do prázdneho repozitára.",
-    "Nahratie prebieha cez bezpečnú Supabase Edge Function, takže GitHub token nie je nikdy vo frontend kóde.",
-    "Funkcia vie bezpečne inicializovať aj úplne prázdny GitHub repozitár cez bootstrap commit.",
-    "Čistý inštalačný balík naďalej vypína centrálnu Partnerskú zónu a neobsahuje centrálne servisné funkcie."
+    "Pri každom hlasovaní je dostupné tlačidlo Splnomocnenie pre všetky prihlásené role.",
+    "Formulár vychádza zo vzoru SVB a je viazaný na konkrétne hlasovanie, používateľa a nehnuteľnosť.",
+    "Uložené splnomocnenie možno upraviť, vytlačiť alebo vymazať.",
+    "Citlivé údaje chráni RLS: používateľ spravuje vlastný záznam a predseda SVB má administrátorský prístup."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",

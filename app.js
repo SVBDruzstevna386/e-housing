@@ -21,6 +21,7 @@ const state = {
   innovationIdeas: [],
   innovationComments: [],
   voteComments: [],
+  voteProxies: [],
   activityLogs: [],
   profiles: [],
   classifiedCategories: ["Predám", "Kúpim", "Darujem", "Zháňam"],
@@ -270,7 +271,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v178";
+const APP_VERSION = "v179";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
@@ -1222,7 +1223,7 @@ async function ensureCurrentProfile(user) {
 
 async function loadSupabaseData() {
   if (!supabaseClient || !state.loggedIn) return;
-  const [profiles, ownerRecords, categories, classifiedCategories, documents, billingSettlements, executionCases, financeEntries, innovationIdeas, innovationComments, announcements, events, messages, votes, voteQuestions, voteAnswers, voteComments, activities, photos, classifieds, templates, notifications, activityLogs] = await Promise.all([
+  const [profiles, ownerRecords, categories, classifiedCategories, documents, billingSettlements, executionCases, financeEntries, innovationIdeas, innovationComments, announcements, events, messages, votes, voteQuestions, voteAnswers, voteComments, voteProxies, activities, photos, classifieds, templates, notifications, activityLogs] = await Promise.all([
     supabaseClient.from("profiles").select("*").order("created_at", { ascending: true }),
     supabaseClient.from("owner_records").select("*").order("flat_number", { ascending: true }),
     supabaseClient.from("document_categories").select("*").order("sort_order", { ascending: true }),
@@ -1240,6 +1241,7 @@ async function loadSupabaseData() {
     supabaseClient.from("vote_questions").select("*").order("sort_order", { ascending: true }),
     supabaseClient.from("vote_answers").select("vote_id, question_id, profile_id, owner_record_id, comment, answer, voter:profiles!vote_answers_profile_id_fkey(full_name, flat_number, email), owner_record:owner_records!vote_answers_owner_record_id_fkey(full_name, flat_number, login_email)"),
     supabaseClient.from("vote_comments").select("*, author:profiles!vote_comments_profile_id_fkey(full_name, role, flat_number), recipient:profiles!vote_comments_recipient_id_fkey(full_name, role)").order("created_at", { ascending: true }),
+    supabaseClient.from("vote_proxies").select("*").order("updated_at", { ascending: false }),
     supabaseClient.from("activities").select("*").order("created_at", { ascending: false }),
     supabaseClient.from("photos").select("*, creator:profiles!photos_created_by_fkey(full_name, role)").order("created_at", { ascending: false }),
     supabaseClient.from("classifieds").select("*, creator:profiles!classifieds_created_by_fkey(full_name, role, flat_number, email)").order("created_at", { ascending: false }),
@@ -1275,6 +1277,7 @@ async function loadSupabaseData() {
   if (events.data) state.events = events.data.map(dbEventToCard).sort(sortByEventDateAsc);
   if (messages.data) state.messages = messages.data.map(dbMessageToCard);
   if (voteComments.data) state.voteComments = voteComments.data.map(dbVoteCommentToCard);
+  if (voteProxies.data) state.voteProxies = voteProxies.data.map(dbVoteProxyToCard);
   if (votes.data) state.votes = votes.data.map((item) => dbVoteToCard(item, voteAnswers.data || [], voteQuestions.data || [], state.voteComments));
   if (activities.data) state.activities = activities.data.map(dbActivityToCard);
   if (photos.data) state.photos = await Promise.all(photos.data.map(dbPhotoToCard));
@@ -1335,7 +1338,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v178",
+    appVersion: item.app_version || "v179",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -1663,6 +1666,29 @@ function dbVoteCommentToCard(item) {
     body: item.body,
     date: item.created_at,
     updatedAt: item.updated_at || null
+  };
+}
+
+function dbVoteProxyToCard(item) {
+  return {
+    id: item.id,
+    voteId: item.vote_id,
+    grantorProfileId: item.grantor_profile_id,
+    ownerRecordId: item.owner_record_id || "",
+    grantorFullName: item.grantor_full_name || "",
+    grantorBirthDate: item.grantor_birth_date || "",
+    grantorPermanentAddress: item.grantor_permanent_address || "",
+    propertyNumber: item.property_number || "",
+    proxyFullName: item.proxy_full_name || "",
+    proxyBirthDate: item.proxy_birth_date || "",
+    proxyPermanentAddress: item.proxy_permanent_address || "",
+    proxyIdentityDocument: item.proxy_identity_document || "",
+    meetingDate: item.meeting_date || "",
+    signaturePlace: item.signature_place || "",
+    signatureDate: item.signature_date || "",
+    verificationAcknowledged: Boolean(item.official_verification_acknowledged),
+    createdAt: item.created_at || "",
+    updatedAt: item.updated_at || ""
   };
 }
 
@@ -3933,9 +3959,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=178"],
+        ["Manifest", "manifest.webmanifest?v=179"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v178"]
+        ["Cache", "e-housing-v179"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -4774,6 +4800,7 @@ function voteCard(vote) {
       </div>
       <ol class="question-list vote-question-stats">${questions.map((question) => `<li><span>${escapeHtml(question.text)}</span><div class="tag-row"><span class="tag vote">Za ${question.yes || 0}</span><span class="tag">Proti ${question.no || 0}</span><span class="tag">Zdržal sa ${question.abstain || 0}</span>${question.myAnswer ? `<span class="tag document">Môj hlas: ${escapeHtml(question.myAnswer)}</span>` : ""}</div></li>`).join("")}</ol>
       ${myVoteStatus(vote)}
+      ${myVoteProxyStatus(vote)}
       <div class="progress" aria-label="Celkový podiel hlasov za"><span style="width:${percent}%"></span></div>
       <div class="tag-row"><span class="tag vote">Spolu za ${vote.yes}</span><span class="tag">Spolu proti ${vote.no}</span><span class="tag">Spolu zdržal sa ${vote.abstain}</span><span class="tag">${total} hlasov spolu</span></div>
       ${voteThread(vote)}
@@ -4783,16 +4810,43 @@ function voteCard(vote) {
 }
 
 function voteActions(vote, cancelled) {
+  const proxyAction = voteProxyButton(vote);
+  const commentAction = communicationPermissionFor(state.role, "voteComments")
+    ? `<button class="ghost" data-vote-comment="${vote.id}">${icon("message-circle")}<span>Komentovať</span></button>`
+    : "";
   if (state.role === "owner") {
-    if (cancelled || isVoteClosed(vote)) return communicationPermissionFor(state.role, "voteComments") ? `<button class="ghost" data-vote-comment="${vote.id}">${icon("message-circle")}<span>Komentovať</span></button>` : "";
-    return `${communicationPermissionFor(state.role, "voteComments") ? `<button class="ghost" data-vote-comment="${vote.id}">${icon("message-circle")}<span>Komentovať</span></button>` : ""}<button class="primary" data-vote-answer="${vote.id}">${icon("check-circle")}<span>${hasMyVote(vote) ? "Zmeniť hlas" : "Hlasovať"}</span></button>`;
+    if (cancelled || isVoteClosed(vote)) return `${proxyAction}${commentAction}`;
+    return `${proxyAction}${commentAction}<button class="primary" data-vote-answer="${vote.id}">${icon("check-circle")}<span>${hasMyVote(vote) ? "Zmeniť hlas" : "Hlasovať"}</span></button>`;
   }
   if (state.role !== "chair") {
-    return `${communicationPermissionFor(state.role, "voteComments") ? `<button class="ghost" data-vote-comment="${vote.id}">${icon("message-circle")}<span>Komentovať</span></button>` : ""}${!cancelled && !isVoteClosed(vote) ? `<button class="primary" data-vote-answer="${vote.id}">${icon("check-circle")}<span>${hasMyVote(vote) ? "Zmeniť hlas" : "Hlasovať"}</span></button>` : ""}`;
+    return `${proxyAction}${commentAction}${!cancelled && !isVoteClosed(vote) ? `<button class="primary" data-vote-answer="${vote.id}">${icon("check-circle")}<span>${hasMyVote(vote) ? "Zmeniť hlas" : "Hlasovať"}</span></button>` : ""}`;
   }
   return cancelled
-    ? `<button class="ghost" data-detail="vote" data-id="${vote.id}">${icon("info")}<span>Detail</span></button>${adminEditButton("vote", vote.id)}${deleteButton("vote", vote.id, vote)}`
-    : `<button class="ghost" data-detail="vote" data-id="${vote.id}">${icon("info")}<span>Detail</span></button>${adminEditButton("vote", vote.id)}${canEditItem("vote") ? `<button class="ghost" data-cancel-vote="${vote.id}">${icon("ban")}<span>Zrušiť</span></button>` : ""}${deleteButton("vote", vote.id, vote)}${communicationPermissionFor(state.role, "voteComments") ? `<button class="ghost" data-vote-comment="${vote.id}">${icon("message-circle")}<span>Komentovať</span></button>` : ""}<button class="primary" data-vote-answer="${vote.id}">${icon("check-circle")}<span>${hasMyVote(vote) ? "Zmeniť hlas" : "Hlasovať"}</span></button>`;
+    ? `<button class="ghost" data-detail="vote" data-id="${vote.id}">${icon("info")}<span>Detail</span></button>${adminEditButton("vote", vote.id)}${deleteButton("vote", vote.id, vote)}${proxyAction}`
+    : `<button class="ghost" data-detail="vote" data-id="${vote.id}">${icon("info")}<span>Detail</span></button>${adminEditButton("vote", vote.id)}${canEditItem("vote") ? `<button class="ghost" data-cancel-vote="${vote.id}">${icon("ban")}<span>Zrušiť</span></button>` : ""}${deleteButton("vote", vote.id, vote)}${proxyAction}${commentAction}<button class="primary" data-vote-answer="${vote.id}">${icon("check-circle")}<span>${hasMyVote(vote) ? "Zmeniť hlas" : "Hlasovať"}</span></button>`;
+}
+
+function voteProxyForCurrentProperty(voteId) {
+  const owner = currentOwner();
+  const userProxies = state.voteProxies.filter((item) => (
+    String(item.voteId) === String(voteId)
+    && item.grantorProfileId === state.currentUserId
+  ));
+  if (!owner?.id) return userProxies[0] || null;
+  return userProxies.find((item) => String(item.ownerRecordId) === String(owner.id))
+    || userProxies.find((item) => item.propertyNumber === owner.flat)
+    || null;
+}
+
+function voteProxyButton(vote) {
+  const existing = voteProxyForCurrentProperty(vote.id);
+  return `<button class="ghost" data-vote-proxy="${vote.id}">${icon("file-signature")}<span>${existing ? "Upraviť splnomocnenie" : "Splnomocnenie"}</span></button>`;
+}
+
+function myVoteProxyStatus(vote) {
+  const proxy = voteProxyForCurrentProperty(vote.id);
+  if (!proxy) return "";
+  return `<div class="notice vote-status"><strong>Splnomocnenie je uložené</strong><p>Splnomocnenec: ${escapeHtml(proxy.proxyFullName)} · nehnuteľnosť č. ${escapeHtml(proxy.propertyNumber)}</p><p class="muted">Dokument vytlačte a podpis splnomocniteľa nechajte úradne overiť.</p></div>`;
 }
 
 function hasMyVote(vote) {
@@ -5606,6 +5660,10 @@ function bindViewActions() {
     button.addEventListener("click", () => openVoteDialog(button.dataset.voteAnswer));
   });
 
+  document.querySelectorAll("[data-vote-proxy]").forEach((button) => {
+    button.addEventListener("click", () => openVoteProxyDialog(button.dataset.voteProxy));
+  });
+
   document.querySelectorAll("[data-vote-comment]").forEach((button) => {
     button.addEventListener("click", () => openVoteCommentDialog(button.dataset.voteComment));
   });
@@ -6315,6 +6373,171 @@ function detailBody(type, item) {
     `;
   }
   return `<article class="card"><p>Detail položky je dostupný v príslušnej záložke.</p></article>`;
+}
+
+function voteProxyAddress(profile) {
+  return [profile?.correspondenceStreet, profile?.correspondencePostalCode, profile?.correspondenceCity].filter(Boolean).join(", ");
+}
+
+function voteProxyInput(id, label, value = "", type = "text", options = "") {
+  return `<div class="field"><label for="${id}">${label}</label><input id="${id}" type="${type}" value="${escapeAttr(value)}" ${options}></div>`;
+}
+
+function openVoteProxyDialog(id) {
+  const vote = state.votes.find((item) => String(item.id) === String(id));
+  if (!vote || !state.currentUserId) return;
+  const existing = voteProxyForCurrentProperty(vote.id);
+  const profile = currentProfile();
+  const owner = currentOwner();
+  const meetingDate = String(existing?.meetingDate || vote.closes || new Date().toISOString()).slice(0, 10);
+  const signatureDate = existing?.signatureDate || new Date().toISOString().slice(0, 10);
+  dialogSave.hidden = false;
+  dialogTitle.textContent = `${existing ? "Upraviť" : "Vytvoriť"} splnomocnenie: ${vote.title}`;
+  dialogBody.innerHTML = `
+    <div class="notice">
+      <strong>Elektronická príprava splnomocnenia</strong>
+      <p>Splnomocnenie je naviazané na hlasovanie „${escapeHtml(vote.title)}“ a nehnuteľnosť č. ${escapeHtml(existing?.propertyNumber || owner?.flat || profile?.flat || "")}. Podpis splnomocniteľa musí byť pred použitím dokumentu úradne overený.</p>
+    </div>
+    <section class="card">
+      <h3>1. Splnomocniteľ</h3>
+      <div class="grid two">
+        ${voteProxyInput("proxyGrantorFullName", "Meno a priezvisko", existing?.grantorFullName || profile?.name || "", "text", "required")}
+        ${voteProxyInput("proxyGrantorBirthDate", "Dátum narodenia", existing?.grantorBirthDate || "", "date", "required")}
+        ${voteProxyInput("proxyGrantorPermanentAddress", "Trvalý pobyt", existing?.grantorPermanentAddress || voteProxyAddress(profile), "text", "required")}
+        ${voteProxyInput("proxyPropertyNumber", "Byt / nebytový priestor č.", existing?.propertyNumber || owner?.flat || profile?.flat || "", "text", "required")}
+      </div>
+    </section>
+    <section class="card">
+      <h3>2. Splnomocnenec</h3>
+      <div class="grid two">
+        ${voteProxyInput("proxyFullName", "Meno a priezvisko", existing?.proxyFullName || "", "text", "required")}
+        ${voteProxyInput("proxyBirthDate", "Dátum narodenia", existing?.proxyBirthDate || "", "date", "required")}
+        ${voteProxyInput("proxyPermanentAddress", "Trvalý pobyt", existing?.proxyPermanentAddress || "", "text", "required")}
+        ${voteProxyInput("proxyIdentityDocument", "Číslo OP / iný identifikačný údaj", existing?.proxyIdentityDocument || "", "text", "required autocomplete=\"off\"")}
+      </div>
+    </section>
+    <section class="card">
+      <h3>3. Schôdza a podpis</h3>
+      <p>Splnomocnenec je oprávnený zastupovať splnomocniteľa v plnom rozsahu, zúčastniť sa schôdze, podpísať prezenčnú listinu, vyjadrovať sa a hlasovať pri všetkých bodoch programu, návrhoch, protinávrhoch, voľbách a uzneseniach podľa vlastného uváženia.</p>
+      <div class="grid three">
+        ${voteProxyInput("proxyMeetingDate", "Dátum schôdze", meetingDate, "date", "required")}
+        ${voteProxyInput("proxySignaturePlace", "Miesto podpisu", existing?.signaturePlace || "Šaľa", "text", "required")}
+        ${voteProxyInput("proxySignatureDate", "Dátum podpisu", signatureDate, "date", "required")}
+      </div>
+      <label class="checkbox-row"><input id="proxyVerificationAcknowledged" type="checkbox" ${existing?.verificationAcknowledged ? "checked" : ""} required><span>Beriem na vedomie, že podpis splnomocniteľa musí byť úradne overený a elektronické uloženie samo osebe nenahrádza úradne overený podpis.</span></label>
+    </section>
+    ${existing ? `<div class="row-actions"><button class="ghost" type="button" data-print-vote-proxy>${icon("printer")}<span>Vytlačiť splnomocnenie</span></button><button class="ghost danger" type="button" data-delete-vote-proxy>${icon("trash-2")}<span>Vymazať splnomocnenie</span></button></div>` : ""}
+  `;
+  dialogBody.querySelector("[data-print-vote-proxy]")?.addEventListener("click", () => printVoteProxy(existing, vote));
+  dialogBody.querySelector("[data-delete-vote-proxy]")?.addEventListener("click", () => deleteVoteProxy(existing, vote));
+  dialogSave.onclick = async (event) => {
+    event.preventDefault();
+    await saveVoteProxy(vote, existing);
+  };
+  dialog.showModal();
+  enhanceIcons();
+}
+
+function voteProxyFormPayload(vote) {
+  const value = (id) => document.querySelector(`#${id}`)?.value.trim() || "";
+  const owner = currentOwner();
+  return {
+    vote_id: vote.id,
+    grantor_profile_id: state.currentUserId,
+    owner_record_id: owner?.id || null,
+    grantor_full_name: value("proxyGrantorFullName"),
+    grantor_birth_date: value("proxyGrantorBirthDate") || null,
+    grantor_permanent_address: value("proxyGrantorPermanentAddress"),
+    property_number: value("proxyPropertyNumber"),
+    proxy_full_name: value("proxyFullName"),
+    proxy_birth_date: value("proxyBirthDate") || null,
+    proxy_permanent_address: value("proxyPermanentAddress"),
+    proxy_identity_document: value("proxyIdentityDocument"),
+    meeting_date: value("proxyMeetingDate"),
+    signature_place: value("proxySignaturePlace"),
+    signature_date: value("proxySignatureDate"),
+    official_verification_acknowledged: Boolean(document.querySelector("#proxyVerificationAcknowledged")?.checked)
+  };
+}
+
+async function saveVoteProxy(vote, existing) {
+  const payload = voteProxyFormPayload(vote);
+  const required = [payload.grantor_full_name, payload.grantor_birth_date, payload.grantor_permanent_address, payload.property_number, payload.proxy_full_name, payload.proxy_birth_date, payload.proxy_permanent_address, payload.proxy_identity_document, payload.meeting_date, payload.signature_place, payload.signature_date];
+  if (required.some((item) => !item)) {
+    window.alert("Vyplňte všetky povinné údaje splnomocnenia.");
+    return;
+  }
+  if (!payload.official_verification_acknowledged) {
+    window.alert("Pred uložením potvrďte upozornenie o úradnom overení podpisu.");
+    return;
+  }
+  try {
+    if (supabaseClient) {
+      const query = existing
+        ? supabaseClient.from("vote_proxies").update(payload).eq("id", existing.id)
+        : supabaseClient.from("vote_proxies").insert(payload);
+      const { error } = await query;
+      if (error) throw new Error(error.message);
+      await writeActivityLog(existing ? "update" : "create", `${existing ? "Úprava" : "Vytvorenie"} splnomocnenia k hlasovaniu: ${vote.title}`, {
+        relatedTable: "vote_proxies",
+        relatedId: existing?.id || vote.id,
+        metadata: { voteId: vote.id, propertyNumber: payload.property_number }
+      });
+      await loadSupabaseData();
+    } else if (existing) {
+      Object.assign(existing, dbVoteProxyToCard({ id: existing.id, ...payload, updated_at: new Date().toISOString() }));
+    } else {
+      state.voteProxies.unshift(dbVoteProxyToCard({ id: String(Date.now()), ...payload, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }));
+    }
+    dialog.close();
+    render();
+    window.alert("Splnomocnenie bolo uložené. Pred použitím ho vytlačte a zabezpečte úradné overenie podpisu splnomocniteľa.");
+  } catch (error) {
+    window.alert(`Splnomocnenie sa nepodarilo uložiť: ${error.message}`);
+  }
+}
+
+async function deleteVoteProxy(proxy, vote) {
+  if (!proxy || !window.confirm("Naozaj chcete vymazať toto splnomocnenie?")) return;
+  try {
+    if (supabaseClient) {
+      const { error } = await supabaseClient.from("vote_proxies").delete().eq("id", proxy.id);
+      if (error) throw new Error(error.message);
+      await writeActivityLog("delete", `Vymazanie splnomocnenia k hlasovaniu: ${vote.title}`, {
+        relatedTable: "vote_proxies",
+        relatedId: proxy.id,
+        metadata: { voteId: vote.id, propertyNumber: proxy.propertyNumber }
+      });
+      await loadSupabaseData();
+    } else {
+      state.voteProxies = state.voteProxies.filter((item) => item.id !== proxy.id);
+    }
+    dialog.close();
+    render();
+  } catch (error) {
+    window.alert(`Splnomocnenie sa nepodarilo vymazať: ${error.message}`);
+  }
+}
+
+function printVoteProxy(proxy, vote) {
+  if (!proxy) return;
+  const printable = window.open("", "_blank", "width=900,height=1000");
+  if (!printable) {
+    window.alert("Pre tlač povoľte v prehliadači vyskakovacie okná.");
+    return;
+  }
+  printable.opener = null;
+  printable.document.write(`<!doctype html><html lang="sk"><head><meta charset="utf-8"><title>Splnomocnenie - ${escapeHtml(vote.title)}</title><style>body{font-family:Arial,sans-serif;color:#111;max-width:800px;margin:30px auto;line-height:1.45}h1{text-align:center;font-size:24px}h2{font-size:17px;margin-top:24px}.meta{border-bottom:1px solid #bbb;padding:5px 0}.warning{font-weight:700;border:2px solid #111;padding:12px;margin:22px 0}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:70px;text-align:center}.line{border-top:1px solid #111;padding-top:8px}@media print{button{display:none}body{margin:0}}</style></head><body>
+    <h1>SPLNOMOCNENIE</h1><p style="text-align:center">na zastupovanie vlastníka bytu / nebytového priestoru na schôdzi vlastníkov</p>
+    <p><strong>Spoločenstvo:</strong> SVB a NP Družstevná 386<br><strong>Sídlo a bytový dom:</strong> Družstevná 386/18, 927 01 Šaľa<br><strong>IČO:</strong> 37962469</p>
+    <h2>1. Splnomocniteľ</h2><p class="meta"><strong>Meno a priezvisko:</strong> ${escapeHtml(proxy.grantorFullName)}</p><p class="meta"><strong>Dátum narodenia:</strong> ${formatDate(proxy.grantorBirthDate)}</p><p class="meta"><strong>Trvalý pobyt:</strong> ${escapeHtml(proxy.grantorPermanentAddress)}</p><p class="meta"><strong>Byt / nebytový priestor č.:</strong> ${escapeHtml(proxy.propertyNumber)}</p>
+    <h2>2. Splnomocnenec</h2><p class="meta"><strong>Meno a priezvisko:</strong> ${escapeHtml(proxy.proxyFullName)}</p><p class="meta"><strong>Dátum narodenia:</strong> ${formatDate(proxy.proxyBirthDate)}</p><p class="meta"><strong>Trvalý pobyt:</strong> ${escapeHtml(proxy.proxyPermanentAddress)}</p><p class="meta"><strong>Číslo OP / iný identifikačný údaj:</strong> ${escapeHtml(proxy.proxyIdentityDocument)}</p>
+    <h2>3. Predmet a rozsah splnomocnenia</h2><p>Splnomocniteľ týmto splnomocňuje splnomocnenca, aby ho v plnom rozsahu zastupoval na schôdzi vlastníkov konanej dňa <strong>${formatDate(proxy.meetingDate)}</strong>, súvisiacej s hlasovaním „${escapeHtml(vote.title)}“.</p><p>Splnomocnenie sa vzťahuje na všetky body programu, hlasovania, návrhy, protinávrhy, procedurálne návrhy, doplnenia a zmeny programu, voľby, uznesenia a rozhodnutia. Splnomocnenec je oprávnený zúčastniť sa schôdze, prezentovať sa, podpisovať prezenčnú listinu, vystupovať, vyjadrovať sa a hlasovať podľa vlastného uváženia.</p>
+    <h2>4. Vyhlásenie splnomocniteľa</h2><p>Splnomocniteľ vyhlasuje, že splnomocnenie udeľuje slobodne, vážne, určito a zrozumiteľne a že splnomocnenec môže konať bez potreby ďalšieho predchádzajúceho súhlasu.</p>
+    <div class="warning">UPOZORNENIE: Podpis splnomocniteľa musí byť úradne overený.</div>
+    <p>V ${escapeHtml(proxy.signaturePlace)} dňa ${formatDate(proxy.signatureDate)}</p><div class="signatures"><div class="line">splnomocniteľ<br>úradne overený podpis</div><div class="line">splnomocnenec<br>podpis splnomocnenca</div></div>
+    <script>window.addEventListener('load',()=>window.print())<\/script></body></html>`);
+  printable.document.close();
 }
 
 function openVoteDialog(id) {

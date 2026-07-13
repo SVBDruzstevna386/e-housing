@@ -118,6 +118,18 @@ values (:'vote_id', :'question_id', :'owner_id', :'owner_record_id', 'Za');
 insert into public.vote_comments (vote_id, profile_id, recipient_id, visibility, body)
 values (:'vote_id', :'owner_id', :'chair_id', 'private_chair', 'Súkromný komentár vlastníka');
 
+insert into public.vote_proxies (
+  vote_id, grantor_profile_id, owner_record_id, grantor_full_name, grantor_birth_date,
+  grantor_permanent_address, property_number, proxy_full_name, proxy_birth_date,
+  proxy_permanent_address, proxy_identity_document, meeting_date, signature_place,
+  signature_date, official_verification_acknowledged
+)
+values (
+  :'vote_id', :'owner_id', :'owner_record_id', 'RLS test vlastník', date '1980-01-01',
+  'RLS test adresa', 'RLS-TEST', 'RLS test splnomocnenec', date '1981-01-01',
+  'RLS test adresa', 'RLS-TEST-ID', current_date, 'Šaľa', current_date, true
+);
+
 insert into public.innovation_ideas (building_id, created_by, title, description, estimated_cost, finance_year)
 values (:'building_id', :'owner_id', 'RLS test podnet vlastníka', 'Transakčný test', 0, extract(year from current_date)::integer)
 returning id as owner_idea_id

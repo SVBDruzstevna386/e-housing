@@ -109,7 +109,9 @@ $migrationOrder = @(
   "20260708100000_rename_product_license_text.sql",
   "20260712025351_platform_support_gateway.sql",
   "20260712031010_activity_logs_baseline.sql",
-  "20260713004613_reconcile_runtime_schema.sql"
+  "20260713004613_reconcile_runtime_schema.sql",
+  "20260713112232_vote_proxies.sql",
+  "20260713113722_optimize_vote_proxy_policies.sql"
 )
 $stagedMigrations = Join-Path $stagingDir "supabase\migrations"
 $availableMigrations = @(Get-ChildItem -LiteralPath $stagedMigrations -File -Filter "*.sql")
