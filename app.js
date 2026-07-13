@@ -270,7 +270,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v176";
+const APP_VERSION = "v178";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
@@ -1335,7 +1335,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v176",
+    appVersion: item.app_version || "v178",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -3933,9 +3933,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=176"],
+        ["Manifest", "manifest.webmanifest?v=178"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v176"]
+        ["Cache", "e-housing-v178"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -4243,7 +4243,7 @@ function financeChart(values) {
     <div class="chart-legend">
       <span><i class="legend-box document"></i>Bankový účet</span>
       <span><i class="legend-box vote"></i>Renovácie</span>
-      <span><i class="legend-box other"></i>Iné výdavky</span>
+      <span><i class="legend-box other"></i>Bankový úver</span>
       <span><i class="legend-box urgent"></i>Podnety</span>
     </div>
   `;
@@ -4254,7 +4254,7 @@ function financeLineChart(values) {
   const series = [
     { key: "balance", label: "Bankový účet", className: "document" },
     { key: "planned", label: "Renovácie", className: "vote" },
-    { key: "other", label: "Iné výdavky", className: "other" },
+    { key: "other", label: "Bankový úver", className: "other" },
     { key: "ideas", label: "Podnety", className: "urgent" }
   ];
   const width = 760;

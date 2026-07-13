@@ -1,10 +1,10 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v176",
+  "latestVersion": "v178",
   "releasedAt": "2026-07-12",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v176 dopĺňa možnosť nahrať čistú inštaláciu priamo do prázdneho GitHub repozitára z Partnerskej zóny.",
+  "summary": "Verzia v178 upravuje označenie finančného ukazovateľa v grafoch hospodárenia.",
   "changes": [
     "V inštalačnom kroku GitHub pribudlo tlačidlo na nahratie čistej inštalácie do prázdneho repozitára.",
     "Nahratie prebieha cez bezpečnú Supabase Edge Function, takže GitHub token nie je nikdy vo frontend kóde.",
