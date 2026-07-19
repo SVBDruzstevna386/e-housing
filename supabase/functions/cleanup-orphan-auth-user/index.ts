@@ -41,12 +41,7 @@ Deno.serve(async (req) => {
 
   if (ownerError) return json({ error: ownerError.message }, 500);
   if (ownerRecord) return json({ cleaned: false, reason: "owner_record_exists" }, 409);
-  if (profile && profile.role !== "owner") return json({ cleaned: false, reason: "non_owner_profile_exists" }, 409);
-
-  const requestedRole = String(authUser.user_metadata?.role || "").toLowerCase();
-  if (!profile && requestedRole && requestedRole !== "owner") {
-    return json({ cleaned: false, reason: "not_owner_account" }, 409);
-  }
+  if (profile) return json({ cleaned: false, reason: "profile_exists" }, 409);
 
   await admin.from("profiles").delete().eq("id", authUser.id);
   const { error: deleteError } = await admin.auth.admin.deleteUser(authUser.id, false);

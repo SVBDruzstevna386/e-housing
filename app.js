@@ -24,7 +24,7 @@ const state = {
   voteProxies: [],
   activityLogs: [],
   profiles: [],
-  classifiedCategories: ["Predám", "Kúpim", "Darujem", "Zháňam"],
+  classifiedCategories: ["Predám", "Kúpim", "Darujem", "Zháňam", "Podporte"],
   logRoleFilter: "all",
   logUserFilter: "all",
   logActivityFilter: "all",
@@ -163,7 +163,7 @@ const titles = {
   billing: "Vyúčtovanie",
   executions: "Exekúcie",
   finance: "Hospodárenie",
-  messages: "Komunikácia",
+  messages: "Nahlás poruchu",
   votes: "Hlasovanie",
   calendar: "Kalendár",
   activities: "Denník",
@@ -271,7 +271,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v180";
+const APP_VERSION = "v188";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
@@ -437,7 +437,7 @@ function applyDeepLinkView() {
 
 function schedulePendingDeepLinkDetail() {
   const link = state.pendingDeepLink;
-  if (!link || !state.loggedIn || isPendingOwner()) return;
+  if (!link || !state.loggedIn || isPendingAuthorization()) return;
   if (link.view && !canAccessView(link.view)) {
     state.pendingDeepLink = null;
     return;
@@ -923,7 +923,7 @@ registerOwnerBtn.addEventListener("click", async () => {
   state.passwords[email] = password;
   if (["vice_chair", "economic", "board"].includes(requestedRole)) {
     const leadershipRole = requestedRole === "vice_chair" ? "Podpredseda SVB" : requestedRole === "economic" ? "Ekonomická správa" : "Člen dozornej rady";
-    state.boardMembers.push({ id: Date.now(), role: leadershipRole, name, email, phone: "", note: `Registrácia role ${leadershipRole} cez úvodné okno` });
+    state.boardMembers.push({ id: Date.now(), role: leadershipRole, name, email, phone: "", note: `Registrácia role ${leadershipRole} cez úvodné okno`, approvalStatus: "pending" });
     state.notificationLog.unshift({ time: "Teraz", type: "Registrácia", subject: name, status: `Účet role ${leadershipRole} bol vytvorený pre ${email}` });
   } else {
     state.owners.push({
@@ -1121,7 +1121,7 @@ async function applyRegistrationSession(session, { requestedRole, name, flat, em
 
   if (["vice_chair", "economic", "board"].includes(requestedRole) && !state.boardMembers.some((member) => member.email === email)) {
     const leadershipRole = requestedRole === "vice_chair" ? "Podpredseda SVB" : requestedRole === "economic" ? "Ekonomická správa" : "Člen dozornej rady";
-    state.boardMembers.push({ id: user.id, role: leadershipRole, name, email, phone: "", note: `Registrácia role ${leadershipRole} cez úvodné okno` });
+    state.boardMembers.push({ id: user.id, role: leadershipRole, name, email, phone: "", note: `Registrácia role ${leadershipRole} cez úvodné okno`, approvalStatus: "pending" });
   }
 
   state.notificationLog.unshift({ time: "Teraz", type: "Registrácia", subject: name, status: `Registrácia bola prijatá pre ${email}` });
@@ -1275,7 +1275,7 @@ async function loadSupabaseData() {
   if (innovationIdeas.data) state.innovationIdeas = await Promise.all(innovationIdeas.data.map(dbInnovationIdeaToCard));
   if (announcements.data) state.announcements = await Promise.all(announcements.data.map(dbAnnouncementToCard));
   if (events.data) state.events = events.data.map(dbEventToCard).sort(sortByEventDateAsc);
-  if (messages.data) state.messages = messages.data.map(dbMessageToCard);
+  if (messages.data) state.messages = await Promise.all(messages.data.map(dbMessageToCard));
   if (voteComments.data) state.voteComments = voteComments.data.map(dbVoteCommentToCard);
   if (voteProxies.data) state.voteProxies = voteProxies.data.map(dbVoteProxyToCard);
   if (votes.data) state.votes = votes.data.map((item) => dbVoteToCard(item, voteAnswers.data || [], voteQuestions.data || [], state.voteComments));
@@ -1338,7 +1338,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v180",
+    appVersion: item.app_version || "v188",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -1541,7 +1541,7 @@ function ownerRecordToOwner(item, profile = null) {
 
 function profileToBoardMember(item) {
   const role = item.role === "chair" ? "Predseda SVB" : item.role === "vice_chair" ? "Podpredseda SVB" : item.role === "economic" ? "Ekonomická správa" : "Člen dozornej rady";
-  return { id: item.id, role, name: item.full_name, flat: item.flat_number || "Nie je viazané na byt", email: item.email, phone: item.phone || "", note: item.note || "Profil vedenia SVB", photoPath: item.profile_photo_path || "", photoUrl: profilePhotoUrl(item.profile_photo_path), uiTheme: normalizeUiTheme(item.ui_theme) };
+  return { id: item.id, role, roleKey: item.role, name: item.full_name, flat: item.flat_number || "Nie je viazané na byt", email: item.email, phone: item.phone || "", note: item.note || "Profil vedenia SVB", approvalStatus: item.approval_status || "pending", photoPath: item.profile_photo_path || "", photoUrl: profilePhotoUrl(item.profile_photo_path), uiTheme: normalizeUiTheme(item.ui_theme) };
 }
 
 async function dbDocumentToCard(item) {
@@ -1603,12 +1603,13 @@ function dbEventToCard(item) {
   return { id: item.id, day: date.getDate(), date: date.toISOString().slice(0, 10), startsAt: item.starts_at, title: item.title, note: item.description || "" };
 }
 
-function dbMessageToCard(item) {
+async function dbMessageToCard(item) {
+  const fileUrl = await signedStorageUrl(item.storage_path);
   const scope = item.scope === "public" ? "Verejná diskusia" : "Súkromná správa";
   const recipient = item.recipient
     ? `${item.recipient.full_name}${item.recipient.flat_number ? ` · ${item.recipient.flat_number}` : ""}`
     : item.recipient_label || (item.scope === "public" ? "Verejná diskusia" : "Súkromný adresát");
-  return { id: item.id, parentId: item.parent_id, senderId: item.sender_id, recipientId: item.recipient_id, recipientLabel: item.recipient_label || recipient, scopeRaw: item.scope, scope, from: item.sender?.full_name || "Používateľ", to: recipient, subject: item.subject, text: item.body, createdAt: item.created_at, date: new Date(item.created_at).toLocaleString("sk-SK"), read: Boolean(item.read_at) };
+  return { id: item.id, parentId: item.parent_id, senderId: item.sender_id, recipientId: item.recipient_id, recipientLabel: item.recipient_label || recipient, scopeRaw: item.scope, scope, from: item.sender?.full_name || "Používateľ", to: recipient, subject: item.subject, text: item.body, createdAt: item.created_at, date: new Date(item.created_at).toLocaleString("sk-SK"), read: Boolean(item.read_at), storagePath: item.storage_path, fileUrl, youtubeUrl: item.youtube_url || "" };
 }
 
 function voteAnswerOwner(answer) {
@@ -1977,8 +1978,17 @@ function canManageClassified(item = null) {
   return Boolean(item?.createdBy && item.createdBy === state.currentUserId);
 }
 
+function isChairBoardMember(member = null) {
+  return member?.roleKey === "chair" || member?.role === "Predseda SVB";
+}
+
+function canManageBoardMember(member = null) {
+  return state.role === "chair" && Boolean(member) && !isChairBoardMember(member);
+}
+
 function canEditItem(type, item = null) {
   if (type === "vote") return state.role === "chair";
+  if (type === "boardMember") return canManageBoardMember(item);
   if (type === "announcement") return canManageAnnouncement(item);
   if (type === "classified") return canManageClassified(item);
   return permissionFor(state.role, viewForItemType(type)).write;
@@ -1986,6 +1996,7 @@ function canEditItem(type, item = null) {
 
 function canDeleteItem(type, item = null) {
   if (type === "vote") return state.role === "chair";
+  if (type === "boardMember") return canManageBoardMember(item);
   if (type === "announcement") return canManageAnnouncement(item);
   if (type === "classified") return canManageClassified(item);
   return permissionFor(state.role, viewForItemType(type)).delete;
@@ -2121,7 +2132,7 @@ function startAppNotificationWatcher() {
   stopAppNotificationWatcher();
   if (!state.loggedIn || !state.currentUserId || !state.appNotificationsEnabled || !appNotificationsSupported() || Notification.permission !== "granted") return;
   notificationPollTimer = window.setInterval(() => checkForNewAppNotifications(), APP_NOTIFICATION_POLL_MS);
-  checkForNewAppNotifications({ silent: true });
+  checkForNewAppNotifications();
 }
 
 function stopAppNotificationWatcher() {
@@ -2449,7 +2460,17 @@ async function writeActivityLog(activityType, activityLabelText, options = {}) {
   }
 }
 
-function isPendingOwner() {
+function currentAccountApprovalStatus() {
+  const profile = state.profiles.find((item) => item.id === state.currentUserId || item.email === state.currentUserEmail);
+  if (profile?.approval_status) return profile.approval_status;
+  if (state.role === "owner") return currentOwner()?.approvalStatus || "pending";
+  const member = state.boardMembers.find((item) => item.id === state.currentUserId || item.email === state.currentUserEmail);
+  return member?.approvalStatus || "approved";
+}
+
+function isPendingAuthorization() {
+  if (state.isPlatformSupportSession) return false;
+  if (currentAccountApprovalStatus() !== "approved") return true;
   const owner = currentOwner();
   return state.role === "owner" && (!owner || owner.approvalStatus !== "approved");
 }
@@ -2630,7 +2651,7 @@ function render() {
     return;
   }
 
-  if (isPendingOwner()) {
+  if (isPendingAuthorization()) {
     title.textContent = "Čaká sa na autorizáciu";
     newItemBtn.hidden = true;
     if (helpBtn) helpBtn.hidden = true;
@@ -2681,15 +2702,19 @@ function updateSidebarSummary() {
 
 function pendingAuthorizationView() {
   const owner = currentOwner();
+  const member = state.role === "owner" ? null : currentBoardMember();
+  const accountEmail = owner?.loginEmail || member?.email || state.currentUserEmail;
+  const accountDetail = state.role === "owner" ? owner?.flat || "Čaká na doplnenie" : roleLabel();
+  const accountStatus = state.role === "owner" ? owner?.accountStatus || "Čaká na autorizáciu" : approvalLabel(currentAccountApprovalStatus());
   return `
     <section class="panel">
       <span class="tag urgent">Registrácia čaká na potvrdenie</span>
       <h2>Váš účet ešte nebol autorizovaný predsedom SVB</h2>
-      <p class="muted">Po registrácii musí predseda SVB overiť, že ste vlastníkom nehnuteľnosti v dome SVB a NP Družstevná 386. Do potvrdenia registrácie nemáte prístup k dokumentom, správam, hlasovaniam ani ostatným údajom domu.</p>
+      <p class="muted">Po registrácii musí predseda SVB overiť vašu identitu a autorizovať požadovanú rolu v dome SVB a NP Družstevná 386. Do potvrdenia registrácie nemáte prístup k dokumentom, správam, hlasovaniam ani ostatným údajom domu.</p>
       <div class="grid three">
-        ${systemCard("Registrovaný email", owner?.loginEmail || state.currentUserEmail)}
-        ${systemCard("Byt", owner?.flat || "Čaká na doplnenie")}
-        ${systemCard("Stav", owner?.accountStatus || "Čaká na autorizáciu")}
+        ${systemCard("Registrovaný email", accountEmail)}
+        ${systemCard(state.role === "owner" ? "Byt" : "Požadovaná rola", accountDetail)}
+        ${systemCard("Stav", accountStatus)}
       </div>
     </section>
   `;
@@ -2707,7 +2732,7 @@ function actionLabel() {
   if (state.view === "activities") return "Pridať záznam";
   if (state.view === "photoAlbum") return "Pridať fotku";
   if (state.view === "classifieds") return "Pridať inzerát";
-  if (state.view === "messages") return "Napísať správu";
+  if (state.view === "messages") return "Zaeviduj poruchu";
   if (state.view === "owners") return "Pridať vlastníka";
   if (state.view === "emails") return "Nová šablóna";
   return "Pridať oznámenie";
@@ -2715,8 +2740,8 @@ function actionLabel() {
 
 function overviewRoleCopy({ pendingOwners, urgentDocuments, unreadMessages, openVotes, nextVote }) {
   const commonSystemCards = [
-    { head: "Dokumenty", body: "Dokumenty a história sú dostupné podľa oprávnení prihlásenej role.", icon: "folder-open" },
-    { head: "Komunikácia", body: "Správy sú dostupné ako verejné vlákna alebo súkromná komunikácia.", icon: "messages-square" },
+    { head: "Dokumenty", body: `${state.documents.length} dokumentov v aktuálnom prehľade${urgentDocuments ? `, z toho ${urgentDocuments} urgentné` : ", bez urgentného dokumentu"}.`, icon: "folder-open" },
+    { head: "Nahlás poruchu", body: unreadMessages ? `${unreadMessages} hlásení čaká na prečítanie alebo kontrolu.` : "Nie sú evidované nové hlásenia porúch.", icon: "messages-square" },
     { head: "PWA", body: "Aplikácia je pripravená na inštaláciu z prehliadača na Android, macOS, iOS aj Windows.", icon: "smartphone" }
   ];
 
@@ -2737,7 +2762,7 @@ function overviewRoleCopy({ pendingOwners, urgentDocuments, unreadMessages, open
       taskTitle: "Moje rýchle odkazy",
       tasks: [
         task("Pozrieť najnovšie dokumenty domu", "Dokumenty", "file-text"),
-        task("Otvoriť komunikáciu s predsedom alebo vlastníkmi", "Komunikácia", "messages-square"),
+        task("Otvoriť hlásenia porúch", "Nahlás poruchu", "messages-square"),
         task("Skontrolovať otvorené hlasovania", "Hlasovania", "vote")
       ].join(""),
       bottomTitle: "Najnovšie dokumenty",
@@ -2785,11 +2810,7 @@ function overviewRoleCopy({ pendingOwners, urgentDocuments, unreadMessages, open
     tasks: overviewTasks({ pendingOwners, urgentDocuments, unreadMessages, openVotes }),
     bottomTitle: "Denník za mesiac",
     bottomHtml: state.activities.slice(0, 3).map(activityCard).join(""),
-    systemCards: [
-      { head: "Prístup", body: "Role sú pripravené pre predsedu, dozornú radu a vlastníkov.", icon: "shield-check" },
-      { head: "Notifikácie", body: "Každé nové oznámenie, dokument, hlasovanie alebo udalosť bude vedieť odoslať email.", icon: "bell-ring" },
-      { head: "PWA", body: "Aplikácia je pripravená na inštaláciu z prehliadača na Android, macOS, iOS aj Windows.", icon: "smartphone" }
-    ]
+    systemCards: commonSystemCards
   };
 }
 
@@ -3012,7 +3033,7 @@ const views = {
           <div class="toolbar messages-toolbar">
             <div>
               <h2>Správy a vlákna</h2>
-              <p class="muted">Čítanie verejných aj súkromných správ podľa oprávnenia role.</p>
+              <p class="muted">V tomto okne môžete sledovať priebeh opráv elektronicky nahlásených porúch.</p>
             </div>
           </div>
           <select class="search below-title-select message-filter-select" data-message-filter>
@@ -3495,12 +3516,28 @@ const views = {
     `;
   },
   owners() {
+    const pendingProfiles = state.boardMembers.filter((member) => (member.approvalStatus || "approved") !== "approved").length;
     return `
       <section class="panel owners-overview-panel">
         <div class="owners-overview-head">
           <h2>Vlastníci a byty</h2>
-          <p class="muted">Vlastníci a byty zobrazuje všetkých registrovaných vlastníkov nehnuteľností.</p>
+          <p class="muted">Vlastníci a byty zobrazuje všetkých registrovaných vlastníkov nehnuteľností a registrácie rolí čakajúce na autorizáciu.</p>
         </div>
+        <section class="profile-merged-section">
+          <div class="toolbar compact-toolbar">
+            <div>
+              <h3>Schvaľovanie rolí vedenia</h3>
+              <p class="muted">Nový podpredseda, dozorná rada alebo ekonomická správa získajú prístup až po autorizácii predsedom SVB.</p>
+            </div>
+            <span class="tag ${pendingProfiles ? "urgent" : "document"}">${pendingProfiles ? `${pendingProfiles} čaká` : "Bez čakajúcich rolí"}</span>
+          </div>
+          <div class="table-wrap">
+            <table class="owner-table">
+              <thead><tr><th>Rola</th><th>Meno</th><th>Email</th><th>Autorizácia</th><th>Poznámka</th><th>Akcie</th></tr></thead>
+              <tbody>${state.boardMembers.map(boardMemberApprovalRow).join("")}</tbody>
+            </table>
+          </div>
+        </section>
         <div class="toolbar">
           <input class="search" data-search placeholder="Hľadať vlastníka alebo byt">
           <span class="tag vote">Evidencia vlastníkov</span>
@@ -3959,9 +3996,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=180"],
+        ["Manifest", "manifest.webmanifest?v=188"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v180"]
+        ["Cache", "e-housing-v188"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -4025,7 +4062,7 @@ function viewForTaskTag(tagText) {
   const map = {
     Vlastníci: "owners",
     Dokumenty: "documents",
-    Komunikácia: "messages",
+    "Nahlás poruchu": "messages",
     Hlasovania: "votes",
     Kalendár: "calendar",
     Denník: "activities"
@@ -4037,7 +4074,7 @@ function overviewTasks({ pendingOwners, urgentDocuments, unreadMessages, openVot
   const tasks = [];
   if (pendingOwners) tasks.push(task(`Schváliť vlastníkov čakajúcich na autorizáciu: ${pendingOwners}`, "Vlastníci"));
   if (urgentDocuments) tasks.push(task(`Skontrolovať urgentné dokumenty: ${urgentDocuments}`, "Dokumenty"));
-  if (unreadMessages) tasks.push(task(`Prečítať nové správy: ${unreadMessages}`, "Komunikácia"));
+  if (unreadMessages) tasks.push(task(`Skontrolovať nové hlásenia: ${unreadMessages}`, "Nahlás poruchu"));
   if (openVotes) tasks.push(task(`Sledovať otvorené hlasovania: ${openVotes}`, "Hlasovania"));
   if (!tasks.length) tasks.push(systemCard("Bez okamžitej úlohy", "V databáze nie je evidovaná žiadna čakajúca aktivácia, urgentný dokument ani neprečítaná správa."));
   return tasks.join("");
@@ -4075,7 +4112,7 @@ function boardMemberCard(member) {
       <div class="tag-row"><span class="tag">${member.email}</span><span class="tag">${member.phone}</span></div>
       <p>${member.note}</p>
     </div>
-    <div class="row-actions">${adminEditButton("boardMember", member.id)}${!["Predseda SVB", "Podpredseda SVB", "Ekonomická správa"].includes(member.role) ? deleteButton("boardMember", member.id, member) : ""}</div>
+    <div class="row-actions">${adminEditButton("boardMember", member.id, member)}${deleteButton("boardMember", member.id, member)}</div>
   </article>`;
 }
 
@@ -4135,7 +4172,7 @@ function deleteButton(type, id, item = null) {
 }
 
 function classifiedCategoryOptions() {
-  return [...new Set(["Predám", "Kúpim", "Darujem", "Zháňam", ...state.classifiedCategories])].filter(Boolean);
+  return [...new Set(["Predám", "Kúpim", "Darujem", "Zháňam", "Podporte", ...state.classifiedCategories])].filter(Boolean);
 }
 
 function classifiedCategoryRow(category) {
@@ -4664,7 +4701,9 @@ function messageCard(message) {
       </div>
       <span class="tag ${message.read ? "" : "urgent"}">${message.read ? "Prečítané" : "Nové"}</span>
     </div>
-    <p>${message.text}</p>
+    <p>${escapeHtml(message.text)}</p>
+    ${mediaPreviewBlock(message)}
+    ${message.fileUrl ? `<div class="row-actions">${documentFileActions(message)}</div>` : ""}
     <div class="tag-row"><span class="tag">${message.scope}</span><span class="tag">${message.date}</span></div>
     ${replies.length ? `<div class="conversation-thread">${replies.map(messageReplyCard).join("")}</div>` : ""}
     <div class="row-actions">${messageActionButtons(message)}</div>
@@ -4992,7 +5031,19 @@ function ownerRow(owner) {
     <td><span class="${debtClass}">${debt}</span></td>
     <td>${formatMoney(owner.debtAmount)}</td>
     <td>${owner.note}</td>
-    <td><div class="row-actions">${["pending", "rejected"].includes(owner.approvalStatus) && canEditItem("owner") ? `<button class="primary" data-approve-owner="${owner.id}">${icon("user-check")}<span>Schváliť</span></button>` : ""}<button class="ghost" data-detail="owner" data-id="${owner.id}">${icon("info")}<span>Detail</span></button>${adminEditButton("owner", owner.id)}${canDeleteItem("owner", owner) ? `<button class="ghost" data-delete-owner="${owner.id}">${icon("trash-2")}<span>Vymazať</span></button>` : ""}</div></td>
+    <td><div class="row-actions">${["pending", "rejected"].includes(owner.approvalStatus) && state.role === "chair" ? `<button class="primary" data-approve-owner="${owner.id}">${icon("user-check")}<span>Schváliť</span></button>` : ""}<button class="ghost" data-detail="owner" data-id="${owner.id}">${icon("info")}<span>Detail</span></button>${adminEditButton("owner", owner.id)}${canDeleteItem("owner", owner) ? `<button class="ghost" data-delete-owner="${owner.id}">${icon("trash-2")}<span>Vymazať</span></button>` : ""}</div></td>
+  </tr>`;
+}
+
+function boardMemberApprovalRow(member) {
+  const approval = approvalLabel(member.approvalStatus || "approved");
+  return `<tr class="searchable" data-text="${escapeAttr([member.role, member.name, member.email, member.note].join(" "))}">
+    <td>${escapeHtml(member.role)}</td>
+    <td>${escapeHtml(member.name)}</td>
+    <td>${escapeHtml(member.email)}</td>
+    <td><span class="tag ${member.approvalStatus === "approved" ? "document" : "urgent"}">${approval}</span></td>
+    <td>${escapeHtml(member.note || "")}</td>
+    <td><div class="row-actions">${["pending", "rejected"].includes(member.approvalStatus || "approved") && canManageBoardMember(member) ? `<button class="primary" data-approve-profile="${member.id}">${icon("user-check")}<span>Schváliť</span></button>` : ""}${adminEditButton("boardMember", member.id, member)}${deleteButton("boardMember", member.id, member)}</div></td>
   </tr>`;
 }
 
@@ -5885,6 +5936,13 @@ function bindViewActions() {
     });
   });
 
+  document.querySelectorAll("[data-approve-profile]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (state.role !== "chair") return;
+      openApproveProfileDialog(button.dataset.approveProfile);
+    });
+  });
+
   document.querySelectorAll("[data-delete-owner]").forEach((button) => {
     button.addEventListener("click", () => {
       if (!canDeleteItem("owner")) return;
@@ -6711,7 +6769,7 @@ async function saveInnovationComment(idea) {
 }
 
 function openApproveOwnerDialog(id) {
-  if (!canEditItem("owner")) return;
+  if (state.role !== "chair") return;
   const owner = state.owners.find((item) => String(item.id) === String(id));
   if (!owner) return;
   dialogSave.hidden = false;
@@ -6732,6 +6790,57 @@ function openApproveOwnerDialog(id) {
   };
   dialog.showModal();
   enhanceIcons();
+}
+
+function openApproveProfileDialog(id) {
+  if (state.role !== "chair") return;
+  const member = state.boardMembers.find((item) => String(item.id) === String(id));
+  if (!member) return;
+  dialogSave.hidden = false;
+  dialogTitle.textContent = `Schváliť rolu: ${member.name}`;
+  dialogBody.innerHTML = `
+    <article class="card">
+      <p class="muted">Po potvrdení bude používateľ autorizovaný pre požadovanú rolu v aplikácii.</p>
+      <div class="detail-grid">
+        ${readonlyField("Rola", member.role)}
+        ${readonlyField("Email", member.email || "Bez emailu")}
+      </div>
+    </article>
+    ${notificationFields("individual", member.id)}
+  `;
+  dialogSave.onclick = async (event) => {
+    event.preventDefault();
+    await approveProfile(member.id, collectNotificationOptions(member.id));
+  };
+  dialog.showModal();
+  enhanceIcons();
+}
+
+async function approveProfile(id, notification = { target: "none", ownerId: "" }) {
+  if (state.role !== "chair") return;
+  const member = state.boardMembers.find((item) => String(item.id) === String(id));
+  if (!member) return;
+  if (supabaseClient && state.currentUserId) {
+    const { error } = await supabaseClient.from("profiles").update({
+      approval_status: "approved",
+      updated_at: new Date().toISOString()
+    }).eq("id", member.id);
+    if (error) {
+      window.alert(`Schválenie roly zlyhalo: ${error.message}`);
+      return;
+    }
+  }
+  member.approvalStatus = "approved";
+  state.notificationLog.unshift({ time: "Teraz", type: "Autorizácia", subject: member.name, status: `Registrácia roly ${member.role} pre ${member.email} bola schválená predsedom SVB` });
+  await writeActivityLog("approve", `Schválenie roly: ${member.name}`, {
+    relatedTable: "profiles",
+    relatedId: member.id,
+    metadata: { memberName: member.name, role: member.role, email: member.email }
+  });
+  await notifyByChoice("Registrácia roly schválená", member.name, `Registrácia roly ${member.role} pre používateľa ${member.name} bola schválená.`, notification, "profiles", member.id);
+  dialog.close();
+  if (supabaseClient && state.currentUserId) await loadSupabaseData();
+  render();
 }
 
 async function saveMessageReply(original) {
@@ -6780,7 +6889,7 @@ async function saveMessageReply(original) {
 }
 
 async function approveOwner(id, notification = { target: "none", ownerId: "" }) {
-  if (!canManageAll()) return;
+  if (state.role !== "chair") return;
   const owner = state.owners.find((item) => String(item.id) === String(id));
   if (!owner) return;
   if (supabaseClient && state.currentUserId) {
@@ -7038,8 +7147,13 @@ async function deleteItemFromSupabase(type, item) {
     return;
   }
   if (type === "boardMember") {
-    const { error } = await supabaseClient.from("profiles").delete().eq("id", item.id).not("role", "in", "(chair,vice_chair,economic)");
-    if (error) throw new Error(error.message);
+    const { data, error } = await supabaseClient.functions.invoke("delete-owner-account", {
+      body: {
+        profileId: item.id,
+        email: item.email || ""
+      }
+    });
+    if (error || data?.error) throw new Error(data?.error || error.message);
     return;
   }
   throw new Error("Nepodporovaný typ položky.");
@@ -7674,12 +7788,16 @@ function formFor(type, defaults = {}) {
     ]) + notificationFields("all");
   }
   if (type === "messages") {
-    const recipientOptions = messageRecipientOptions();
     return fieldsWithValues([
-      ["title", "Predmet", "Nová správa"],
-      ["category", "Komu", recipientOptions[0] || "", "select", recipientOptions],
-      ["note", "Správa", "Napíšte správu.", "textarea"]
-    ]) + notificationFields("individual");
+      ["title", "Názov poruchy", "Nová porucha"],
+      ["youtubeUrl", "YouTube video link", ""],
+      ["note", "Popis poruchy", "Popíšte poruchu, jej miesto a aktuálny stav.", "textarea"]
+    ]) + uploadField("Obrázok poruchy", "image/*") + `
+      <article class="notice">
+        <strong>Automatické upozornenie</strong>
+        <p>Po zaevidovaní poruchy sa automaticky odošle email a PWA upozornenie všetkým schváleným vlastníkom.</p>
+      </article>
+    `;
   }
   if (type === "photoAlbum") {
     return fieldsWithValues([
@@ -7801,11 +7919,11 @@ function fields(items) {
   `).join("");
 }
 
-function uploadField(label) {
+function uploadField(label, accept = "") {
   return `
     <div class="field">
       <label for="uploadFile">${label}</label>
-      <input id="uploadFile" type="file" multiple>
+      <input id="uploadFile" type="file"${accept ? ` accept="${escapeAttr(accept)}"` : ""}>
       <p class="upload-note">Súbor sa po uložení nahrá do Supabase Storage bucketu e-housing-files.</p>
     </div>
   `;
@@ -7863,7 +7981,7 @@ function editFormFor(type, item) {
   if (type === "boardMember") {
     return fieldsWithValues([
       ["title", "Meno", item.name],
-      ["roleField", "Funkcia", item.role, "select", ["Predseda SVB", "Podpredseda SVB", "Ekonomická správa", "Člen dozornej rady"]],
+      ["roleField", "Funkcia", item.role, "select", ["Podpredseda SVB", "Ekonomická správa", "Člen dozornej rady"]],
       ["email", "Email", item.email],
       ["phone", "Telefón", item.phone],
       ["note", "Poznámka", item.note, "textarea"]
@@ -8357,7 +8475,9 @@ async function saveDialog(type) {
   const isDebtorValue = document.querySelector("#isDebtor")?.value.trim().toLowerCase();
   const voteDeadlineValue = document.querySelector("#voteDeadline")?.value.trim();
   const voteQuestionsValue = document.querySelector("#voteQuestions")?.value.trim();
-  const notification = type === "overview" && state.role === "owner"
+  const notification = type === "messages"
+    ? { target: "all", ownerId: "" }
+    : type === "overview" && state.role === "owner"
     ? { target: "all", ownerId: "" }
     : collectNotificationOptions();
 
@@ -8407,12 +8527,7 @@ async function saveDialog(type) {
   } else if (type === "votes") {
     state.votes.unshift({ id: Date.now(), title: titleValue, description: noteValue, type: categoryValue || "present_majority", closes: voteDeadlineValue || "2026-07-15", status: "Prebieha", yes: 0, no: 0, abstain: 0, comments: 0, questions: parseVoteQuestions(voteQuestionsValue || titleValue).map((text, index) => ({ id: `local-${Date.now()}-${index}`, text })) });
   } else if (type === "messages") {
-    if (!canStartMessageTo(categoryValue)) {
-      window.alert("Nemáte oprávnenie odoslať správu vybranému adresátovi.");
-      return;
-    }
-    const isPublic = ["Verejná diskusia", "Všetci vlastníci"].includes(categoryValue);
-    state.messages.unshift({ id: Date.now(), scope: isPublic ? "Verejná diskusia" : "Súkromná správa", scopeRaw: isPublic ? "public" : "private", senderId: state.currentUserId, recipientLabel: categoryValue, from: roleLabel(), to: categoryValue, subject: titleValue, text: noteValue, date: "Teraz", createdAt: new Date().toISOString(), read: false });
+    state.messages.unshift({ id: Date.now(), scope: "Verejná diskusia", scopeRaw: "public", senderId: state.currentUserId, recipientLabel: "Všetci vlastníci", from: roleLabel(), to: "Všetci vlastníci", subject: titleValue, text: noteValue, date: "Teraz", createdAt: new Date().toISOString(), read: false, youtubeUrl: youtubeUrlValue || "" });
   } else if (type === "owners") {
     state.owners.push({
       flat: categoryValue,
@@ -8541,29 +8656,18 @@ async function saveDialogToSupabase(type, values) {
       }));
     }
   } else if (type === "messages") {
-    if (!canStartMessageTo(values.categoryValue)) throw new Error("Nemáte oprávnenie odoslať správu vybranému adresátovi.");
-    const isPublic = isPublicRecipient(values.categoryValue);
-    const recipient = findProfileRecipient(values.categoryValue);
+    if (values.youtubeUrlValue && !youtubeVideoId(values.youtubeUrlValue)) throw new Error("YouTube odkaz nie je v podporovanom formáte.");
     const response = assertSupabaseOk(await supabaseClient.from("messages").insert({
       sender_id: state.currentUserId,
-      recipient_id: isPublic ? null : recipient?.id || null,
-      recipient_label: values.categoryValue,
+      recipient_id: null,
+      recipient_label: "Všetci vlastníci",
       subject: values.titleValue,
       body: values.noteValue,
-      scope: isPublic ? "public" : "private"
+      scope: "public",
+      storage_path: filePath,
+      youtube_url: values.youtubeUrlValue || null
     }).select("id").single());
-    if (isPublic || isChairRecipientLabel(values.categoryValue)) {
-      await notifyChairAboutMessage({
-        subject: values.titleValue,
-        message: values.noteValue,
-        scope: isPublic ? "Verejná diskusia" : "Súkromná správa predsedovi SVB",
-        recipient: values.categoryValue,
-        relatedId: response.data.id
-      });
-    }
-    const messageNotification = { ...values.notification };
-    if (messageNotification.target === "individual" && !messageNotification.ownerId && recipient?.ownerId) messageNotification.ownerId = recipient.ownerId;
-    await notifyByChoice("Nová správa", values.titleValue, values.noteValue, messageNotification, "messages", response.data.id);
+    await notifyByChoice("Nová nahlásená porucha", values.titleValue, values.noteValue, { target: "all", ownerId: "" }, "messages", response.data.id, { appNotification: true });
   } else if (type === "calendar") {
     const startsAt = eventDateToStartsAt(values.categoryValue);
     state.calendarMonth = normalizeEventDateInput(values.categoryValue).slice(0, 7);
@@ -8675,7 +8779,8 @@ function findProfileRecipient(label) {
 
 async function notifyByChoice(subject, titleText, messageText, notification = {}, relatedTable = null, relatedId = null, metadata = {}) {
   const isAllowedClassifiedChairNotice = notification.target === "chair" && relatedTable === "classifieds";
-  if (!supabaseClient || (!canSendEmailNotifications() && !isAllowedClassifiedChairNotice)) return;
+  const isAllowedRepairNotice = notification.target === "all" && relatedTable === "messages" && metadata.appNotification === true;
+  if (!supabaseClient || (!canSendEmailNotifications() && !isAllowedClassifiedChairNotice && !isAllowedRepairNotice)) return;
   const target = notification.target || "none";
   if (target === "none") return;
   if (target === "individual" && !notification.ownerId) {
@@ -8709,7 +8814,8 @@ async function notifyByChoice(subject, titleText, messageText, notification = {}
         actionUrl: meta.actionUrl,
         view: meta.view,
         detailType: meta.detailType,
-        detailId: meta.detailId
+        detailId: meta.detailId,
+        appNotification: metadata.appNotification === true
       }
     });
     if (error || data?.error) throw new Error(data?.error || error.message);
@@ -9034,7 +9140,9 @@ async function saveEditToSupabase(type, item, values) {
   }
 
   if (type === "boardMember") {
+    if (!canManageBoardMember(item)) throw new Error("Účet predsedu SVB nie je možné upravovať v administrácii rolí.");
     const nextRole = roleFieldToAppRole(values.roleFieldValue, "board");
+    if (nextRole === "chair") throw new Error("Rolu predseda SVB nie je možné priradiť úpravou inej roly.");
     const { error } = await supabaseClient.from("profiles").update({
       full_name: values.titleValue,
       role: nextRole,

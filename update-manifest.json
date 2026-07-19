@@ -1,14 +1,14 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v180",
-  "releasedAt": "2026-07-13",
+  "latestVersion": "v188",
+  "releasedAt": "2026-07-19",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v180 opravuje zatváranie formulára splnomocnenia bez vyžadovania povinných polí.",
+  "summary": "Verzia v188 opravuje správu používateľských rolí predsedom SVB.",
   "changes": [
-    "Krížik X zatvorí formulár splnomocnenia aj pri nevyplnených povinných poliach.",
-    "Tlačidlo Zrušiť zatvorí formulár bez spustenia validácie.",
-    "Validácia povinných polí zostáva aktívna pri ukladaní splnomocnenia."
+    "Predseda SVB môže v záložkách Prehľad a Vlastníci a byty upravovať a mazať všetky ostatné roly.",
+    "Účet a rolu predsedu SVB nie je možné v administrácii rolí upraviť ani vymazať.",
+    "PWA cache bola zvýšená na v188."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",

@@ -48,12 +48,25 @@ Deno.serve(async (req) => {
   const relatedTable = body.relatedTable ? String(body.relatedTable) : null;
   const relatedId = body.relatedId ? String(body.relatedId) : null;
   const ownerId = body.ownerId ? String(body.ownerId) : "";
+  const appNotification = body.appNotification === true;
   if (senderError) return json({ error: senderError.message }, 500);
   const isBoardSender = ["chair", "vice_chair", "economic", "board"].includes(sender?.role || "");
   const isMessageToChairNotice = target === "chair" && ["messages", "vote_comments"].includes(relatedTable || "") && Boolean(relatedId);
   const isOwnerAnnouncementNotice = target === "all" && relatedTable === "announcements" && Boolean(relatedId) && sender?.role === "owner";
   const isClassifiedChairNotice = target === "chair" && relatedTable === "classifieds" && Boolean(relatedId);
-  if (!isBoardSender && !isMessageToChairNotice && !isOwnerAnnouncementNotice && !isClassifiedChairNotice) return json({ error: "Only chairman or board can send notifications" }, 403);
+  const isRepairAllNotice = target === "all" && relatedTable === "messages" && Boolean(relatedId) && appNotification;
+  if (!isBoardSender && !isMessageToChairNotice && !isOwnerAnnouncementNotice && !isClassifiedChairNotice && !isRepairAllNotice) return json({ error: "Only chairman or board can send notifications" }, 403);
+  if (isRepairAllNotice) {
+    const { data: relatedMessage, error: relatedMessageError } = await admin
+      .from("messages")
+      .select("id, sender_id, scope")
+      .eq("id", relatedId)
+      .maybeSingle();
+    if (relatedMessageError) return json({ error: relatedMessageError.message }, 500);
+    if (!relatedMessage || relatedMessage.sender_id !== userData.user.id || relatedMessage.scope !== "public") {
+      return json({ error: "Repair notification is allowed only for own public report" }, 403);
+    }
+  }
   if (!isBoardSender && isClassifiedChairNotice) {
     const { data: relatedClassified, error: relatedClassifiedError } = await admin
       .from("classifieds")
@@ -120,6 +133,15 @@ Deno.serve(async (req) => {
       relatedTable,
       relatedId
     })));
+    if (appNotification) {
+      await Promise.all(recipients.map((recipient) => logNotification(admin, {
+        recipientId: recipient.profile_id,
+        subject,
+        channel: "push",
+        relatedTable,
+        relatedId
+      })));
+    }
     return json({ sent: 0, recipients: recipients.length, error: "Gmail API configuration missing" }, 500);
   }
 
@@ -141,11 +163,14 @@ Deno.serve(async (req) => {
 
     if (result.ok) {
       sent += 1;
-      await logNotification(admin, { recipientId: recipient.profile_id, subject, relatedTable, relatedId });
+      await logNotification(admin, { recipientId: recipient.profile_id, subject, channel: appNotification ? "email_push" : "email", relatedTable, relatedId });
     } else {
       const error = `Gmail API: ${result.error}`;
       errors.push(error);
       await logNotification(admin, { recipientId: recipient.profile_id, subject, error, relatedTable, relatedId });
+      if (appNotification) {
+        await logNotification(admin, { recipientId: recipient.profile_id, subject, channel: "push", relatedTable, relatedId });
+      }
     }
   }
 
@@ -199,12 +224,12 @@ async function resolveRecipients(admin: ReturnType<typeof createClient>, target:
 
 async function logNotification(
   admin: ReturnType<typeof createClient>,
-  params: { recipientId?: string | null; subject: string; error?: string | null; relatedTable?: string | null; relatedId?: string | null }
+  params: { recipientId?: string | null; subject: string; channel?: string; error?: string | null; relatedTable?: string | null; relatedId?: string | null }
 ) {
   await admin.from("notification_log").insert({
     recipient_id: params.recipientId || null,
     subject: params.subject,
-    channel: "email",
+    channel: params.channel || "email",
     related_table: params.relatedTable || null,
     related_id: params.relatedId || null,
     sent_at: params.error ? null : new Date().toISOString(),
@@ -333,7 +358,7 @@ function renderEmail({ subject, title, message, senderName, eventType, section, 
 function normalizeActionUrl(value: string) {
   try {
     const url = new URL(value || "https://svbdruzstevna386.vercel.app/");
-    const allowedHosts = ["svbdruzstevna386.vercel.app", "e-housing-zeta.vercel.app"];
+    const allowedHosts = ["svbdruzstevna386.vercel.app", "svbdruzstevna386.e-domovnik.sk", "e-housing-zeta.vercel.app"];
     if (url.protocol !== "https:" || !allowedHosts.includes(url.hostname)) return "https://svbdruzstevna386.vercel.app/";
     return url.toString();
   } catch {

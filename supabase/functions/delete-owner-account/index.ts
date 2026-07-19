@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (actorError) return json({ error: actorError.message }, 500);
-  if (actor?.role !== "chair") return json({ error: "Only the chairman can delete owner accounts" }, 403);
+  if (actor?.role !== "chair") return json({ error: "Only the chairman can delete user accounts" }, 403);
 
   const body = await req.json().catch(() => ({}));
   const ownerRecordId = String(body.ownerRecordId || "").trim();
@@ -52,6 +52,18 @@ Deno.serve(async (req) => {
 
   const authUserId = ownerRecord?.profile_id || profileId || await findAuthUserId(admin, email);
 
+  if (authUserId) {
+    const { data: targetProfile, error: targetProfileError } = await admin
+      .from("profiles")
+      .select("id, role")
+      .eq("id", authUserId)
+      .maybeSingle();
+    if (targetProfileError) return json({ error: targetProfileError.message }, 500);
+    if (targetProfile?.role === "chair" || authUserId === actor.id) {
+      return json({ error: "The chairman account cannot be deleted" }, 403);
+    }
+  }
+
   if (ownerRecord?.id) {
     const { error } = await admin.from("owner_records").delete().eq("id", ownerRecord.id);
     if (error) return json({ error: error.message }, 500);
@@ -61,6 +73,7 @@ Deno.serve(async (req) => {
   }
 
   if (authUserId) {
+    await admin.from("owner_records").delete().eq("profile_id", authUserId);
     await admin.from("profiles").delete().eq("id", authUserId);
     const { error } = await admin.auth.admin.deleteUser(authUserId, false);
     if (error) return json({ error: error.message }, 500);
