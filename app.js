@@ -153,6 +153,7 @@ const state = {
   partnerStatusFilter: "all",
   pendingDeepLink: null,
   appNotificationsEnabled: false,
+  pushSubscriptionActive: false,
   lastNotificationSeenAt: ""
 };
 
@@ -271,9 +272,10 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v191";
+const APP_VERSION = "v192";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
+const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
 const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
 const APP_NOTIFICATIONS_KEY = "eHousingAppNotifications";
 const APP_NOTIFICATION_LAST_PREFIX = "eHousingLastNotification:";
@@ -952,8 +954,9 @@ registerOwnerBtn.addEventListener("click", async () => {
   render();
 });
 
-logoutBtn.addEventListener("click", () => {
-  if (supabaseClient) supabaseClient.auth.signOut();
+logoutBtn.addEventListener("click", async () => {
+  await unregisterPushSubscription();
+  if (supabaseClient) await supabaseClient.auth.signOut();
   stopAppNotificationWatcher();
   state.loggedIn = false;
   state.isPlatformSupportSession = false;
@@ -1338,7 +1341,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v191",
+    appVersion: item.app_version || "v192",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -2099,7 +2102,7 @@ function notificationActionUrl(view, detailType = "", detailId = "") {
 }
 
 function appNotificationsSupported() {
-  return "Notification" in window && "serviceWorker" in navigator;
+  return "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
 }
 
 function appNotificationsEnabled() {
@@ -2112,6 +2115,7 @@ function currentNotificationLastKey() {
 
 function loadNotificationPreferences() {
   state.appNotificationsEnabled = appNotificationsEnabled();
+  state.pushSubscriptionActive = false;
   state.lastNotificationSeenAt = localStorage.getItem(currentNotificationLastKey()) || "";
 }
 
@@ -2121,10 +2125,10 @@ function saveNotificationSeenAt(value) {
 }
 
 function notificationPermissionText() {
-  if (!appNotificationsSupported()) return "Tento prehliadač systémové notifikácie pre PWA nepodporuje.";
-  if (Notification.permission === "granted" && state.appNotificationsEnabled) return "Notifikácie sú zapnuté pre toto zariadenie.";
+  if (!appNotificationsSupported()) return "Tento prehliadač spoľahlivé Web Push notifikácie pre PWA nepodporuje.";
+  if (Notification.permission === "granted" && state.appNotificationsEnabled && state.pushSubscriptionActive) return "Web Push je aktívny. Upozornenia môžu prísť aj pri zatvorenej aplikácii.";
   if (Notification.permission === "denied") return "Notifikácie sú v prehliadači alebo systéme zablokované. Povoľte ich v nastaveniach zariadenia.";
-  if (state.appNotificationsEnabled) return "Notifikácie sú zapnuté v aplikácii, čaká sa na povolenie prehliadača.";
+  if (state.appNotificationsEnabled) return "Notifikácie sú povolené, ale toto zariadenie ešte nemá aktívny Web Push odber. Kliknite na Zapnúť notifikácie.";
   return "Notifikácie sú vypnuté. Zapnúť ich môže iba prihlásený používateľ priamym kliknutím.";
 }
 
@@ -2133,32 +2137,45 @@ async function enableAppNotifications() {
     window.alert("Tento prehliadač nepodporuje systémové notifikácie pre PWA aplikácie.");
     return;
   }
-  const registration = await navigator.serviceWorker.ready;
-  const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
-  if (permission !== "granted") {
-    localStorage.setItem(APP_NOTIFICATIONS_KEY, "false");
-    state.appNotificationsEnabled = false;
-    window.alert("Notifikácie neboli povolené. Povolenie môžete zmeniť v nastaveniach prehliadača alebo zariadenia.");
-    render();
+  if (!state.loggedIn || !state.currentUserId || !supabaseClient) {
+    window.alert("Notifikácie môže zapnúť iba prihlásený používateľ.");
     return;
   }
-  localStorage.setItem(APP_NOTIFICATIONS_KEY, "true");
-  state.appNotificationsEnabled = true;
-  saveNotificationSeenAt(new Date().toISOString());
-  await registration.showNotification("e - Housing Solutions Licence notifikácie zapnuté", {
-    body: "Odteraz sa nové notifikácie pre váš účet zobrazia aj ako systémové upozornenie.",
-    icon: "./icon-192.png",
-    badge: "./icon-192.png",
-    tag: "e-housing-notifications-enabled",
-    data: { url: notificationActionUrl("overview") }
-  });
-  startAppNotificationWatcher();
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+    if (permission !== "granted") throw new Error("Notifikácie neboli povolené. Povolenie môžete zmeniť v nastaveniach prehliadača alebo zariadenia.");
+    const subscription = await registration.pushManager.getSubscription() || await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    await registerPushSubscription(subscription);
+    localStorage.setItem(APP_NOTIFICATIONS_KEY, "true");
+    state.appNotificationsEnabled = true;
+    state.pushSubscriptionActive = true;
+    saveNotificationSeenAt(new Date().toISOString());
+    await registration.showNotification("e - Housing Solutions Licence notifikácie zapnuté", {
+      body: "Web Push je aktívny. Upozornenia môžu prísť aj pri úplne zatvorenej aplikácii.",
+      icon: "./icon-192.png",
+      badge: "./icon-192.png",
+      tag: "e-housing-notifications-enabled",
+      data: { url: notificationActionUrl("overview") }
+    });
+    startAppNotificationWatcher();
+  } catch (error) {
+    localStorage.setItem(APP_NOTIFICATIONS_KEY, "false");
+    state.appNotificationsEnabled = false;
+    state.pushSubscriptionActive = false;
+    window.alert(error?.message || "Web Push notifikácie sa nepodarilo zapnúť.");
+  }
   render();
 }
 
-function disableAppNotifications() {
+async function disableAppNotifications() {
+  await unregisterPushSubscription();
   localStorage.setItem(APP_NOTIFICATIONS_KEY, "false");
   state.appNotificationsEnabled = false;
+  state.pushSubscriptionActive = false;
   stopAppNotificationWatcher();
   render();
 }
@@ -2166,6 +2183,7 @@ function disableAppNotifications() {
 function startAppNotificationWatcher() {
   stopAppNotificationWatcher();
   if (!state.loggedIn || !state.currentUserId || !state.appNotificationsEnabled || !appNotificationsSupported() || Notification.permission !== "granted") return;
+  syncExistingPushSubscription();
   notificationPollTimer = window.setInterval(() => checkForNewAppNotifications(), APP_NOTIFICATION_POLL_MS);
   checkForNewAppNotifications();
 }
@@ -2194,11 +2212,64 @@ async function checkForNewAppNotifications({ silent = false } = {}) {
     const items = data || [];
     if (items.length) saveNotificationSeenAt(items[items.length - 1].created_at);
     if (!silent) {
-      for (const item of items) await showSystemNotificationForLog(item);
+      const fallbackItems = items.filter((item) => !["email_web_push", "web_push"].includes(item.channel));
+      for (const item of fallbackItems) await showSystemNotificationForLog(item);
     }
   } finally {
     notificationPollBusy = false;
   }
+}
+
+async function registerPushSubscription(subscription) {
+  const serialized = subscription?.toJSON?.();
+  if (!serialized?.endpoint || !serialized?.keys?.p256dh || !serialized?.keys?.auth) {
+    throw new Error("Prehliadač nevytvoril platný Web Push odber.");
+  }
+  const { data, error } = await supabaseClient.functions.invoke("manage-push-subscription", {
+    body: { action: "register", subscription: serialized, userAgent: navigator.userAgent }
+  });
+  if (error || data?.error) throw new Error(data?.error || error.message);
+}
+
+async function syncExistingPushSubscription() {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      state.pushSubscriptionActive = false;
+      return;
+    }
+    await registerPushSubscription(subscription);
+    state.pushSubscriptionActive = true;
+  } catch {
+    state.pushSubscriptionActive = false;
+  }
+}
+
+async function unregisterPushSubscription() {
+  if (!appNotificationsSupported()) return;
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) return;
+    if (supabaseClient && state.currentUserId) {
+      await supabaseClient.functions.invoke("manage-push-subscription", {
+        body: { action: "unregister", endpoint: subscription.endpoint }
+      });
+    }
+    await subscription.unsubscribe();
+  } catch {
+    // A local unsubscribe failure does not block logout or the user's preference change.
+  } finally {
+    state.pushSubscriptionActive = false;
+  }
+}
+
+function urlBase64ToUint8Array(value) {
+  const padding = "=".repeat((4 - value.length % 4) % 4);
+  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = window.atob(base64);
+  return Uint8Array.from([...raw].map((character) => character.charCodeAt(0)));
 }
 
 async function showSystemNotificationForLog(item) {
@@ -3522,9 +3593,9 @@ const views = {
           <div class="toolbar">
             <div>
               <h2>Notifikácie aplikácie</h2>
-              <p class="muted">Systémové upozornenia pre nové notifikácie priradené k vášmu účtu.</p>
+              <p class="muted">Web Push upozornenia pre nové udalosti priradené k vášmu účtu.</p>
             </div>
-            <span class="tag ${state.appNotificationsEnabled ? "vote" : "document"}">${state.appNotificationsEnabled ? "Zapnuté" : "Vypnuté"}</span>
+            <span class="tag ${state.appNotificationsEnabled && state.pushSubscriptionActive ? "vote" : "document"}">${state.appNotificationsEnabled && state.pushSubscriptionActive ? "Zapnuté" : "Vypnuté"}</span>
           </div>
           <div class="list">
             ${systemCard("Stav zariadenia", notificationPermissionText())}
@@ -4031,9 +4102,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=191"],
+        ["Manifest", "manifest.webmanifest?v=192"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v191"]
+        ["Cache", "e-housing-v192"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",

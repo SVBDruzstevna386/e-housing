@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v191",
+  "latestVersion": "v192",
   "releasedAt": "2026-07-24",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v191 dopĺňa fotku, YouTube odkaz, detail a automatický email pre záznamy upratovania.",
+  "summary": "Verzia v192 pridáva skutočné Web Push notifikácie fungujúce aj pri zatvorenej aplikácii.",
   "changes": [
-    "Formulár upratovania podporuje fotku a YouTube URL.",
-    "Každý nový záznam upratovania automaticky odošle informačný email schváleným vlastníkom.",
-    "Vlastník vidí v kalendári iba typ záznamu a celý povolený detail otvorí kliknutím.",
-    "PWA cache bola zvýšená na v191."
+    "Web Push je aktivovaný pre upratovanie, nahlásené poruchy a oznamy.",
+    "Odber notifikácií je bezpečne viazaný na prihlásený účet a konkrétne zariadenie.",
+    "Neplatné odbery sa po odpovedi push služby automaticky odstránia.",
+    "PWA cache bola zvýšená na v192."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",

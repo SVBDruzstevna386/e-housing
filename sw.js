@@ -1,10 +1,10 @@
-const CACHE_NAME = "e-housing-v191";
+const CACHE_NAME = "e-housing-v192";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=191",
-  "./app.js?v=191",
-  "./manifest.webmanifest?v=191",
+  "./styles.css?v=192",
+  "./app.js?v=192",
+  "./manifest.webmanifest?v=192",
   "./update-manifest.json",
   "./favicon.ico",
   "./favicon-16.png",
@@ -62,6 +62,23 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+});
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data?.json() || {};
+  } catch {
+    data = { body: event.data?.text() || "" };
+  }
+  event.waitUntil(self.registration.showNotification(data.title || "e - Housing Solutions Licence", {
+    body: data.body || "V aplikácii je nová informácia.",
+    icon: data.icon || "./icon-192.png",
+    badge: data.badge || "./icon-192.png",
+    tag: data.tag || `e-housing-${Date.now()}`,
+    timestamp: Number(data.timestamp || Date.now()),
+    data: { url: data.url || "./" }
+  }));
 });
 
 self.addEventListener("notificationclick", (event) => {

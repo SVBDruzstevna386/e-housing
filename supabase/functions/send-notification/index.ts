@@ -1,4 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
+import webpush from "web-push";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,6 +20,9 @@ Deno.serve(async (req) => {
   const gmailRefreshToken = Deno.env.get("GMAIL_REFRESH_TOKEN");
   const gmailFromEmail = Deno.env.get("GMAIL_FROM_EMAIL") || "SVBDruzstevna386@gmail.com";
   const gmailFromName = Deno.env.get("GMAIL_FROM_NAME") || "SVB a NP Druzstevna 386";
+  const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY") || "";
+  const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY") || "";
+  const vapidSubject = Deno.env.get("VAPID_SUBJECT") || "";
   const authHeader = req.headers.get("Authorization") || "";
   const token = authHeader.replace("Bearer ", "").trim();
 
@@ -50,6 +54,7 @@ Deno.serve(async (req) => {
   const ownerId = body.ownerId ? String(body.ownerId) : "";
   const appNotification = body.appNotification === true;
   const cleaningNotification = body.cleaningNotification === true;
+  const webPushRequested = appNotification || cleaningNotification || relatedTable === "announcements";
   if (senderError) return json({ error: senderError.message }, 500);
   const isBoardSender = ["chair", "vice_chair", "economic", "board"].includes(sender?.role || "");
   const isMessageToChairNotice = target === "chair" && ["messages", "vote_comments"].includes(relatedTable || "") && Boolean(relatedId);
@@ -150,6 +155,22 @@ Deno.serve(async (req) => {
     return json({ sent: 0, recipients: 0 });
   }
 
+  const pushResult = webPushRequested
+    ? await sendWebPush({
+      admin,
+      recipients,
+      subject,
+      title,
+      section,
+      actionUrl,
+      relatedTable,
+      relatedId,
+      vapidPublicKey,
+      vapidPrivateKey,
+      vapidSubject
+    })
+    : emptyPushResult();
+
   if (!gmailClientId || !gmailClientSecret || !gmailRefreshToken) {
     await Promise.all(recipients.map((recipient) => logNotification(admin, {
       recipientId: recipient.profile_id,
@@ -158,16 +179,23 @@ Deno.serve(async (req) => {
       relatedTable,
       relatedId
     })));
-    if (appNotification) {
-      await Promise.all(recipients.map((recipient) => logNotification(admin, {
+    await Promise.all(recipients
+      .filter((recipient) => recipient.profile_id && pushResult.successfulProfiles.has(recipient.profile_id))
+      .map((recipient) => logNotification(admin, {
         recipientId: recipient.profile_id,
         subject,
-        channel: "push",
+        channel: "web_push",
         relatedTable,
         relatedId
       })));
-    }
-    return json({ sent: 0, recipients: recipients.length, error: "Gmail API configuration missing" }, 500);
+    return json({
+      sent: 0,
+      recipients: recipients.length,
+      pushSent: pushResult.sent,
+      pushAttempted: pushResult.attempted,
+      pushErrors: pushResult.errors,
+      error: "Gmail API configuration missing"
+    }, 500);
   }
 
   const html = renderEmail({ subject, title, message, senderName: sender?.full_name || "SVB", eventType, section, actionUrl });
@@ -188,19 +216,34 @@ Deno.serve(async (req) => {
 
     if (result.ok) {
       sent += 1;
-      await logNotification(admin, { recipientId: recipient.profile_id, subject, channel: appNotification ? "email_push" : "email", relatedTable, relatedId });
+      const pushDelivered = Boolean(recipient.profile_id && pushResult.successfulProfiles.has(recipient.profile_id));
+      await logNotification(admin, {
+        recipientId: recipient.profile_id,
+        subject,
+        channel: pushDelivered ? "email_web_push" : "email",
+        relatedTable,
+        relatedId
+      });
     } else {
       const error = `Gmail API: ${result.error}`;
       errors.push(error);
       await logNotification(admin, { recipientId: recipient.profile_id, subject, error, relatedTable, relatedId });
-      if (appNotification) {
-        await logNotification(admin, { recipientId: recipient.profile_id, subject, channel: "push", relatedTable, relatedId });
+      if (recipient.profile_id && pushResult.successfulProfiles.has(recipient.profile_id)) {
+        await logNotification(admin, { recipientId: recipient.profile_id, subject, channel: "web_push", relatedTable, relatedId });
       }
     }
   }
 
   const errorSummary = errors.length ? errors[0] : null;
-  return json({ sent, recipients: recipients.length, errors, error: errorSummary });
+  return json({
+    sent,
+    recipients: recipients.length,
+    errors,
+    error: errorSummary,
+    pushSent: pushResult.sent,
+    pushAttempted: pushResult.attempted,
+    pushErrors: pushResult.errors
+  });
 });
 
 async function resolveRecipients(admin: ReturnType<typeof createClient>, target: NotificationTarget, ownerId: string) {
@@ -245,6 +288,91 @@ async function resolveRecipients(admin: ReturnType<typeof createClient>, target:
     if (!uniqueRecipients.has(key)) uniqueRecipients.set(key, recipient);
   }
   return [...uniqueRecipients.values()];
+}
+
+function emptyPushResult() {
+  return { sent: 0, attempted: 0, errors: [] as string[], successfulProfiles: new Set<string>() };
+}
+
+async function sendWebPush(params: {
+  admin: ReturnType<typeof createClient>;
+  recipients: Array<{ profile_id: string | null; name: string; email: string }>;
+  subject: string;
+  title: string;
+  section: string;
+  actionUrl: string;
+  relatedTable: string | null;
+  relatedId: string | null;
+  vapidPublicKey: string;
+  vapidPrivateKey: string;
+  vapidSubject: string;
+}) {
+  const result = emptyPushResult();
+  if (!params.vapidPublicKey || !params.vapidPrivateKey || !params.vapidSubject) {
+    result.errors.push("VAPID configuration missing");
+    return result;
+  }
+
+  const profileIds = [...new Set(params.recipients.map((recipient) => recipient.profile_id).filter(Boolean))] as string[];
+  if (!profileIds.length) return result;
+
+  const { data: subscriptions, error } = await params.admin
+    .from("push_subscriptions")
+    .select("id, profile_id, endpoint, p256dh, auth")
+    .in("profile_id", profileIds);
+  if (error) {
+    result.errors.push(error.message);
+    return result;
+  }
+
+  const payload = JSON.stringify({
+    title: params.subject || "Nová informácia",
+    body: params.title ? `${params.section}: ${params.title}` : `Nová informácia v záložke ${params.section}.`,
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    tag: pushTopic(params.relatedTable, params.relatedId),
+    url: params.actionUrl,
+    timestamp: Date.now()
+  });
+
+  for (const subscription of subscriptions || []) {
+    result.attempted += 1;
+    try {
+      await webpush.sendNotification({
+        endpoint: subscription.endpoint,
+        keys: { p256dh: subscription.p256dh, auth: subscription.auth }
+      }, payload, {
+        vapidDetails: {
+          subject: params.vapidSubject,
+          publicKey: params.vapidPublicKey,
+          privateKey: params.vapidPrivateKey
+        },
+        TTL: 86400,
+        urgency: "high",
+        topic: pushTopic(params.relatedTable, params.relatedId)
+      });
+      result.sent += 1;
+      result.successfulProfiles.add(subscription.profile_id);
+      await params.admin
+        .from("push_subscriptions")
+        .update({ last_success_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", subscription.id);
+    } catch (error) {
+      const statusCode = Number((error as { statusCode?: number })?.statusCode || 0);
+      result.errors.push(statusCode ? `Web Push HTTP ${statusCode}` : "Web Push delivery failed");
+      if ([404, 410].includes(statusCode)) {
+        await params.admin.from("push_subscriptions").delete().eq("id", subscription.id);
+      }
+    }
+  }
+
+  return result;
+}
+
+function pushTopic(relatedTable: string | null, relatedId: string | null) {
+  return `eh-${relatedTable || "app"}-${relatedId || "notice"}`
+    .replace(/[^A-Za-z0-9_-]/g, "-")
+    .slice(0, 32);
 }
 
 async function logNotification(
