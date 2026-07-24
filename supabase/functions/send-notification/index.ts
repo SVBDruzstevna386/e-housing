@@ -49,13 +49,38 @@ Deno.serve(async (req) => {
   const relatedId = body.relatedId ? String(body.relatedId) : null;
   const ownerId = body.ownerId ? String(body.ownerId) : "";
   const appNotification = body.appNotification === true;
+  const cleaningNotification = body.cleaningNotification === true;
   if (senderError) return json({ error: senderError.message }, 500);
   const isBoardSender = ["chair", "vice_chair", "economic", "board"].includes(sender?.role || "");
   const isMessageToChairNotice = target === "chair" && ["messages", "vote_comments"].includes(relatedTable || "") && Boolean(relatedId);
   const isOwnerAnnouncementNotice = target === "all" && relatedTable === "announcements" && Boolean(relatedId) && sender?.role === "owner";
   const isClassifiedChairNotice = target === "chair" && relatedTable === "classifieds" && Boolean(relatedId);
   const isRepairAllNotice = target === "all" && relatedTable === "messages" && Boolean(relatedId) && appNotification;
-  if (!isBoardSender && !isMessageToChairNotice && !isOwnerAnnouncementNotice && !isClassifiedChairNotice && !isRepairAllNotice) return json({ error: "Only chairman or board can send notifications" }, 403);
+  const isCleaningAllNotice = target === "all" && relatedTable === "events" && Boolean(relatedId) && cleaningNotification;
+  if (!isBoardSender && !isMessageToChairNotice && !isOwnerAnnouncementNotice && !isClassifiedChairNotice && !isRepairAllNotice && !isCleaningAllNotice) return json({ error: "Only chairman or board can send notifications" }, 403);
+  if (isCleaningAllNotice) {
+    const { data: relatedEvent, error: relatedEventError } = await admin
+      .from("events")
+      .select("id, created_by, event_type, owner_record_id")
+      .eq("id", relatedId)
+      .maybeSingle();
+    if (relatedEventError) return json({ error: relatedEventError.message }, 500);
+    if (!relatedEvent || relatedEvent.created_by !== userData.user.id || !["cleaning", "cleaning_extra"].includes(relatedEvent.event_type)) {
+      return json({ error: "Cleaning notification is allowed only for own cleaning event" }, 403);
+    }
+    if (!isBoardSender) {
+      const { data: ownerRecord, error: ownerRecordError } = await admin
+        .from("owner_records")
+        .select("id")
+        .eq("id", relatedEvent.owner_record_id)
+        .eq("profile_id", userData.user.id)
+        .eq("approval_status", "approved")
+        .eq("can_manage_cleaning_calendar", true)
+        .maybeSingle();
+      if (ownerRecordError) return json({ error: ownerRecordError.message }, 500);
+      if (!ownerRecord) return json({ error: "Cleaning notification permission is not active" }, 403);
+    }
+  }
   if (isRepairAllNotice) {
     const { data: relatedMessage, error: relatedMessageError } = await admin
       .from("messages")

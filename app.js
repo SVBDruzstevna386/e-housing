@@ -271,7 +271,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v190";
+const APP_VERSION = "v191";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
@@ -1274,7 +1274,7 @@ async function loadSupabaseData() {
   if (innovationComments.data) state.innovationComments = innovationComments.data.map(dbInnovationCommentToCard);
   if (innovationIdeas.data) state.innovationIdeas = await Promise.all(innovationIdeas.data.map(dbInnovationIdeaToCard));
   if (announcements.data) state.announcements = await Promise.all(announcements.data.map(dbAnnouncementToCard));
-  if (events.data) state.events = events.data.map(dbEventToCard).sort(sortByEventDateAsc);
+  if (events.data) state.events = (await Promise.all(events.data.map(dbEventToCard))).sort(sortByEventDateAsc);
   if (messages.data) state.messages = await Promise.all(messages.data.map(dbMessageToCard));
   if (voteComments.data) state.voteComments = voteComments.data.map(dbVoteCommentToCard);
   if (voteProxies.data) state.voteProxies = voteProxies.data.map(dbVoteProxyToCard);
@@ -1338,7 +1338,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v190",
+    appVersion: item.app_version || "v191",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -1600,9 +1600,10 @@ function announcementAuthorName(item = {}) {
   return owner?.name || profile?.full_name || item.authorName || "Používateľ";
 }
 
-function dbEventToCard(item) {
+async function dbEventToCard(item) {
   const date = new Date(item.starts_at);
   const owner = state.owners.find((ownerItem) => String(ownerItem.id) === String(item.owner_record_id));
+  const fileUrl = await signedStorageUrl(item.storage_path);
   return {
     id: item.id,
     day: date.getDate(),
@@ -1613,7 +1614,10 @@ function dbEventToCard(item) {
     eventType: item.event_type || "general",
     createdBy: item.created_by,
     ownerRecordId: item.owner_record_id,
-    creatorLabel: owner ? `${owner.name} · ${owner.flat}` : ""
+    creatorLabel: owner ? `${owner.name} · ${owner.flat}` : "",
+    storagePath: item.storage_path,
+    fileUrl,
+    youtubeUrl: item.youtube_url || ""
   };
 }
 
@@ -4027,9 +4031,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=190"],
+        ["Manifest", "manifest.webmanifest?v=191"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v190"]
+        ["Cache", "e-housing-v191"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -5042,15 +5046,23 @@ function calendarCells() {
 
 function dayCard(cell, canCreate = false) {
   if (!cell) return `<article class="day is-empty" aria-hidden="true"></article>`;
-  const eventList = cell.events.map((event) => `
+  const eventList = cell.events.map((event) => {
+    const ownerCleaningLabel = state.role === "owner" && ["cleaning", "cleaning_extra"].includes(event.eventType)
+      ? cleaningEventTitle(event.eventType)
+      : event.title;
+    const creatorLabel = state.role === "owner" ? "" : event.creatorLabel;
+    return `
     <span class="event-dot">
-      <span>${escapeHtml(event.title)}${event.creatorLabel ? `<small> · ${escapeHtml(event.creatorLabel)}</small>` : ""}</span>
+      <button class="event-detail-button" data-detail="event" data-id="${event.id}" aria-label="Otvoriť detail udalosti ${escapeAttr(ownerCleaningLabel)}">
+        <span>${escapeHtml(ownerCleaningLabel)}${creatorLabel ? `<small> · ${escapeHtml(creatorLabel)}</small>` : ""}</span>
+      </button>
       <span class="event-actions">
         ${canEditItem("event", event) ? `<button data-edit="event" data-id="${event.id}" aria-label="Upraviť udalosť">${icon("pencil")}</button>` : ""}
         ${canDeleteItem("event", event) ? `<button data-delete-item="event" data-id="${event.id}" aria-label="Vymazať udalosť">${icon("trash-2")}</button>` : ""}
       </span>
     </span>
-  `).join("");
+  `;
+  }).join("");
   return `
     <article class="day ${cell.isToday ? "is-today" : ""} ${canCreate ? "is-clickable" : ""}" data-calendar-day="${cell.date}" title="${canCreate ? "Pridať udalosť" : ""}">
       <strong>${cell.day}</strong>
@@ -6262,6 +6274,7 @@ function detailTitle(type, item) {
   if (type === "billingSettlement") return item.title;
   if (type === "executionCase") return `${item.ownerName} · ${item.flat}`;
   if (type === "vote") return item.title;
+  if (type === "event") return ["cleaning", "cleaning_extra"].includes(item.eventType) ? cleaningEventTitle(item.eventType) : item.title;
   return editTitle(type, item);
 }
 
@@ -6328,6 +6341,22 @@ function voteOwnerAnswerOptions(rows) {
 }
 
 function detailBody(type, item) {
+  if (type === "event") {
+    const eventTitle = ["cleaning", "cleaning_extra"].includes(item.eventType) ? cleaningEventTitle(item.eventType) : item.title;
+    return `
+      <div class="detail-grid">
+        ${readonlyField("Typ záznamu", eventTitle)}
+        ${readonlyField("Dátum", formatDate(eventDateKey(item)))}
+        ${state.role !== "owner" && item.creatorLabel ? readonlyField("Vytvoril", item.creatorLabel) : ""}
+      </div>
+      <section class="detail-section">
+        <h3>Detail</h3>
+        <p>${escapeHtml(item.note || "Bez doplňujúcej informácie.")}</p>
+      </section>
+      ${mediaPreviewBlock(item)}
+      ${item.fileUrl ? `<div class="row-actions">${documentFileActions(item)}</div>` : ""}
+    `;
+  }
   if (type === "owner") {
     return `
       <div class="detail-grid">
@@ -7916,11 +7945,12 @@ function formFor(type, defaults = {}) {
       return fieldsWithValues([
         ["eventType", "Typ záznamu", "cleaning", "select", cleaningEventTypeOptions()],
         ["category", "Dátum upratovania", selectedDate, "date"],
+        ["youtubeUrl", "YouTube video link", ""],
         ["note", "Poznámka", "Doplňujúca informácia k upratovaniu.", "textarea"]
-      ]) + `
+      ]) + uploadField("Fotka upratovania", "image/*") + `
         <article class="notice">
-          <strong>Individuálne oprávnenie</strong>
-          <p>Môžete evidovať iba vlastné záznamy Upratovanie a Upratovanie - extra. Ostatné udalosti spravuje vedenie SVB.</p>
+          <strong>Automatické upozornenie</strong>
+          <p>Po uložení sa automaticky odošle informačný email všetkým schváleným vlastníkom.</p>
         </article>
       `;
     }
@@ -8058,8 +8088,9 @@ function editFormFor(type, item) {
       return fieldsWithValues([
         ["eventType", "Typ záznamu", item.eventType || "cleaning", "select", cleaningEventTypeOptions()],
         ["category", "Dátum upratovania", eventDateKey(item), "date"],
+        ["youtubeUrl", "YouTube video link", item.youtubeUrl || ""],
         ["note", "Poznámka", item.note || "", "textarea"]
-      ]);
+      ]) + uploadField("Nahradiť alebo doplniť fotku upratovania", "image/*");
     }
     return fieldsWithValues([
       ["title", "Názov udalosti", item.title],
@@ -8780,15 +8811,30 @@ async function saveDialogToSupabase(type, values) {
     if (state.role === "owner" && (!canManageCleaningCalendar(owner) || !["cleaning", "cleaning_extra"].includes(eventType))) {
       throw new Error("Nemáte oprávnenie pridať tento typ záznamu do kalendára.");
     }
+    if (values.youtubeUrlValue && !youtubeVideoId(values.youtubeUrlValue)) throw new Error("YouTube odkaz nie je v podporovanom formáte.");
+    const eventTitle = state.role === "owner" ? cleaningEventTitle(eventType) : values.titleValue;
     const response = assertSupabaseOk(await supabaseClient.from("events").insert({
       created_by: state.currentUserId,
-      title: state.role === "owner" ? cleaningEventTitle(eventType) : values.titleValue,
+      title: eventTitle,
       description: values.noteValue,
       starts_at: startsAt,
       event_type: eventType,
-      owner_record_id: owner?.id || null
+      owner_record_id: owner?.id || null,
+      storage_path: filePath,
+      youtube_url: values.youtubeUrlValue || null
     }).select("id").single());
-    await notifyByChoice("Nová udalosť", values.titleValue, values.noteValue, values.notification, "events", response.data.id);
+    const cleaningNotification = ["cleaning", "cleaning_extra"].includes(eventType);
+    await notifyByChoice(
+      cleaningNotification ? eventTitle : "Nová udalosť",
+      eventTitle,
+      values.noteValue,
+      cleaningNotification ? { target: "all", ownerId: "" } : values.notification,
+      "events",
+      response.data.id,
+      cleaningNotification
+        ? { cleaningNotification: true, templateKey: "cleaning-event", eventDate: formatDate(normalizeEventDateInput(values.categoryValue)) }
+        : {}
+    );
   } else if (type === "activities") {
     const response = assertSupabaseOk(await supabaseClient.from("activities").insert({ profile_id: state.currentUserId, person: values.personValue || diaryPersonName(), role: values.roleFieldValue || diaryRoleLabel(), title: values.titleValue, month: values.monthValue || new Date().toISOString().slice(0, 7), hours: Number.parseFloat(values.hoursValue || "0"), status: document.querySelector("#status")?.value.trim() || "Dokončené", note: values.noteValue }).select("id").single());
     await notifyByChoice("Nový záznam v denníku", values.titleValue, values.noteValue, values.notification, "activities", response.data.id);
@@ -8896,7 +8942,8 @@ function findProfileRecipient(label) {
 async function notifyByChoice(subject, titleText, messageText, notification = {}, relatedTable = null, relatedId = null, metadata = {}) {
   const isAllowedClassifiedChairNotice = notification.target === "chair" && relatedTable === "classifieds";
   const isAllowedRepairNotice = notification.target === "all" && relatedTable === "messages" && metadata.appNotification === true;
-  if (!supabaseClient || (!canSendEmailNotifications() && !isAllowedClassifiedChairNotice && !isAllowedRepairNotice)) return;
+  const isAllowedCleaningNotice = notification.target === "all" && relatedTable === "events" && metadata.cleaningNotification === true;
+  if (!supabaseClient || (!canSendEmailNotifications() && !isAllowedClassifiedChairNotice && !isAllowedRepairNotice && !isAllowedCleaningNotice)) return;
   const target = notification.target || "none";
   if (target === "none") return;
   if (target === "individual" && !notification.ownerId) {
@@ -8904,14 +8951,15 @@ async function notifyByChoice(subject, titleText, messageText, notification = {}
     return;
   }
   const meta = notificationMetaFor(relatedTable, relatedId, { eventType: subject, ...metadata });
-  const template = emailTemplateByKey("notification-detail") || {};
+  const template = emailTemplateByKey(metadata.templateKey || "notification-detail") || {};
   const replacements = {
     eventType: meta.eventType || subject,
     section: meta.sectionLabel,
     title: titleText || subject,
     message: messageText || "",
     actionUrl: meta.actionUrl,
-    sender: roleLabel() || state.currentUserEmail || "Používateľ"
+    sender: currentUserDisplayName() || roleLabel() || state.currentUserEmail || "Používateľ",
+    eventDate: metadata.eventDate || ""
   };
   const emailSubject = fillEmailTemplate(template.subject || "{{eventType}}: {{title}}", replacements);
   const emailBody = fillEmailTemplate(template.body || "Dobrý deň,\n\nv aplikácii e - Housing Solutions Licence bola vytvorená alebo upravená udalosť.\n\nTyp udalosti: {{eventType}}\nZáložka: {{section}}\nNázov: {{title}}\n\n{{message}}\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}", replacements);
@@ -8931,7 +8979,8 @@ async function notifyByChoice(subject, titleText, messageText, notification = {}
         view: meta.view,
         detailType: meta.detailType,
         detailId: meta.detailId,
-        appNotification: metadata.appNotification === true
+        appNotification: metadata.appNotification === true,
+        cleaningNotification: metadata.cleaningNotification === true
       }
     });
     if (error || data?.error) throw new Error(data?.error || error.message);
@@ -9283,13 +9332,18 @@ async function saveEditToSupabase(type, item, values) {
     if (state.role === "owner" && (!canManageCalendarEvent(item) || !["cleaning", "cleaning_extra"].includes(eventType))) {
       throw new Error("Nemáte oprávnenie upraviť tento záznam kalendára.");
     }
-    const { error } = await supabaseClient.from("events").update({
+    if (values.youtubeUrlValue && !youtubeVideoId(values.youtubeUrlValue)) throw new Error("YouTube odkaz nie je v podporovanom formáte.");
+    const filePath = await uploadSelectedFile("calendar");
+    const update = {
       title: state.role === "owner" ? cleaningEventTitle(eventType) : values.titleValue,
       description: values.noteValue || null,
       starts_at: startsAt,
       event_type: eventType,
-      owner_record_id: state.role === "owner" ? owner?.id || null : item.ownerRecordId || null
-    }).eq("id", item.id);
+      owner_record_id: state.role === "owner" ? owner?.id || null : item.ownerRecordId || null,
+      youtube_url: values.youtubeUrlValue || null
+    };
+    if (filePath) update.storage_path = filePath;
+    const { error } = await supabaseClient.from("events").update(update).eq("id", item.id);
     if (error) throw new Error(error.message);
     return;
   }

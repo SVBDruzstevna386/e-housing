@@ -3138,6 +3138,17 @@ body.theme-cartoon_3d .system-cards .message-recipient-card.owner {
   height: 15px;
 }
 
+.event-dot .event-detail-button {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  padding: 2px 0;
+  background: transparent;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
 .calendar-hint {
   display: inline-flex;
   align-items: center;
