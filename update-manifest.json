@@ -1,18 +1,19 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v189",
+  "latestVersion": "v190",
   "releasedAt": "2026-07-24",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v189 upravuje názvy položiek hlavného menu.",
+  "summary": "Verzia v190 pridáva individuálny prístup vlastníka k záznamom upratovania v kalendári.",
   "changes": [
-    "Položka Nahlás poruchu bola premenovaná na Nahlásiť poruchu.",
-    "Položka Denník bola premenovaná na Denník SVB.",
-    "PWA cache bola zvýšená na v189."
+    "Predseda SVB môže pri konkrétnom vlastníkovi povoliť pridávanie upratovania.",
+    "Oprávnený vlastník môže vytvárať iba typy Upratovanie a Upratovanie - extra.",
+    "Databázové RLS pravidlá obmedzujú úpravy a mazanie na vlastné záznamy upratovania.",
+    "PWA cache bola zvýšená na v190."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",
   "updateRequestUrl": "",
-  "sourceRepository": "private",
+  "sourceRepository": "public",
   "notes": "Na serverovej strane musí byť nastavený Supabase secret GITHUB_BOOTSTRAP_TOKEN s právom zápisu do cieľového GitHub repozitára."
 }
