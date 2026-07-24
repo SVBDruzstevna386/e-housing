@@ -1,14 +1,14 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v188",
-  "releasedAt": "2026-07-19",
+  "latestVersion": "v189",
+  "releasedAt": "2026-07-24",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v188 opravuje správu používateľských rolí predsedom SVB.",
+  "summary": "Verzia v189 upravuje názvy položiek hlavného menu.",
   "changes": [
-    "Predseda SVB môže v záložkách Prehľad a Vlastníci a byty upravovať a mazať všetky ostatné roly.",
-    "Účet a rolu predsedu SVB nie je možné v administrácii rolí upraviť ani vymazať.",
-    "PWA cache bola zvýšená na v188."
+    "Položka Nahlás poruchu bola premenovaná na Nahlásiť poruchu.",
+    "Položka Denník bola premenovaná na Denník SVB.",
+    "PWA cache bola zvýšená na v189."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",

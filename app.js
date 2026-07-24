@@ -163,10 +163,10 @@ const titles = {
   billing: "Vyúčtovanie",
   executions: "Exekúcie",
   finance: "Hospodárenie",
-  messages: "Nahlás poruchu",
+  messages: "Nahlásiť poruchu",
   votes: "Hlasovanie",
   calendar: "Kalendár",
-  activities: "Denník",
+  activities: "Denník SVB",
   photoAlbum: "Fotoalbum",
   classifieds: "Inzercia",
   profile: "Profil",
@@ -271,7 +271,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v188";
+const APP_VERSION = "v189";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const REMEMBER_LOGIN_KEY = "eHousingRememberLogin";
@@ -1338,7 +1338,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v188",
+    appVersion: item.app_version || "v189",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -2741,7 +2741,7 @@ function actionLabel() {
 function overviewRoleCopy({ pendingOwners, urgentDocuments, unreadMessages, openVotes, nextVote }) {
   const commonSystemCards = [
     { head: "Dokumenty", body: `${state.documents.length} dokumentov v aktuálnom prehľade${urgentDocuments ? `, z toho ${urgentDocuments} urgentné` : ", bez urgentného dokumentu"}.`, icon: "folder-open" },
-    { head: "Nahlás poruchu", body: unreadMessages ? `${unreadMessages} hlásení čaká na prečítanie alebo kontrolu.` : "Nie sú evidované nové hlásenia porúch.", icon: "messages-square" },
+    { head: "Nahlásiť poruchu", body: unreadMessages ? `${unreadMessages} hlásení čaká na prečítanie alebo kontrolu.` : "Nie sú evidované nové hlásenia porúch.", icon: "messages-square" },
     { head: "PWA", body: "Aplikácia je pripravená na inštaláciu z prehliadača na Android, macOS, iOS aj Windows.", icon: "smartphone" }
   ];
 
@@ -2762,7 +2762,7 @@ function overviewRoleCopy({ pendingOwners, urgentDocuments, unreadMessages, open
       taskTitle: "Moje rýchle odkazy",
       tasks: [
         task("Pozrieť najnovšie dokumenty domu", "Dokumenty", "file-text"),
-        task("Otvoriť hlásenia porúch", "Nahlás poruchu", "messages-square"),
+        task("Otvoriť hlásenia porúch", "Nahlásiť poruchu", "messages-square"),
         task("Skontrolovať otvorené hlasovania", "Hlasovania", "vote")
       ].join(""),
       bottomTitle: "Najnovšie dokumenty",
@@ -2779,7 +2779,7 @@ function overviewRoleCopy({ pendingOwners, urgentDocuments, unreadMessages, open
         { label: "Dokumenty", value: state.documents.length, note: urgentDocuments ? `${urgentDocuments} urgentné` : "bez urgentného dokumentu", icon: "file-check" },
         { label: "Otvorené hlasovania", value: openVotes, note: nextVote ? `najbližšie končí ${formatDate(nextVote.closes)}` : "bez otvoreného hlasovania", icon: "vote" },
         { label: "Neprečítané správy", value: unreadMessages, note: unreadMessages ? "vyžadujú kontrolu" : "všetko prečítané", icon: "mail-open" },
-        { label: "Denník", value: state.activities.length, note: "evidované aktivity vedenia domu", icon: "notebook-tabs" }
+        { label: "Denník SVB", value: state.activities.length, note: "evidované aktivity vedenia domu", icon: "notebook-tabs" }
       ],
       sideTitle: "Vedenie SVB",
       sideHtml: state.boardMembers.map(boardMemberCard).join(""),
@@ -2787,7 +2787,7 @@ function overviewRoleCopy({ pendingOwners, urgentDocuments, unreadMessages, open
       tasks: [
         urgentDocuments ? task(`Skontrolovať urgentné dokumenty: ${urgentDocuments}`, "Dokumenty", "file-warning") : "",
         openVotes ? task(`Sledovať otvorené hlasovania: ${openVotes}`, "Hlasovania", "vote") : "",
-        task("Doplniť vlastné mesačné aktivity do denníka", "Denník", "notebook-pen")
+        task("Doplniť vlastné mesačné aktivity do denníka", "Denník SVB", "notebook-pen")
       ].filter(Boolean).join(""),
       bottomTitle: "Denník za mesiac",
       bottomHtml: state.activities.slice(0, 3).map(activityCard).join(""),
@@ -3996,9 +3996,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=188"],
+        ["Manifest", "manifest.webmanifest?v=189"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v188"]
+        ["Cache", "e-housing-v189"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -4062,10 +4062,10 @@ function viewForTaskTag(tagText) {
   const map = {
     Vlastníci: "owners",
     Dokumenty: "documents",
-    "Nahlás poruchu": "messages",
+    "Nahlásiť poruchu": "messages",
     Hlasovania: "votes",
     Kalendár: "calendar",
-    Denník: "activities"
+    "Denník SVB": "activities"
   };
   return map[tagText] || "overview";
 }
@@ -4074,7 +4074,7 @@ function overviewTasks({ pendingOwners, urgentDocuments, unreadMessages, openVot
   const tasks = [];
   if (pendingOwners) tasks.push(task(`Schváliť vlastníkov čakajúcich na autorizáciu: ${pendingOwners}`, "Vlastníci"));
   if (urgentDocuments) tasks.push(task(`Skontrolovať urgentné dokumenty: ${urgentDocuments}`, "Dokumenty"));
-  if (unreadMessages) tasks.push(task(`Skontrolovať nové hlásenia: ${unreadMessages}`, "Nahlás poruchu"));
+  if (unreadMessages) tasks.push(task(`Skontrolovať nové hlásenia: ${unreadMessages}`, "Nahlásiť poruchu"));
   if (openVotes) tasks.push(task(`Sledovať otvorené hlasovania: ${openVotes}`, "Hlasovania"));
   if (!tasks.length) tasks.push(systemCard("Bez okamžitej úlohy", "V databáze nie je evidovaná žiadna čakajúca aktivácia, urgentný dokument ani neprečítaná správa."));
   return tasks.join("");
