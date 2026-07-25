@@ -272,7 +272,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v192";
+const APP_VERSION = "v193";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1341,7 +1341,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v192",
+    appVersion: item.app_version || "v193",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -1972,8 +1972,10 @@ function canManageCleaningCalendar(owner = currentOwner()) {
     && Boolean(owner.canManageCleaningCalendar);
 }
 
-function canManageCalendarEvent(item = null) {
-  if (permissionFor(state.role, "calendar").write) return true;
+function canManageCalendarEvent(item = null, action = "write") {
+  const hasConfiguredPermission = Boolean(permissionFor(state.role, "calendar")[action]);
+  const canManageAllEventTypes = ["chair", "vice_chair", "economic"].includes(state.role);
+  if (hasConfiguredPermission && (!item || canManageAllEventTypes || item.eventType === "general")) return true;
   return canManageCleaningCalendar()
     && Boolean(item)
     && item.createdBy === state.currentUserId
@@ -2033,7 +2035,7 @@ function canEditItem(type, item = null) {
 
 function canDeleteItem(type, item = null) {
   if (type === "vote") return state.role === "chair";
-  if (type === "event") return canManageCalendarEvent(item);
+  if (type === "event") return canManageCalendarEvent(item, "delete");
   if (type === "boardMember") return canManageBoardMember(item);
   if (type === "announcement") return canManageAnnouncement(item);
   if (type === "classified") return canManageClassified(item);
@@ -4102,9 +4104,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=192"],
+        ["Manifest", "manifest.webmanifest?v=193"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v192"]
+        ["Cache", "e-housing-v193"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",

@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v192",
-  "releasedAt": "2026-07-24",
+  "latestVersion": "v193",
+  "releasedAt": "2026-07-25",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v192 pridáva skutočné Web Push notifikácie fungujúce aj pri zatvorenej aplikácii.",
+  "summary": "Verzia v193 zosúlaďuje oprávnenia kalendára s databázovými RLS pravidlami.",
   "changes": [
-    "Web Push je aktivovaný pre upratovanie, nahlásené poruchy a oznamy.",
-    "Odber notifikácií je bezpečne viazaný na prihlásený účet a konkrétne zariadenie.",
-    "Neplatné odbery sa po odpovedi push služby automaticky odstránia.",
-    "PWA cache bola zvýšená na v192."
+    "Schválené riadiace roly môžu zapisovať bežné udalosti podľa nastavených oprávnení.",
+    "Mazanie udalostí rešpektuje samostatné oprávnenie Vymazať.",
+    "Udalosti upratovania zostávajú chránené samostatnými pravidlami vlastníkov.",
+    "PWA cache bola zvýšená na v193."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",
