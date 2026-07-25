@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v199",
+  "latestVersion": "v200",
   "releasedAt": "2026-07-26",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v199 pridáva predsedovi filter vyúčtovaní podľa vlastníka.",
+  "summary": "Verzia v200 pridáva samostatnú komunikačnú záložku Rozprávajme sa.",
   "changes": [
-    "Predseda môže vo Vyúčtovaní vybrať konkrétneho vlastníka nehnuteľnosti.",
-    "Filter rozlišuje jednotlivé nehnuteľnosti aj pri vlastníkovi s viacerými bytmi.",
-    "Voľba Všetci vlastníci nehnuteľností zobrazí kompletný zoznam vyúčtovaní.",
-    "PWA cache bola zvýšená na v199."
+    "Rozprávajme sa je umiestnené v hlavnom menu pod záložkou Inzercia.",
+    "Nová záložka má vlastné samostatné záznamy a vlákna.",
+    "Formulár podporuje obrázok, YouTube odkaz, odpovede a automatické emailové aj PWA upozornenia.",
+    "PWA cache bola zvýšená na v200."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",

@@ -14,6 +14,7 @@ const state = {
   activityMonthFilter: new Date().toISOString().slice(0, 7),
   documentHistoryFilter: "all",
   messageFilter: "all",
+  talkMessageFilter: "all",
   classifiedFilter: "all",
   billingOwnerFilter: "all",
   billingSettlements: [],
@@ -166,6 +167,7 @@ const titles = {
   executions: "Exekúcie",
   finance: "Hospodárenie",
   messages: "Nahlásiť poruchu",
+  talk: "Rozprávajme sa",
   votes: "Hlasovanie",
   calendar: "Kalendár",
   activities: "Denník SVB",
@@ -211,6 +213,10 @@ const HELP_TEXTS = {
   messages: {
     title: "Nápoveda pre Komunikáciu",
     body: "Komunikácia slúži na verejné aj súkromné správy medzi používateľmi podľa nastavených práv. Správy môžu byť adresované verejnej diskusii, predsedovi SVB, vedeniu alebo konkrétnemu vlastníkovi. Odpovede sa zobrazujú v rámci pôvodnej konverzácie."
+  },
+  talk: {
+    title: "Nápoveda pre Rozprávajme sa",
+    body: "Rozprávajme sa je samostatný komunikačný priestor so svojimi vlastnými záznamami. Podporuje verejné aj súkromné správy, odpovede vo vláknach, obrázky a YouTube odkazy rovnako ako záložka Nahlásiť poruchu."
   },
   calendar: {
     title: "Nápoveda pre Kalendár",
@@ -273,7 +279,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v199";
+const APP_VERSION = "v200";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -520,11 +526,12 @@ function rolePermissions() {
 
 function permissionFor(role = state.role, view = state.view) {
   const permissions = rolePermissions();
-  const direct = permissions?.[role]?.[view] || { read: false, write: false, delete: false };
+  const permissionView = view === "talk" ? "messages" : view;
+  const direct = permissions?.[role]?.[permissionView] || { read: false, write: false, delete: false };
   const inheritsOwnerPermissions = ["chair", "vice_chair", "board"].includes(role)
     && ownersForCurrentUser().length > 0;
   if (!inheritsOwnerPermissions) return direct;
-  const owner = permissions?.owner?.[view] || { read: false, write: false, delete: false };
+  const owner = permissions?.owner?.[permissionView] || { read: false, write: false, delete: false };
   return {
     read: Boolean(direct.read || owner.read),
     write: Boolean(direct.write || owner.write),
@@ -1366,7 +1373,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v199",
+    appVersion: item.app_version || "v200",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -1673,7 +1680,7 @@ async function dbMessageToCard(item) {
   const recipient = item.recipient
     ? `${item.recipient.full_name}${item.recipient.flat_number ? ` · ${item.recipient.flat_number}` : ""}`
     : item.recipient_label || (item.scope === "public" ? "Verejná diskusia" : "Súkromný adresát");
-  return { id: item.id, parentId: item.parent_id, senderId: item.sender_id, recipientId: item.recipient_id, recipientLabel: item.recipient_label || recipient, scopeRaw: item.scope, scope, from: item.sender?.full_name || "Používateľ", to: recipient, subject: item.subject, text: item.body, createdAt: item.created_at, date: new Date(item.created_at).toLocaleString("sk-SK"), read: Boolean(item.read_at), storagePath: item.storage_path, fileUrl, youtubeUrl: item.youtube_url || "" };
+  return { id: item.id, parentId: item.parent_id, messageArea: item.message_section || "repair", senderId: item.sender_id, recipientId: item.recipient_id, recipientLabel: item.recipient_label || recipient, scopeRaw: item.scope, scope, from: item.sender?.full_name || "Používateľ", to: recipient, subject: item.subject, text: item.body, createdAt: item.created_at, date: new Date(item.created_at).toLocaleString("sk-SK"), read: Boolean(item.read_at), storagePath: item.storage_path, fileUrl, youtubeUrl: item.youtube_url || "" };
 }
 
 function voteAnswerOwner(answer) {
@@ -2062,6 +2069,7 @@ function firstAccessibleView() {
     "activities",
     "photoAlbum",
     "classifieds",
+    "talk",
     "owners",
     "emails",
     "logs",
@@ -2930,6 +2938,7 @@ function actionLabel() {
   if (state.view === "photoAlbum") return "Pridať fotku";
   if (state.view === "classifieds") return "Pridať inzerát";
   if (state.view === "messages") return "Zaeviduj poruchu";
+  if (state.view === "talk") return "Napísať príspevok";
   if (state.view === "owners") return "Pridať vlastníka";
   if (state.view === "emails") return "Nová šablóna";
   return "Pridať oznámenie";
@@ -3236,50 +3245,10 @@ const views = {
     `;
   },
   messages() {
-    const messages = messageThreads().filter((message) =>
-      state.messageFilter === "all" || message.scope === state.messageFilter || message.to === state.messageFilter
-    );
-    return `
-      <div class="grid">
-        <section class="panel messages-panel">
-          <div class="toolbar messages-toolbar">
-            <div>
-              <h2>Správy a vlákna</h2>
-              <p class="muted">V tomto okne môžete sledovať priebeh opráv elektronicky nahlásených porúch.</p>
-            </div>
-          </div>
-          <select class="search below-title-select message-filter-select" data-message-filter>
-            <option value="all" ${state.messageFilter === "all" ? "selected" : ""}>Všetky správy</option>
-            <option value="Verejná diskusia" ${state.messageFilter === "Verejná diskusia" ? "selected" : ""}>Verejná diskusia</option>
-            <option value="Súkromná správa" ${state.messageFilter === "Súkromná správa" ? "selected" : ""}>Súkromné správy</option>
-            <option value="Predseda SVB" ${state.messageFilter === "Predseda SVB" ? "selected" : ""}>Predseda SVB</option>
-            <option value="Podpredseda SVB" ${state.messageFilter === "Podpredseda SVB" ? "selected" : ""}>Podpredseda SVB</option>
-            <option value="Ekonomická správa" ${state.messageFilter === "Ekonomická správa" ? "selected" : ""}>Ekonomická správa</option>
-            <option value="Dozorná rada" ${state.messageFilter === "Dozorná rada" ? "selected" : ""}>Dozorná rada</option>
-          </select>
-          <div class="grid three system-cards message-recipient-row" aria-label="Adresáti správ">
-            <article class="card icon-card message-recipient-card public" data-system-icon="info">
-              <div class="card-icon">${icon("info")}</div>
-              <h3>Verejná diskusia</h3>
-              <p class="muted">Správy k domu, ktoré môžu čítať všetky role.</p>
-            </article>
-            <article class="card icon-card message-recipient-card private" data-system-icon="info">
-              <div class="card-icon">${icon("info")}</div>
-              <h3>Súkromná správa</h3>
-              <p class="muted">Správa smeruje na vedenie SVB alebo určeného adresáta.</p>
-            </article>
-            <article class="card icon-card message-recipient-card owner" data-system-icon="info">
-              <div class="card-icon">${icon("info")}</div>
-              <h3>Konkrétny vlastník</h3>
-              <p class="muted">Pri písaní správy vyberiete vlastníka podľa mena a bytu.</p>
-            </article>
-          </div>
-          <div class="message-list">
-            ${messages.map(messageCard).join("")}
-          </div>
-        </section>
-      </div>
-    `;
+    return messageSectionView("repair");
+  },
+  talk() {
+    return messageSectionView("talk");
   },
   votes() {
     const votes = filteredVotes();
@@ -4212,9 +4181,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=199"],
+        ["Manifest", "manifest.webmanifest?v=200"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v199"]
+        ["Cache", "e-housing-v200"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -5846,15 +5815,65 @@ function canStartMessageTo(label) {
   return communicationPermissionFor(state.role, "individualOwners");
 }
 
-function messageThreads() {
+function messageSectionView(messageArea = "repair") {
+  const isTalk = messageArea === "talk";
+  const filter = isTalk ? state.talkMessageFilter : state.messageFilter;
+  const messages = messageThreads(messageArea).filter((message) =>
+    filter === "all" || message.scope === filter || message.to === filter
+  );
+  return `
+    <div class="grid">
+      <section class="panel messages-panel">
+        <div class="toolbar messages-toolbar">
+          <div>
+            <h2>${isTalk ? "Rozprávajme sa" : "Správy a vlákna"}</h2>
+            <p class="muted">${isTalk ? "Samostatný priestor na komunikáciu, otázky a spoločnú diskusiu vlastníkov a vedenia SVB." : "V tomto okne môžete sledovať priebeh opráv elektronicky nahlásených porúch."}</p>
+          </div>
+        </div>
+        <select class="search below-title-select message-filter-select" data-message-filter="${messageArea}">
+          <option value="all" ${filter === "all" ? "selected" : ""}>Všetky správy</option>
+          <option value="Verejná diskusia" ${filter === "Verejná diskusia" ? "selected" : ""}>Verejná diskusia</option>
+          <option value="Súkromná správa" ${filter === "Súkromná správa" ? "selected" : ""}>Súkromné správy</option>
+          <option value="Predseda SVB" ${filter === "Predseda SVB" ? "selected" : ""}>Predseda SVB</option>
+          <option value="Podpredseda SVB" ${filter === "Podpredseda SVB" ? "selected" : ""}>Podpredseda SVB</option>
+          <option value="Ekonomická správa" ${filter === "Ekonomická správa" ? "selected" : ""}>Ekonomická správa</option>
+          <option value="Dozorná rada" ${filter === "Dozorná rada" ? "selected" : ""}>Dozorná rada</option>
+        </select>
+        <div class="grid three system-cards message-recipient-row" aria-label="Adresáti správ">
+          <article class="card icon-card message-recipient-card public" data-system-icon="info">
+            <div class="card-icon">${icon("info")}</div>
+            <h3>Verejná diskusia</h3>
+            <p class="muted">Správy k domu, ktoré môžu čítať všetky role.</p>
+          </article>
+          <article class="card icon-card message-recipient-card private" data-system-icon="info">
+            <div class="card-icon">${icon("info")}</div>
+            <h3>Súkromná správa</h3>
+            <p class="muted">Správa smeruje na vedenie SVB alebo určeného adresáta.</p>
+          </article>
+          <article class="card icon-card message-recipient-card owner" data-system-icon="info">
+            <div class="card-icon">${icon("info")}</div>
+            <h3>Konkrétny vlastník</h3>
+            <p class="muted">Pri písaní správy vyberiete vlastníka podľa mena a bytu.</p>
+          </article>
+        </div>
+        <div class="message-list">
+          ${messages.map(messageCard).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function messageThreads(messageArea = "repair") {
+  const sectionMessages = state.messages.filter((message) => (message.messageArea || "repair") === messageArea);
   const repliesByParent = new Map();
-  state.messages.filter((message) => message.parentId).forEach((reply) => {
+  sectionMessages.filter((message) => message.parentId).forEach((reply) => {
     const rootId = reply.parentId;
     const replies = repliesByParent.get(rootId) || [];
     replies.push(reply);
     repliesByParent.set(rootId, replies);
   });
-  return state.messages
+  return sectionMessages
     .filter((message) => !message.parentId)
     .map((message) => ({
       ...message,
@@ -6040,7 +6059,8 @@ function bindViewActions() {
 
   document.querySelectorAll("[data-message-filter]").forEach((select) => {
     select.addEventListener("change", () => {
-      state.messageFilter = select.value;
+      if (select.dataset.messageFilter === "talk") state.talkMessageFilter = select.value;
+      else state.messageFilter = select.value;
       render();
     });
   });
@@ -7159,7 +7179,8 @@ async function saveMessageReply(original) {
       recipient_label: original.from || "Odpoveď v konverzácii",
       subject,
       body,
-      scope: "private"
+      scope: "private",
+      message_section: original.messageArea || "repair"
     }).select("id").single();
     if (error) {
       window.alert(`Odpoveď sa nepodarilo uložiť: ${error.message}`);
@@ -7171,17 +7192,21 @@ async function saveMessageReply(original) {
         message: body,
         scope: "Súkromná odpoveď predsedovi SVB",
         recipient: original.from || "Predseda SVB",
-        relatedId: data?.id || parentId
+        relatedId: data?.id || parentId,
+        view: original.messageArea === "talk" ? "talk" : "messages",
+        detailType: "message",
+        detailId: parentId,
+        eventType: original.messageArea === "talk" ? "Odpoveď v Rozprávajme sa" : "Odpoveď k nahlásenej poruche"
       });
     }
     await writeActivityLog("reply", `Odpoveď na správu: ${original.subject}`, {
       relatedTable: "messages",
       relatedId: parentId,
-      metadata: { subject, recipient: original.from }
+      metadata: { subject, recipient: original.from, view: original.messageArea === "talk" ? "talk" : "messages" }
     });
     await loadSupabaseData();
   } else {
-    state.messages.unshift({ id: Date.now(), parentId: original.parentId || original.id, scope: "Súkromná správa", scopeRaw: "private", senderId: state.currentUserId, recipientId: original.senderId || null, recipientLabel: original.from, from: roleLabel(), to: original.from, subject, text: body, date: "Teraz", createdAt: new Date().toISOString(), read: false });
+    state.messages.unshift({ id: Date.now(), parentId: original.parentId || original.id, messageArea: original.messageArea || "repair", scope: "Súkromná správa", scopeRaw: "private", senderId: state.currentUserId, recipientId: original.senderId || null, recipientLabel: original.from, from: roleLabel(), to: original.from, subject, text: body, date: "Teraz", createdAt: new Date().toISOString(), read: false });
   }
   dialog.close();
   render();
@@ -8120,15 +8145,16 @@ function formFor(type, defaults = {}) {
       ["voteQuestions", "Hlasovacie otázky", "Súhlasíte s realizáciou navrhovanej opravy?\nSúhlasíte s použitím prostriedkov z fondu opráv?", "textarea"]
     ]) + notificationFields("all");
   }
-  if (type === "messages") {
+  if (type === "messages" || type === "talk") {
+    const isTalk = type === "talk";
     return fieldsWithValues([
-      ["title", "Názov poruchy", "Nová porucha"],
+      ["title", isTalk ? "Predmet" : "Názov poruchy", isTalk ? "Nová téma" : "Nová porucha"],
       ["youtubeUrl", "YouTube video link", ""],
-      ["note", "Popis poruchy", "Popíšte poruchu, jej miesto a aktuálny stav.", "textarea"]
-    ]) + uploadField("Obrázok poruchy", "image/*") + `
+      ["note", isTalk ? "Text správy" : "Popis poruchy", isTalk ? "Napíšte správu, otázku alebo tému na spoločnú diskusiu." : "Popíšte poruchu, jej miesto a aktuálny stav.", "textarea"]
+    ]) + uploadField(isTalk ? "Obrázok k správe" : "Obrázok poruchy", "image/*") + `
       <article class="notice">
         <strong>Automatické upozornenie</strong>
-        <p>Po zaevidovaní poruchy sa automaticky odošle email a PWA upozornenie všetkým schváleným vlastníkom.</p>
+        <p>Po ${isTalk ? "uverejnení správy" : "zaevidovaní poruchy"} sa automaticky odošle email a PWA upozornenie všetkým schváleným vlastníkom.</p>
       </article>
     `;
   }
@@ -8855,7 +8881,7 @@ async function saveDialog(type) {
   const isDebtorValue = document.querySelector("#isDebtor")?.value.trim().toLowerCase();
   const voteDeadlineValue = document.querySelector("#voteDeadline")?.value.trim();
   const voteQuestionsValue = document.querySelector("#voteQuestions")?.value.trim();
-  const notification = type === "messages"
+  const notification = type === "messages" || type === "talk"
     ? { target: "all", ownerId: "" }
     : type === "overview" && state.role === "owner"
     ? { target: "all", ownerId: "" }
@@ -8906,8 +8932,8 @@ async function saveDialog(type) {
     }
   } else if (type === "votes") {
     state.votes.unshift({ id: Date.now(), title: titleValue, description: noteValue, type: categoryValue || "present_majority", closes: voteDeadlineValue || "2026-07-15", status: "Prebieha", yes: 0, no: 0, abstain: 0, comments: 0, questions: parseVoteQuestions(voteQuestionsValue || titleValue).map((text, index) => ({ id: `local-${Date.now()}-${index}`, text })) });
-  } else if (type === "messages") {
-    state.messages.unshift({ id: Date.now(), scope: "Verejná diskusia", scopeRaw: "public", senderId: state.currentUserId, recipientLabel: "Všetci vlastníci", from: roleLabel(), to: "Všetci vlastníci", subject: titleValue, text: noteValue, date: "Teraz", createdAt: new Date().toISOString(), read: false, youtubeUrl: youtubeUrlValue || "" });
+  } else if (type === "messages" || type === "talk") {
+    state.messages.unshift({ id: Date.now(), messageArea: type === "talk" ? "talk" : "repair", scope: "Verejná diskusia", scopeRaw: "public", senderId: state.currentUserId, recipientLabel: "Všetci vlastníci", from: roleLabel(), to: "Všetci vlastníci", subject: titleValue, text: noteValue, date: "Teraz", createdAt: new Date().toISOString(), read: false, youtubeUrl: youtubeUrlValue || "" });
   } else if (type === "owners") {
     state.owners.push({
       flat: categoryValue,
@@ -9037,8 +9063,9 @@ async function saveDialogToSupabase(type, values) {
         note: values.noteValue
       }));
     }
-  } else if (type === "messages") {
+  } else if (type === "messages" || type === "talk") {
     if (values.youtubeUrlValue && !youtubeVideoId(values.youtubeUrlValue)) throw new Error("YouTube odkaz nie je v podporovanom formáte.");
+    const isTalk = type === "talk";
     const response = assertSupabaseOk(await supabaseClient.from("messages").insert({
       sender_id: state.currentUserId,
       recipient_id: null,
@@ -9047,9 +9074,24 @@ async function saveDialogToSupabase(type, values) {
       body: values.noteValue,
       scope: "public",
       storage_path: filePath,
-      youtube_url: values.youtubeUrlValue || null
+      youtube_url: values.youtubeUrlValue || null,
+      message_section: isTalk ? "talk" : "repair"
     }).select("id").single());
-    await notifyByChoice("Nová nahlásená porucha", values.titleValue, values.noteValue, { target: "all", ownerId: "" }, "messages", response.data.id, { appNotification: true });
+    await notifyByChoice(
+      isTalk ? "Nový príspevok v Rozprávajme sa" : "Nová nahlásená porucha",
+      values.titleValue,
+      values.noteValue,
+      { target: "all", ownerId: "" },
+      "messages",
+      response.data.id,
+      {
+        appNotification: true,
+        view: type,
+        detailType: "message",
+        sectionLabel: titles[type],
+        eventType: isTalk ? "Rozprávajme sa" : "Nová nahlásená porucha"
+      }
+    );
   } else if (type === "calendar") {
     const startsAt = eventDateToStartsAt(values.categoryValue);
     state.calendarMonth = normalizeEventDateInput(values.categoryValue).slice(0, 7);

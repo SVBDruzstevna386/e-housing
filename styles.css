@@ -92,6 +92,7 @@ body.theme-cartoon_3d .nav-item[data-view="billing"]::before { background-image:
 body.theme-cartoon_3d .nav-item[data-view="executions"]::before { background-image: url("./assets/cartoon/icon-executions.png?v=172"); }
 body.theme-cartoon_3d .nav-item[data-view="finance"]::before { background-image: url("./assets/cartoon/icon-finance.png?v=172"); }
 body.theme-cartoon_3d .nav-item[data-view="messages"]::before { background-image: url("./assets/cartoon/icon-messages.png?v=172"); }
+body.theme-cartoon_3d .nav-item[data-view="talk"]::before { background-image: url("./assets/cartoon/icon-messages.png?v=172"); }
 body.theme-cartoon_3d .nav-item[data-view="calendar"]::before { background-image: url("./assets/cartoon/icon-calendar.png?v=172"); }
 body.theme-cartoon_3d .nav-item[data-view="activities"]::before { background-image: url("./assets/cartoon/icon-activities.png?v=172"); }
 body.theme-cartoon_3d .nav-item[data-view="photoAlbum"]::before { background-image: url("./assets/cartoon/icon-photoAlbum.png?v=172"); }
@@ -466,7 +467,7 @@ body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child 
 body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child,
 body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child,
 body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child,
-body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child,
+body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child,
 body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child,
 body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child,
 body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child,
@@ -489,7 +490,7 @@ body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child 
 body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child::after,
 body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child::after,
 body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child::after,
-body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child::after,
+body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child::after,
 body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child::after,
 body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child::after,
 body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child::after,
@@ -516,7 +517,7 @@ body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child 
 body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child > *,
 body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child > *,
 body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child > *,
-body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child > *,
+body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child > *,
 body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child > *,
 body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child > *,
 body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child > *,
@@ -534,7 +535,7 @@ body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child 
 body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child .toolbar,
 body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child .toolbar,
 body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child .toolbar,
-body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child .toolbar,
+body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child .toolbar,
 body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child > .toolbar,
 body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child .toolbar,
 body.theme-cartoon_3d[data-view="owners"] .view-root > .panel:first-child .toolbar,
@@ -567,11 +568,11 @@ body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel
   background-image: url("./assets/cartoon/icon-finance.png?v=172");
 }
 
-body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child::after {
+body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child::after {
   background-image: url("./assets/cartoon/icon-messages.png?v=172");
 }
 
-body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child::after {
+body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child::after {
   right: 34px;
   top: 24px;
   width: min(250px, 30%);
@@ -880,7 +881,7 @@ body.theme-cartoon_3d[data-view="profile"] .profile-overview-panel > .profile-me
 body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child,
 body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child,
 body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child,
-body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child,
+body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child,
 body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child,
 body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child,
 body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child,
@@ -891,7 +892,7 @@ body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel
 body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child::after,
 body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child::after,
 body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child::after,
-body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child::after,
+body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child::after,
 body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child::after,
 body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child::after,
 body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child::after,
@@ -905,7 +906,7 @@ body.theme-cartoon_3d[data-view="calendar"] .calendar-head,
 body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child > .toolbar:first-child,
 body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child > .toolbar:first-child,
 body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child > .toolbar:first-child,
-body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child > .toolbar:first-child,
+body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child > .toolbar:first-child,
 body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child > .toolbar:first-child,
 body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child > .toolbar:first-child,
 body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel:first-child > .toolbar:first-child {
@@ -919,7 +920,7 @@ body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel
   body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child .toolbar,
   body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child .toolbar,
   body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child .toolbar,
-  body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child .toolbar,
+  body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child .toolbar,
   body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child > .toolbar,
   body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child .toolbar,
   body.theme-cartoon_3d[data-view="owners"] .view-root > .panel:first-child .toolbar,
@@ -932,7 +933,7 @@ body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel
   body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child,
   body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child,
   body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child,
-  body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child,
+  body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child,
   body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child,
   body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child,
   body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child,
@@ -945,7 +946,7 @@ body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel
   body.theme-cartoon_3d[data-view="documentHistory"] .view-root > div:first-child > .panel:first-child > .toolbar:first-child,
   body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child > .toolbar:first-child,
   body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child > .toolbar:first-child,
-  body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child > .toolbar:first-child,
+  body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child > .toolbar:first-child,
   body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child > .toolbar:first-child,
   body.theme-cartoon_3d[data-view="photoAlbum"] .view-root > .panel:first-child > .toolbar:first-child,
   body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel:first-child > .toolbar:first-child {
@@ -1007,7 +1008,7 @@ body.theme-cartoon_3d[data-view="profile"] .view-root > div:first-child > .panel
   body.theme-cartoon_3d[data-view="billing"] .view-root > .panel:first-child::after,
   body.theme-cartoon_3d[data-view="executions"] .view-root > .panel:first-child::after,
   body.theme-cartoon_3d[data-view="finance"] .view-root > div:first-child > .panel:first-child::after,
-  body.theme-cartoon_3d[data-view="messages"] .view-root > div:first-child > .panel:first-child::after,
+  body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .view-root > div:first-child > .panel:first-child::after,
   body.theme-cartoon_3d[data-view="votes"] .view-root > .panel:first-child::after,
   body.theme-cartoon_3d[data-view="calendar"] .view-root > .panel:first-child::after,
   body.theme-cartoon_3d[data-view="activities"] .view-root > div:first-child > .panel:first-child::after,
@@ -2783,11 +2784,11 @@ select.search {
   background: rgba(255, 255, 255, 0.92);
 }
 
-body.theme-cartoon_3d[data-view="messages"] .messages-toolbar {
+body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .messages-toolbar {
   padding-right: min(300px, 38%);
 }
 
-body.theme-cartoon_3d[data-view="messages"] .message-filter-select {
+body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .message-filter-select {
   position: relative;
   z-index: 1;
 }
