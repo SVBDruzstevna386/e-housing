@@ -15,6 +15,7 @@ const state = {
   documentHistoryFilter: "all",
   messageFilter: "all",
   classifiedFilter: "all",
+  billingOwnerFilter: "all",
   billingSettlements: [],
   financeEntries: [],
   executionCases: [],
@@ -272,7 +273,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v198";
+const APP_VERSION = "v199";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1365,7 +1366,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v198",
+    appVersion: item.app_version || "v199",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -1807,6 +1808,15 @@ async function dbBillingSettlementToCard(item) {
     fileUrl,
     date: item.created_at
   };
+}
+
+function billingSettlementBelongsToOwner(item, owner, ownerProfileId = owner?.profileId) {
+  if (!item || !owner) return false;
+  if (item.ownerRecordId) return String(item.ownerRecordId) === String(owner.id);
+  if (item.flat && owner.flat) return item.flat === owner.flat;
+  if (item.ownerProfileId && ownerProfileId) return String(item.ownerProfileId) === String(ownerProfileId);
+  const ownerEmail = owner.loginEmail || owner.email || "";
+  return Boolean(item.email && ownerEmail && item.email.toLowerCase() === ownerEmail.toLowerCase());
 }
 
 function dbExecutionCaseToCard(item) {
@@ -3122,19 +3132,28 @@ const views = {
     const owner = currentOwner();
     const ownerProfileId = owner?.profileId || state.currentUserId;
     const usesOwnerScope = ["owner", "board"].includes(state.role);
+    const ownerOptions = state.owners.map((item) => [String(item.id), `${item.name} · byt ${item.flat || "bez čísla"}`]);
+    if (state.billingOwnerFilter !== "all" && !ownerOptions.some(([value]) => value === String(state.billingOwnerFilter))) {
+      state.billingOwnerFilter = "all";
+    }
+    const selectedOwner = state.owners.find((item) => String(item.id) === String(state.billingOwnerFilter));
     const items = usesOwnerScope
-      ? state.billingSettlements.filter((item) =>
-        (owner?.id && String(item.ownerRecordId || "") === String(owner.id))
-        || (ownerProfileId && String(item.ownerProfileId || "") === String(ownerProfileId))
-        || (owner && !item.ownerRecordId && !item.ownerProfileId && item.flat === owner.flat && item.email === (owner.loginEmail || owner.email))
-      )
-      : state.billingSettlements;
+      ? state.billingSettlements.filter((item) => billingSettlementBelongsToOwner(item, owner, ownerProfileId))
+      : state.role === "chair" && selectedOwner
+        ? state.billingSettlements.filter((item) => billingSettlementBelongsToOwner(item, selectedOwner, selectedOwner.profileId))
+        : state.billingSettlements;
     return `
       <section class="panel">
         <div class="toolbar">
           <div>
             <h2>História vyúčtovaní</h2>
             <p class="muted">Súkromné vyúčtovania priradené ku konkrétnemu registrovanému vlastníkovi bytu.</p>
+            ${state.role === "chair" ? `
+              <select class="search below-title-select" data-billing-owner-filter aria-label="Filter vyúčtovaní podľa vlastníka nehnuteľnosti">
+                <option value="all" ${state.billingOwnerFilter === "all" ? "selected" : ""}>Všetci vlastníci nehnuteľností</option>
+                ${ownerOptions.map(([value, label]) => `<option value="${escapeAttr(value)}" ${String(state.billingOwnerFilter) === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}
+              </select>
+            ` : ""}
           </div>
           <span class="tag document">${items.length} záznamy</span>
         </div>
@@ -4193,9 +4212,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=198"],
+        ["Manifest", "manifest.webmanifest?v=199"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v198"]
+        ["Cache", "e-housing-v199"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -6008,6 +6027,13 @@ function bindViewActions() {
   document.querySelectorAll("[data-document-filter]").forEach((select) => {
     select.addEventListener("change", () => {
       state.filter = select.value;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-billing-owner-filter]").forEach((select) => {
+    select.addEventListener("change", () => {
+      state.billingOwnerFilter = select.value;
       render();
     });
   });

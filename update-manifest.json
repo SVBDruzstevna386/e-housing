@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v198",
+  "latestVersion": "v199",
   "releasedAt": "2026-07-26",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v198 chráni súkromné vyúčtovania členov dozornej rady.",
+  "summary": "Verzia v199 pridáva predsedovi filter vyúčtovaní podľa vlastníka.",
   "changes": [
-    "Člen dozornej rady vidí iba vyúčtovania priradené k svojim nehnuteľnostiam.",
-    "Frontend používa rovnaký súkromný rozsah ako pri vlastníkovi nehnuteľnosti.",
-    "Databázové RLS blokuje prístup k vyúčtovaniam ostatných vlastníkov.",
-    "PWA cache bola zvýšená na v198."
+    "Predseda môže vo Vyúčtovaní vybrať konkrétneho vlastníka nehnuteľnosti.",
+    "Filter rozlišuje jednotlivé nehnuteľnosti aj pri vlastníkovi s viacerými bytmi.",
+    "Voľba Všetci vlastníci nehnuteľností zobrazí kompletný zoznam vyúčtovaní.",
+    "PWA cache bola zvýšená na v199."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",
