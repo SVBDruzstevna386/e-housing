@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v196",
+  "latestVersion": "v197",
   "releasedAt": "2026-07-26",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v196 opravuje upratovací kalendár člena dozornej rady.",
+  "summary": "Verzia v197 zjednodušuje označenie upratovania v kalendári.",
   "changes": [
-    "Člen dozornej rady s povoleným Kalendárom upratovania používa rovnaký formulár ako vlastník nehnuteľnosti.",
-    "Formulár ponúka iba typy Upratovanie a Upratovanie - extra.",
-    "Člen dozornej rady nemôže týmto oprávnením vytvárať všeobecné udalosti.",
-    "PWA cache bola zvýšená na v196."
+    "Upratovacie udalosti sa v kalendári zobrazujú iba ako Upratovanie alebo Upratovanie - extra.",
+    "Meno autora ani číslo bytu sa v kalendárnom štítku nezobrazuje.",
+    "Kliknutie na udalosť naďalej otvorí jej úplný detail.",
+    "PWA cache bola zvýšená na v197."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",

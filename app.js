@@ -272,7 +272,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v196";
+const APP_VERSION = "v197";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1365,7 +1365,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v196",
+    appVersion: item.app_version || "v197",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -4184,9 +4184,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=196"],
+        ["Manifest", "manifest.webmanifest?v=197"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v196"]
+        ["Cache", "e-housing-v197"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -5207,14 +5207,15 @@ function calendarCells() {
 function dayCard(cell, canCreate = false) {
   if (!cell) return `<article class="day is-empty" aria-hidden="true"></article>`;
   const eventList = cell.events.map((event) => {
-    const ownerCleaningLabel = state.role === "owner" && ["cleaning", "cleaning_extra"].includes(event.eventType)
+    const cleaningEvent = isCleaningEventType(event.eventType);
+    const calendarLabel = cleaningEvent
       ? cleaningEventTitle(event.eventType)
       : event.title;
-    const creatorLabel = state.role === "owner" ? "" : event.creatorLabel;
+    const creatorLabel = cleaningEvent || state.role === "owner" ? "" : event.creatorLabel;
     return `
     <span class="event-dot">
-      <button type="button" class="event-detail-button" data-detail="event" data-id="${event.id}" aria-label="Otvoriť detail udalosti ${escapeAttr(ownerCleaningLabel)}">
-        <span>${escapeHtml(ownerCleaningLabel)}${creatorLabel ? `<small> · ${escapeHtml(creatorLabel)}</small>` : ""}</span>
+      <button type="button" class="event-detail-button" data-detail="event" data-id="${event.id}" aria-label="Otvoriť detail udalosti ${escapeAttr(calendarLabel)}">
+        <span>${escapeHtml(calendarLabel)}${creatorLabel ? `<small> · ${escapeHtml(creatorLabel)}</small>` : ""}</span>
       </button>
       <span class="event-actions">
         ${canEditItem("event", event) ? `<button type="button" data-edit="event" data-id="${event.id}" aria-label="Upraviť udalosť">${icon("pencil")}</button>` : ""}
