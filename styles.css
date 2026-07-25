@@ -2243,6 +2243,10 @@ body.theme-cartoon_3d .nav-item[data-view="partners"] svg {
 .profile-overview-panel {
   display: grid;
   gap: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .profile-merged-content {
@@ -2251,6 +2255,11 @@ body.theme-cartoon_3d .nav-item[data-view="partners"] svg {
 
 .profile-merged-section {
   min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow-soft);
 }
 
 .profile-merged-section > h2:first-child {
@@ -2259,6 +2268,32 @@ body.theme-cartoon_3d .nav-item[data-view="partners"] svg {
 
 .profile-merged-section > .toolbar {
   align-items: flex-start;
+}
+
+.profile-merged-content > .profile-merged-section:first-child {
+  grid-row: span 3;
+}
+
+body.theme-cartoon_3d[data-view="profile"] .profile-overview-panel {
+  min-height: auto;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.theme-cartoon_3d[data-view="profile"] .profile-overview-panel::after {
+  display: none;
+}
+
+body.theme-cartoon_3d[data-view="profile"] .profile-overview-panel > .profile-merged-content > .profile-merged-section:first-child > .toolbar:first-child {
+  min-height: auto;
+  padding-right: 0;
+}
+
+body.theme-cartoon_3d[data-view="profile"] .profile-overview-panel > .profile-merged-content > .profile-merged-section:nth-child(2) {
+  padding-top: 20px;
 }
 
 .emails-overview-panel {
@@ -3815,6 +3850,10 @@ dialog.video-dialog #dialogBody {
 
   .profile-photo-panel {
     grid-template-columns: 1fr;
+  }
+
+  .profile-merged-content > .profile-merged-section:first-child {
+    grid-row: auto;
   }
 
   .profile-photo-panel img {

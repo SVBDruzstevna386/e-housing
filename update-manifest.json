@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v200",
+  "latestVersion": "v201",
   "releasedAt": "2026-07-26",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v200 pridáva samostatnú komunikačnú záložku Rozprávajme sa.",
+  "summary": "Verzia v201 vizuálne zjednocuje tematické časti v záložke Profil.",
   "changes": [
-    "Rozprávajme sa je umiestnené v hlavnom menu pod záložkou Inzercia.",
-    "Nová záložka má vlastné samostatné záznamy a vlákna.",
-    "Formulár podporuje obrázok, YouTube odkaz, odpovede a automatické emailové aj PWA upozornenia.",
-    "PWA cache bola zvýšená na v200."
+    "Každá tematická časť profilu má súvislý biely nepriehľadný podklad.",
+    "Polia, ovládacie prvky a sprievodné texty patriace k jednej časti sú opticky zoskupené.",
+    "Rozloženie zostáva responzívne pre počítače aj mobilné zariadenia.",
+    "PWA cache bola zvýšená na v201."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",
