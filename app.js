@@ -279,7 +279,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v201";
+const APP_VERSION = "v202";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1373,7 +1373,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v201",
+    appVersion: item.app_version || "v202",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -1522,6 +1522,19 @@ function applyUiTheme(theme = state.uiTheme) {
   document.body.classList.add(`theme-${nextTheme}`);
 }
 
+function normalizeNeighborCard(value = {}) {
+  const card = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return {
+    about: String(card.about || ""),
+    interests: String(card.interests || ""),
+    contribution: String(card.contribution || ""),
+    shareMessaging: card.share_messaging !== false,
+    shareEmail: card.share_email === true,
+    sharePhone: card.share_phone === true,
+    shareFlat: card.share_flat === true
+  };
+}
+
 function profileToOwner(item) {
   return {
     id: item.id,
@@ -1538,6 +1551,7 @@ function profileToOwner(item) {
     photoPath: item.profile_photo_path || "",
     photoUrl: profilePhotoUrl(item.profile_photo_path),
     uiTheme: normalizeUiTheme(item.ui_theme),
+    neighborCard: normalizeNeighborCard(item.neighbor_card),
     accountStatus: item.approval_status === "approved" ? "Aktívny" : "Čaká na autorizáciu",
     approvalStatus: item.approval_status,
     ownedFrom: item.owned_from || "",
@@ -1567,6 +1581,7 @@ function ownerRecordToOwner(item, profile = null) {
     photoPath: profile?.profile_photo_path || "",
     photoUrl: profilePhotoUrl(profile?.profile_photo_path),
     uiTheme: normalizeUiTheme(profile?.ui_theme),
+    neighborCard: normalizeNeighborCard(profile?.neighbor_card),
     accountStatus: item.account_status || "Čaká na autorizáciu",
     approvalStatus: item.approval_status || "pending",
     ownedFrom: item.owned_from || "",
@@ -1594,6 +1609,7 @@ function profileToBoardMember(item, owner = null) {
     photoPath: item.profile_photo_path || "",
     photoUrl: profilePhotoUrl(item.profile_photo_path),
     uiTheme: normalizeUiTheme(item.ui_theme),
+    neighborCard: normalizeNeighborCard(item.neighbor_card),
     ownerRecordId: owner?.id || "",
     canManageCleaningCalendar: Boolean(owner?.canManageCleaningCalendar)
   };
@@ -2616,6 +2632,7 @@ function currentProfile() {
       photoPath: owner?.photoPath || "",
       photoUrl: owner?.photoUrl || "",
       uiTheme: owner?.uiTheme || state.uiTheme,
+      neighborCard: normalizeNeighborCard(owner?.neighborCard),
       role: "Vlastník nehnuteľnosti",
       readonlyNote: owner?.ownedFrom ? `Vlastník od ${owner.ownedFrom}` : "Kontaktné a korešpondenčné údaje si môže vlastník upraviť v profile"
     };
@@ -2634,6 +2651,7 @@ function currentProfile() {
     photoPath: member?.photoPath || "",
     photoUrl: member?.photoUrl || "",
     uiTheme: member?.uiTheme || state.uiTheme,
+    neighborCard: normalizeNeighborCard(member?.neighborCard),
     role: member?.role || roleLabel(),
     readonlyNote: "Funkcia vo vedení SVB"
   };
@@ -3543,6 +3561,62 @@ const views = {
         </div>
       </div>
     ` : "";
+    const neighborCard = normalizeNeighborCard(profile.neighborCard);
+    const canUseNeighborCard = profile.kind === "owner" || ownersForCurrentUser().length > 0;
+    const neighborCardPanel = canUseNeighborCard ? `
+      <section class="profile-merged-section span-all neighbor-card-section">
+        <div class="toolbar">
+          <div>
+            <h2>Vlastná vizitka</h2>
+            <p class="muted">Predstavte sa susedom, napíšte niečo o svojich záujmoch a uveďte, čím by ste radi prispeli komunite v dome.</p>
+          </div>
+          <span class="tag document">Viditeľnosť pripravujeme</span>
+        </div>
+        <div class="neighbor-card-layout">
+          <div class="profile-form neighbor-card-copy">
+            <div class="field span-all">
+              <label for="neighborCardAbout">Krátke predstavenie</label>
+              <textarea id="neighborCardAbout" maxlength="700" placeholder="Napíšte pár viet o sebe.">${escapeHtml(neighborCard.about)}</textarea>
+            </div>
+            <div class="field">
+              <label for="neighborCardInterests">Záujmy a koníčky</label>
+              <textarea id="neighborCardInterests" maxlength="500" placeholder="Napríklad šport, záhrada, knihy alebo cestovanie.">${escapeHtml(neighborCard.interests)}</textarea>
+            </div>
+            <div class="field">
+              <label for="neighborCardContribution">Čím môžem prispieť susedom</label>
+              <textarea id="neighborCardContribution" maxlength="500" placeholder="Napríklad pomoc s technikou, organizáciou alebo spoločnými aktivitami.">${escapeHtml(neighborCard.contribution)}</textarea>
+            </div>
+          </div>
+          <fieldset class="neighbor-contact-options">
+            <legend>Kontakty, ktoré môžu vidieť ostatní vlastníci</legend>
+            <label class="neighbor-contact-option" for="neighborCardShareMessaging">
+              <input id="neighborCardShareMessaging" type="checkbox" ${neighborCard.shareMessaging ? "checked" : ""}>
+              <span class="neighbor-contact-icon">${icon("message-circle")}</span>
+              <span><strong>Napíšte mi cez e - Housing Licence</strong><small>Bez zverejnenia osobného emailu alebo telefónu.</small></span>
+            </label>
+            <label class="neighbor-contact-option" for="neighborCardShareEmail">
+              <input id="neighborCardShareEmail" type="checkbox" ${neighborCard.shareEmail ? "checked" : ""}>
+              <span class="neighbor-contact-icon">${icon("mail")}</span>
+              <span><strong>Email</strong><small>${escapeHtml(profile.email || "Email nie je vyplnený")}</small></span>
+            </label>
+            <label class="neighbor-contact-option" for="neighborCardSharePhone">
+              <input id="neighborCardSharePhone" type="checkbox" ${neighborCard.sharePhone ? "checked" : ""}>
+              <span class="neighbor-contact-icon">${icon("phone")}</span>
+              <span><strong>Telefón</strong><small>${escapeHtml(profile.phone || "Telefón nie je vyplnený")}</small></span>
+            </label>
+            <label class="neighbor-contact-option" for="neighborCardShareFlat">
+              <input id="neighborCardShareFlat" type="checkbox" ${neighborCard.shareFlat ? "checked" : ""}>
+              <span class="neighbor-contact-icon">${icon("house")}</span>
+              <span><strong>Číslo bytu</strong><small>${escapeHtml(profile.flat || "Byt nie je vyplnený")}</small></span>
+            </label>
+          </fieldset>
+        </div>
+        <div class="neighbor-card-footer">
+          <p class="muted">Vizitka sa zatiaľ nikde verejne nezobrazuje. Miesto, kde ju uvidia ostatní vlastníci, doplníme v ďalšom kroku.</p>
+          <button class="primary" data-save-profile type="button">${icon("save")}<span>Uložiť vizitku</span></button>
+        </div>
+      </section>
+    ` : "";
     const gdprPanel = ["chair", "vice_chair"].includes(state.role) ? `
       <section class="profile-merged-section span-all">
         <div class="toolbar">
@@ -3649,12 +3723,13 @@ const views = {
               </div>
             ` : ""}
             <button class="primary" data-save-profile type="button">${icon("save")}<span>Uložiť profil</span></button>
+            <p class="muted span-all" id="profileSaveStatus"></p>
           </div>
           ${buildingPhotoPanel}
         </section>
         <section class="profile-merged-section">
           <h2>Zmena hesla</h2>
-          <p class="muted">${profile.readonlyNote}. V lokálnom prototype sa heslo uloží iba do demo stavu aplikácie.</p>
+          <p class="muted">Po zmene hesla ho použijete pri ďalšom prihlásení do aplikácie.</p>
           <div class="profile-form">
             <div class="field">
               <label for="profilePassword">Nové heslo</label>
@@ -3695,6 +3770,7 @@ const views = {
             <button class="ghost" data-install-app="ios" type="button">${icon("tablet-smartphone")}<span>Nainštalovať pre iOS</span></button>
           </div>
         </section>
+        ${neighborCardPanel}
         ${gdprPanel}
         </div>
       </section>
@@ -4181,9 +4257,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=201"],
+        ["Manifest", "manifest.webmanifest?v=202"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v201"]
+        ["Cache", "e-housing-v202"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -7548,10 +7624,20 @@ async function saveProfile() {
   const correspondenceStreetValue = document.querySelector("#profileCorrespondenceStreet")?.value.trim() || "";
   const correspondenceCityValue = document.querySelector("#profileCorrespondenceCity")?.value.trim() || "";
   const correspondencePostalCodeValue = document.querySelector("#profileCorrespondencePostalCode")?.value.trim() || "";
+  const neighborCardEnabled = Boolean(document.querySelector("#neighborCardAbout"));
+  const nextNeighborCard = {
+    about: document.querySelector("#neighborCardAbout")?.value.trim() || "",
+    interests: document.querySelector("#neighborCardInterests")?.value.trim() || "",
+    contribution: document.querySelector("#neighborCardContribution")?.value.trim() || "",
+    share_messaging: Boolean(document.querySelector("#neighborCardShareMessaging")?.checked),
+    share_email: Boolean(document.querySelector("#neighborCardShareEmail")?.checked),
+    share_phone: Boolean(document.querySelector("#neighborCardSharePhone")?.checked),
+    share_flat: Boolean(document.querySelector("#neighborCardShareFlat")?.checked)
+  };
   const previousEmail = state.authEmail || state.currentUserEmail || profile.email;
   const canEditIdentity = canManageAll() || profile.kind === "owner";
   const nextFullName = canEditIdentity ? [firstName, surname].filter(Boolean).join(" ") || profile.name : profile.name;
-  const status = document.querySelector("#profileStatus");
+  const status = document.querySelector("#profileSaveStatus");
   const personalPhotoFile = document.querySelector("#profilePersonalPhoto")?.files?.[0];
   const buildingPhotoFile = document.querySelector("#profileBuildingPhoto")?.files?.[0];
   const operationModeValue = document.querySelector("#operationModeText")?.value.trim() || state.operationModeText || "Live testovací režim";
@@ -7636,6 +7722,7 @@ async function saveProfile() {
       ui_theme: nextUiTheme,
       role: canManageAll() ? roleFieldToAppRole(roleValue, state.role) : state.role
     };
+    if (neighborCardEnabled) profileUpdate.neighbor_card = nextNeighborCard;
     if (personalPhotoPath) profileUpdate.profile_photo_path = personalPhotoPath;
     const { error: profileError } = await supabaseClient.from("profiles").update(profileUpdate).eq("id", state.currentUserId);
     if (profileError) {
@@ -7668,12 +7755,12 @@ async function saveProfile() {
     await writeActivityLog("profile", "Úprava profilu používateľa", {
       relatedTable: "profiles",
       relatedId: state.currentUserId,
-      metadata: { emailChanged: nextEmail !== previousEmail, phoneChanged: nextPhone !== profile.phone, uiTheme: nextUiTheme, role: canManageAll() ? roleFieldToAppRole(roleValue, state.role) : state.role }
+      metadata: { emailChanged: nextEmail !== previousEmail, phoneChanged: nextPhone !== profile.phone, neighborCardUpdated: neighborCardEnabled, uiTheme: nextUiTheme, role: canManageAll() ? roleFieldToAppRole(roleValue, state.role) : state.role }
     });
     rememberUiTheme(nextUiTheme);
     await loadSupabaseData();
     render();
-    const nextStatus = document.querySelector("#profileStatus");
+    const nextStatus = document.querySelector("#profileSaveStatus");
     if (nextStatus) nextStatus.textContent = `Profil bol uložený.${emailMessage}${photoMessage}${modeMessage}${gdprMessage}${themeMessage}`;
     return;
   }
@@ -7688,6 +7775,7 @@ async function saveProfile() {
     profile.source.correspondenceCity = correspondenceCityValue;
     profile.source.correspondencePostalCode = correspondencePostalCodeValue;
     profile.source.uiTheme = nextUiTheme;
+    if (neighborCardEnabled) profile.source.neighborCard = normalizeNeighborCard(nextNeighborCard);
     if (personalPhotoFile) profile.source.photoUrl = URL.createObjectURL(personalPhotoFile);
   }
 
@@ -7700,6 +7788,7 @@ async function saveProfile() {
     profile.source.email = nextEmail;
     profile.source.phone = nextPhone;
     profile.source.uiTheme = nextUiTheme;
+    if (neighborCardEnabled) profile.source.neighborCard = normalizeNeighborCard(nextNeighborCard);
     if (personalPhotoFile) profile.source.photoUrl = URL.createObjectURL(personalPhotoFile);
   }
 
