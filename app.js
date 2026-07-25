@@ -272,7 +272,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v195";
+const APP_VERSION = "v196";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1365,7 +1365,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v195",
+    appVersion: item.app_version || "v196",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -2012,6 +2012,10 @@ function canCreateInView(view = state.view) {
 function canManageCleaningCalendar(owner = currentOwner()) {
   return owner?.approvalStatus === "approved"
     && Boolean(owner.canManageCleaningCalendar);
+}
+
+function usesCleaningOnlyCalendar() {
+  return ["owner", "board"].includes(state.role);
 }
 
 function isCleaningEventType(eventType) {
@@ -2906,7 +2910,7 @@ function actionLabel() {
   if (state.view === "finance") return canManageAll() ? "Pridať hospodársky záznam" : "Pridať podnet";
   if (state.view === "votes") return "Nové hlasovanie";
   if (state.view === "calendar") {
-    if (state.role === "owner") return "Pridať upratovanie";
+    if (usesCleaningOnlyCalendar()) return "Pridať upratovanie";
     return canManageCleaningCalendar() ? "Pridať udalosť / upratovanie" : "Pridať udalosť";
   }
   if (state.view === "activities") return "Pridať záznam";
@@ -3324,7 +3328,7 @@ const views = {
         <div class="calendar-head">
           <div>
             <h2>${escapeHtml(monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1))}</h2>
-            <p class="muted">${state.role === "owner" && canManageCleaningCalendar()
+            <p class="muted">${usesCleaningOnlyCalendar() && canManageCleaningCalendar()
               ? "Môžete pridávať vlastné záznamy Upratovanie a Upratovanie - extra."
               : canManageCleaningCalendar() && canCreate
                 ? "Môžete pridávať bežné udalosti aj vlastné záznamy Upratovanie a Upratovanie - extra."
@@ -3343,7 +3347,7 @@ const views = {
         <div class="calendar-grid">
           ${calendarCells().map((cell) => dayCard(cell, canCreate)).join("")}
         </div>
-        ${canCreate ? `<p class="calendar-hint">${icon("mouse-pointer-click")}<span>Kliknite na konkrétny deň a pridajte ${state.role === "owner" ? "upratovanie" : canManageCleaningCalendar() ? "udalosť alebo upratovanie" : "udalosť"} priamo do kalendára.</span></p>` : ""}
+        ${canCreate ? `<p class="calendar-hint">${icon("mouse-pointer-click")}<span>Kliknite na konkrétny deň a pridajte ${usesCleaningOnlyCalendar() ? "upratovanie" : canManageCleaningCalendar() ? "udalosť alebo upratovanie" : "udalosť"} priamo do kalendára.</span></p>` : ""}
       </section>
     `;
   },
@@ -4180,9 +4184,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=195"],
+        ["Manifest", "manifest.webmanifest?v=196"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v195"]
+        ["Cache", "e-housing-v196"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -8124,7 +8128,7 @@ function formFor(type, defaults = {}) {
   }
   if (type === "calendar") {
     const selectedDate = defaults.calendarDate || `${state.calendarMonth}-${String(new Date().getDate()).padStart(2, "0")}`;
-    if (state.role === "owner") {
+    if (usesCleaningOnlyCalendar()) {
       return fieldsWithValues([
         ["eventType", "Typ záznamu", "cleaning", "select", cleaningEventTypeOptions()],
         ["category", "Dátum upratovania", selectedDate, "date"],
