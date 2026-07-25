@@ -197,7 +197,7 @@ const HELP_TEXTS = {
   },
   billing: {
     title: "Nápoveda pre Vyúčtovanie",
-    body: "Vyúčtovanie obsahuje dokumenty a históriu vyúčtovaní priradené ku konkrétnej nehnuteľnosti alebo vlastníkovi. Predseda SVB pridáva vyúčtovania pre konkrétnych vlastníkov. Vlastník vidí iba vyúčtovania patriace k aktuálne vybranej nehnuteľnosti."
+    body: "Vyúčtovanie obsahuje dokumenty a históriu vyúčtovaní priradené ku konkrétnej nehnuteľnosti alebo vlastníkovi. Predseda SVB pridáva vyúčtovania pre konkrétnych vlastníkov. Vlastník nehnuteľnosti aj člen dozornej rady vidia iba vyúčtovania patriace k svojej aktuálne vybranej nehnuteľnosti."
   },
   executions: {
     title: "Nápoveda pre Exekúcie",
@@ -272,7 +272,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v197";
+const APP_VERSION = "v198";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1365,7 +1365,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v197",
+    appVersion: item.app_version || "v198",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -2003,6 +2003,7 @@ function canAccessView(view = state.view) {
 function canCreateInView(view = state.view) {
   if (view === "partners") return PLATFORM_CONTROL_ENABLED && state.isPlatformAdmin;
   if (view === "votes") return state.role === "chair";
+  if (view === "billing" && state.role === "board") return false;
   if (view === "calendar" && canManageCleaningCalendar()) return true;
   if (view === "calendar" && state.role === "owner") return false;
   if (view === "overview" && state.role === "owner") return true;
@@ -2081,6 +2082,7 @@ function canManageBoardMember(member = null) {
 
 function canEditItem(type, item = null) {
   if (type === "vote") return state.role === "chair";
+  if (type === "billingSettlement" && state.role === "board") return false;
   if (type === "event") return canManageCalendarEvent(item);
   if (type === "boardMember") return canManageBoardMember(item);
   if (type === "announcement") return canManageAnnouncement(item);
@@ -2090,6 +2092,7 @@ function canEditItem(type, item = null) {
 
 function canDeleteItem(type, item = null) {
   if (type === "vote") return state.role === "chair";
+  if (type === "billingSettlement" && state.role === "board") return false;
   if (type === "event") return canManageCalendarEvent(item, "delete");
   if (type === "boardMember") return canManageBoardMember(item);
   if (type === "announcement") return canManageAnnouncement(item);
@@ -3117,8 +3120,14 @@ const views = {
   },
   billing() {
     const owner = currentOwner();
-    const items = state.role === "owner"
-      ? state.billingSettlements.filter((item) => item.ownerRecordId === owner?.id || item.flat === owner?.flat || (!owner?.id && (item.ownerProfileId === state.currentUserId || item.email === state.currentUserEmail)))
+    const ownerProfileId = owner?.profileId || state.currentUserId;
+    const usesOwnerScope = ["owner", "board"].includes(state.role);
+    const items = usesOwnerScope
+      ? state.billingSettlements.filter((item) =>
+        (owner?.id && String(item.ownerRecordId || "") === String(owner.id))
+        || (ownerProfileId && String(item.ownerProfileId || "") === String(ownerProfileId))
+        || (owner && !item.ownerRecordId && !item.ownerProfileId && item.flat === owner.flat && item.email === (owner.loginEmail || owner.email))
+      )
       : state.billingSettlements;
     return `
       <section class="panel">
@@ -4184,9 +4193,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=197"],
+        ["Manifest", "manifest.webmanifest?v=198"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v197"]
+        ["Cache", "e-housing-v198"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",

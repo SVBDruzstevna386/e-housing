@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v197",
+  "latestVersion": "v198",
   "releasedAt": "2026-07-26",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v197 zjednodušuje označenie upratovania v kalendári.",
+  "summary": "Verzia v198 chráni súkromné vyúčtovania členov dozornej rady.",
   "changes": [
-    "Upratovacie udalosti sa v kalendári zobrazujú iba ako Upratovanie alebo Upratovanie - extra.",
-    "Meno autora ani číslo bytu sa v kalendárnom štítku nezobrazuje.",
-    "Kliknutie na udalosť naďalej otvorí jej úplný detail.",
-    "PWA cache bola zvýšená na v197."
+    "Člen dozornej rady vidí iba vyúčtovania priradené k svojim nehnuteľnostiam.",
+    "Frontend používa rovnaký súkromný rozsah ako pri vlastníkovi nehnuteľnosti.",
+    "Databázové RLS blokuje prístup k vyúčtovaniam ostatných vlastníkov.",
+    "PWA cache bola zvýšená na v198."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",
