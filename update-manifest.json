@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v193",
+  "latestVersion": "v194",
   "releasedAt": "2026-07-25",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v193 zosúlaďuje oprávnenia kalendára s databázovými RLS pravidlami.",
+  "summary": "Verzia v194 opravuje úpravu existujúcich udalostí v kalendári.",
   "changes": [
-    "Schválené riadiace roly môžu zapisovať bežné udalosti podľa nastavených oprávnení.",
-    "Mazanie udalostí rešpektuje samostatné oprávnenie Vymazať.",
-    "Udalosti upratovania zostávajú chránené samostatnými pravidlami vlastníkov.",
-    "PWA cache bola zvýšená na v193."
+    "Kliknutie na ikonu Upraviť už neotvorí formulár novej udalosti.",
+    "Akcie detailu, úpravy a vymazania sa nespracujú ako kliknutie na kalendárny deň.",
+    "Dialóg rozlišuje vytvorenie a úpravu pomocou identifikátora záznamu.",
+    "PWA cache bola zvýšená na v194."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",

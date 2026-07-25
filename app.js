@@ -272,7 +272,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v193";
+const APP_VERSION = "v194";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1341,7 +1341,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v193",
+    appVersion: item.app_version || "v194",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -4104,9 +4104,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=193"],
+        ["Manifest", "manifest.webmanifest?v=194"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v193"]
+        ["Cache", "e-housing-v194"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -5126,12 +5126,12 @@ function dayCard(cell, canCreate = false) {
     const creatorLabel = state.role === "owner" ? "" : event.creatorLabel;
     return `
     <span class="event-dot">
-      <button class="event-detail-button" data-detail="event" data-id="${event.id}" aria-label="Otvoriť detail udalosti ${escapeAttr(ownerCleaningLabel)}">
+      <button type="button" class="event-detail-button" data-detail="event" data-id="${event.id}" aria-label="Otvoriť detail udalosti ${escapeAttr(ownerCleaningLabel)}">
         <span>${escapeHtml(ownerCleaningLabel)}${creatorLabel ? `<small> · ${escapeHtml(creatorLabel)}</small>` : ""}</span>
       </button>
       <span class="event-actions">
-        ${canEditItem("event", event) ? `<button data-edit="event" data-id="${event.id}" aria-label="Upraviť udalosť">${icon("pencil")}</button>` : ""}
-        ${canDeleteItem("event", event) ? `<button data-delete-item="event" data-id="${event.id}" aria-label="Vymazať udalosť">${icon("trash-2")}</button>` : ""}
+        ${canEditItem("event", event) ? `<button type="button" data-edit="event" data-id="${event.id}" aria-label="Upraviť udalosť">${icon("pencil")}</button>` : ""}
+        ${canDeleteItem("event", event) ? `<button type="button" data-delete-item="event" data-id="${event.id}" aria-label="Vymazať udalosť">${icon("trash-2")}</button>` : ""}
       </span>
     </span>
   `;
@@ -5815,7 +5815,9 @@ function bindViewActions() {
   });
 
   document.querySelectorAll("[data-edit]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       openEditDialog(button.dataset.edit, button.dataset.id);
     });
   });
@@ -5830,7 +5832,11 @@ function bindViewActions() {
   });
 
   document.querySelectorAll("[data-detail]").forEach((button) => {
-    button.addEventListener("click", () => openDetailDialog(button.dataset.detail, button.dataset.id));
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openDetailDialog(button.dataset.detail, button.dataset.id);
+    });
   });
 
   document.querySelectorAll("[data-reset-owner-password]").forEach((button) => {
@@ -6013,7 +6019,7 @@ function bindViewActions() {
 
   document.querySelectorAll("[data-calendar-day]").forEach((day) => {
     day.addEventListener("click", (event) => {
-      if (!canCreateInView("calendar") || event.target.closest("button")) return;
+      if (!canCreateInView("calendar") || event.target.closest(".event-dot, button")) return;
       openCreateDialog({ calendarDate: day.dataset.calendarDay });
     });
   });
@@ -6052,7 +6058,11 @@ function bindViewActions() {
   });
 
   document.querySelectorAll("[data-delete-item]").forEach((button) => {
-    button.addEventListener("click", () => deleteItem(button.dataset.deleteItem, button.dataset.id));
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      deleteItem(button.dataset.deleteItem, button.dataset.id);
+    });
   });
 
   document.querySelectorAll("[data-delete-email-event]").forEach((button) => {
@@ -6165,6 +6175,9 @@ function shiftCalendarMonth(offset) {
 function openCreateDialog(defaults = {}) {
   const type = state.view;
   if (!canCreateInView(type)) return;
+  dialog.dataset.mode = "create";
+  dialog.dataset.entityType = type;
+  delete dialog.dataset.entityId;
   dialogSave.hidden = false;
   dialogTitle.textContent = actionLabel();
   dialogBody.innerHTML = formFor(type, defaults);
@@ -6181,6 +6194,9 @@ function openEditDialog(type, id) {
   const item = findEditable(type, id);
   if (!item) return;
   if (!canEditItem(type, item)) return;
+  dialog.dataset.mode = "edit";
+  dialog.dataset.entityType = type;
+  dialog.dataset.entityId = String(id);
   dialogSave.hidden = false;
   dialogTitle.textContent = `Upraviť: ${editTitle(type, item)}`;
   dialogBody.innerHTML = editFormFor(type, item);
@@ -6188,7 +6204,7 @@ function openEditDialog(type, id) {
     event.preventDefault();
     await saveEditDialog(type, id);
   };
-  dialog.showModal();
+  if (!dialog.open) dialog.showModal();
   enhanceIcons();
 }
 
@@ -9112,6 +9128,11 @@ async function notifyChairAboutMessage({ subject, message, scope, recipient, rel
 }
 
 async function saveEditDialog(type, id) {
+  if (
+    dialog.dataset.mode !== "edit"
+    || dialog.dataset.entityType !== type
+    || dialog.dataset.entityId !== String(id)
+  ) return;
   const item = findEditable(type, id);
   if (!item) return;
   if (!canEditItem(type, item)) return;
