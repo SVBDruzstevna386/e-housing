@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v194",
+  "latestVersion": "v195",
   "releasedAt": "2026-07-25",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v194 opravuje úpravu existujúcich udalostí v kalendári.",
+  "summary": "Verzia v195 zjednocuje vlastnícke a vedúce roly SVB.",
   "changes": [
-    "Kliknutie na ikonu Upraviť už neotvorí formulár novej udalosti.",
-    "Akcie detailu, úpravy a vymazania sa nespracujú ako kliknutie na kalendárny deň.",
-    "Dialóg rozlišuje vytvorenie a úpravu pomocou identifikátora záznamu.",
-    "PWA cache bola zvýšená na v194."
+    "Predseda SVB, podpredseda SVB a členovia dozornej rady sa započítavajú medzi vlastníkov nehnuteľností.",
+    "Podpredsedovi SVB a členom dozornej rady možno prideliť prístup ku Kalendáru upratovania.",
+    "Vedúce roly zdedia vlastnícke oprávnenia a zachovajú si svoje rozšírené oprávnenia.",
+    "PWA cache bola zvýšená na v195."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",

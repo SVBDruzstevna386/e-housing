@@ -272,7 +272,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v194";
+const APP_VERSION = "v195";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -519,7 +519,16 @@ function rolePermissions() {
 
 function permissionFor(role = state.role, view = state.view) {
   const permissions = rolePermissions();
-  return permissions?.[role]?.[view] || { read: false, write: false, delete: false };
+  const direct = permissions?.[role]?.[view] || { read: false, write: false, delete: false };
+  const inheritsOwnerPermissions = ["chair", "vice_chair", "board"].includes(role)
+    && ownersForCurrentUser().length > 0;
+  if (!inheritsOwnerPermissions) return direct;
+  const owner = permissions?.owner?.[view] || { read: false, write: false, delete: false };
+  return {
+    read: Boolean(direct.read || owner.read),
+    write: Boolean(direct.write || owner.write),
+    delete: Boolean(direct.delete || owner.delete)
+  };
 }
 
 function communicationPermissions() {
@@ -994,9 +1003,19 @@ newItemBtn.addEventListener("click", () => openCreateDialog());
 helpBtn?.addEventListener("click", () => openHelpDialog(state.view));
 welcomeBtn?.addEventListener("click", () => openWelcomeDialog());
 
+function roleLabelForKey(role = "owner") {
+  return {
+    chair: "Predseda SVB",
+    vice_chair: "Podpredseda SVB",
+    economic: "Ekonomická správa",
+    board: "Člen dozornej rady",
+    owner: "Vlastník nehnuteľnosti"
+  }[role] || "Vlastník nehnuteľnosti";
+}
+
 function roleLabel() {
   if (state.isPlatformSupportSession) return "Platform Admin – servisný prístup";
-  return { chair: "Predseda SVB", vice_chair: "Podpredseda SVB", economic: "Ekonomická správa", board: "Dozorná rada", owner: "Vlastník nehnuteľnosti" }[state.role];
+  return roleLabelForKey(state.role);
 }
 
 function currentUserDisplayName() {
@@ -1258,11 +1277,16 @@ async function loadSupabaseData() {
     const profileById = new Map((profiles.data || []).map((profile) => [profile.id, profile]));
     state.owners = ownerRecords.data.map((ownerRecord) => ownerRecordToOwner(ownerRecord, profileById.get(ownerRecord.profile_id)));
   } else if (profiles.data) {
-    state.owners = profiles.data.filter((item) => item.role === "owner").map(profileToOwner);
+    state.owners = profiles.data
+      .filter((item) => ["owner", "chair", "vice_chair", "board"].includes(item.role))
+      .map(profileToOwner);
   }
   syncActiveOwnerRecordSelection();
   if (profiles.data) {
-    state.boardMembers = profiles.data.filter((item) => item.role !== "owner").map(profileToBoardMember);
+    const ownerByProfileId = new Map(state.owners.filter((owner) => owner.profileId).map((owner) => [owner.profileId, owner]));
+    state.boardMembers = profiles.data
+      .filter((item) => item.role !== "owner")
+      .map((profile) => profileToBoardMember(profile, ownerByProfileId.get(profile.id)));
   }
   if (categories.data) state.documentCategories = categories.data.map((item) => item.name);
   if (classifiedCategories.data) state.classifiedCategories = classifiedCategories.data.map((item) => item.title);
@@ -1341,7 +1365,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v194",
+    appVersion: item.app_version || "v195",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -1512,6 +1536,8 @@ function profileToOwner(item) {
     isDebtor: item.is_debtor,
     debtAmount: item.debt_amount,
     canManageCleaningCalendar: false,
+    profileRoleKey: item.role || "owner",
+    profileRole: roleLabelForKey(item.role || "owner"),
     status: item.approval_status,
     note: item.note || ""
   };
@@ -1539,14 +1565,30 @@ function ownerRecordToOwner(item, profile = null) {
     isDebtor: item.is_debtor,
     debtAmount: item.debt_amount,
     canManageCleaningCalendar: Boolean(item.can_manage_cleaning_calendar),
+    profileRoleKey: profile?.role || "owner",
+    profileRole: roleLabelForKey(profile?.role || "owner"),
     status: item.account_status || item.approval_status,
     note: item.note || ""
   };
 }
 
-function profileToBoardMember(item) {
-  const role = item.role === "chair" ? "Predseda SVB" : item.role === "vice_chair" ? "Podpredseda SVB" : item.role === "economic" ? "Ekonomická správa" : "Člen dozornej rady";
-  return { id: item.id, role, roleKey: item.role, name: item.full_name, flat: item.flat_number || "Nie je viazané na byt", email: item.email, phone: item.phone || "", note: item.note || "Profil vedenia SVB", approvalStatus: item.approval_status || "pending", photoPath: item.profile_photo_path || "", photoUrl: profilePhotoUrl(item.profile_photo_path), uiTheme: normalizeUiTheme(item.ui_theme) };
+function profileToBoardMember(item, owner = null) {
+  return {
+    id: item.id,
+    role: roleLabelForKey(item.role),
+    roleKey: item.role,
+    name: item.full_name,
+    flat: owner?.flat || item.flat_number || "Nie je viazané na byt",
+    email: item.email,
+    phone: item.phone || "",
+    note: item.note || "Profil vedenia SVB",
+    approvalStatus: item.approval_status || "pending",
+    photoPath: item.profile_photo_path || "",
+    photoUrl: profilePhotoUrl(item.profile_photo_path),
+    uiTheme: normalizeUiTheme(item.ui_theme),
+    ownerRecordId: owner?.id || "",
+    canManageCleaningCalendar: Boolean(owner?.canManageCleaningCalendar)
+  };
 }
 
 async function dbDocumentToCard(item) {
@@ -1961,15 +2003,24 @@ function canAccessView(view = state.view) {
 function canCreateInView(view = state.view) {
   if (view === "partners") return PLATFORM_CONTROL_ENABLED && state.isPlatformAdmin;
   if (view === "votes") return state.role === "chair";
-  if (view === "calendar" && state.role === "owner") return canManageCleaningCalendar();
+  if (view === "calendar" && canManageCleaningCalendar()) return true;
+  if (view === "calendar" && state.role === "owner") return false;
   if (view === "overview" && state.role === "owner") return true;
   return permissionFor(state.role, view).write;
 }
 
 function canManageCleaningCalendar(owner = currentOwner()) {
-  return state.role === "owner"
-    && owner?.approvalStatus === "approved"
+  return owner?.approvalStatus === "approved"
     && Boolean(owner.canManageCleaningCalendar);
+}
+
+function isCleaningEventType(eventType) {
+  return ["cleaning", "cleaning_extra"].includes(eventType);
+}
+
+function isOwnCleaningEvent(item = null) {
+  if (!item || !isCleaningEventType(item.eventType) || item.createdBy !== state.currentUserId) return false;
+  return ownersForCurrentUser().some((owner) => String(owner.id) === String(item.ownerRecordId));
 }
 
 function canManageCalendarEvent(item = null, action = "write") {
@@ -1979,7 +2030,7 @@ function canManageCalendarEvent(item = null, action = "write") {
   return canManageCleaningCalendar()
     && Boolean(item)
     && item.createdBy === state.currentUserId
-    && ["cleaning", "cleaning_extra"].includes(item.eventType);
+    && isCleaningEventType(item.eventType);
 }
 
 function firstAccessibleView() {
@@ -2364,6 +2415,23 @@ function ownersForCurrentUser() {
   ));
 }
 
+function ownerIdentityKey(owner) {
+  return String(
+    owner?.profileId
+    || String(owner?.loginEmail || owner?.email || "").trim().toLowerCase()
+    || owner?.id
+    || ""
+  );
+}
+
+function ownerProfileCount(owners = state.owners) {
+  return new Set(owners.map(ownerIdentityKey).filter(Boolean)).size;
+}
+
+function pendingOwnerProfileCount() {
+  return ownerProfileCount(state.owners.filter((owner) => owner.approvalStatus === "pending"));
+}
+
 function propertyOwnerKey(owner) {
   return String(owner?.id || owner?.profileId || `${owner?.loginEmail || owner?.email || ""}|${owner?.flat || ""}`);
 }
@@ -2415,7 +2483,7 @@ function syncProfileChrome() {
   if (sidebarProfileName) sidebarProfileName.textContent = profile?.name || "Používateľ";
   if (sidebarProfileRole) sidebarProfileRole.textContent = profile?.role || "Profil";
   if (sidebarPropertySelect) {
-    const owners = state.role === "owner" ? ownersForCurrentUser() : [];
+    const owners = ownersForCurrentUser();
     if (owners.length > 1) {
       const active = syncActiveOwnerRecordSelection();
       sidebarPropertySelect.innerHTML = owners
@@ -2802,10 +2870,11 @@ function platformSupportBanner() {
 
 function updateSidebarSummary() {
   if (!sidebarSummaryText) return;
-  const pendingOwners = state.owners.filter((owner) => owner.approvalStatus === "pending").length;
+  const ownersCount = ownerProfileCount();
+  const pendingOwners = pendingOwnerProfileCount();
   sidebarSummaryText.textContent = pendingOwners
-    ? `${state.owners.length} vlastníkov, ${pendingOwners} čaká na autorizáciu`
-    : `${state.owners.length} vlastníkov, žiadny nečaká`;
+    ? `${ownersCount} vlastníkov, ${pendingOwners} čaká na autorizáciu`
+    : `${ownersCount} vlastníkov, žiadny nečaká`;
 }
 
 function pendingAuthorizationView() {
@@ -2836,7 +2905,10 @@ function actionLabel() {
   if (state.view === "executions") return "Pridať exekučný záznam";
   if (state.view === "finance") return canManageAll() ? "Pridať hospodársky záznam" : "Pridať podnet";
   if (state.view === "votes") return "Nové hlasovanie";
-  if (state.view === "calendar") return state.role === "owner" ? "Pridať upratovanie" : "Pridať udalosť";
+  if (state.view === "calendar") {
+    if (state.role === "owner") return "Pridať upratovanie";
+    return canManageCleaningCalendar() ? "Pridať udalosť / upratovanie" : "Pridať udalosť";
+  }
   if (state.view === "activities") return "Pridať záznam";
   if (state.view === "photoAlbum") return "Pridať fotku";
   if (state.view === "classifieds") return "Pridať inzerát";
@@ -2907,7 +2979,7 @@ function overviewRoleCopy({ pendingOwners, urgentDocuments, unreadMessages, open
     title: "Digitálna správa domu na jednom mieste",
     subtitle: "Dokumenty, oznamy, hlasovania, denník a komunikácia sú načítané z databázy podľa prihlásenej role.",
     stats: [
-      { label: "Vlastníci", value: state.owners.length, note: pendingOwners ? `${pendingOwners} čaká na aktiváciu` : "žiadny nečaká na aktiváciu", icon: "users" },
+      { label: "Vlastníci", value: ownerProfileCount(), note: pendingOwners ? `${pendingOwners} čaká na aktiváciu` : "žiadny nečaká na aktiváciu", icon: "users" },
       { label: "Dokumenty", value: state.documents.length, note: urgentDocuments ? `${urgentDocuments} urgentné` : "bez urgentného dokumentu", icon: "file-text" },
       { label: "Otvorené hlasovania", value: openVotes, note: nextVote ? `najbližšie končí ${formatDate(nextVote.closes)}` : "bez otvoreného hlasovania", icon: "vote" },
       { label: "Neprečítané správy", value: unreadMessages, note: unreadMessages ? "vyžadujú kontrolu" : "všetko prečítané", icon: "mail" }
@@ -2924,7 +2996,7 @@ function overviewRoleCopy({ pendingOwners, urgentDocuments, unreadMessages, open
 
 const views = {
   overview() {
-    const pendingOwners = state.owners.filter((owner) => owner.approvalStatus === "pending").length;
+    const pendingOwners = pendingOwnerProfileCount();
     const urgentDocuments = state.documents.filter((document) => document.urgent).length;
     const openVotes = state.votes.filter((vote) => ["open", "Prebieha", "prebieha"].includes(vote.status)).length;
     const unreadMessages = state.messages.filter((message) => !message.read).length;
@@ -3252,7 +3324,11 @@ const views = {
         <div class="calendar-head">
           <div>
             <h2>${escapeHtml(monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1))}</h2>
-            <p class="muted">${state.role === "owner" && canCreate ? "Môžete pridávať vlastné záznamy Upratovanie a Upratovanie - extra." : "Schôdze, odstávky, termíny hlasovaní a udalosti domu."}</p>
+            <p class="muted">${state.role === "owner" && canManageCleaningCalendar()
+              ? "Môžete pridávať vlastné záznamy Upratovanie a Upratovanie - extra."
+              : canManageCleaningCalendar() && canCreate
+                ? "Môžete pridávať bežné udalosti aj vlastné záznamy Upratovanie a Upratovanie - extra."
+                : "Schôdze, odstávky, termíny hlasovaní a udalosti domu."}</p>
           </div>
           <div class="calendar-controls" aria-label="Ovládanie kalendára">
             <button class="ghost icon-only" data-calendar-prev aria-label="Predchádzajúci mesiac">${icon("chevron-left")}</button>
@@ -3267,7 +3343,7 @@ const views = {
         <div class="calendar-grid">
           ${calendarCells().map((cell) => dayCard(cell, canCreate)).join("")}
         </div>
-        ${canCreate ? `<p class="calendar-hint">${icon("mouse-pointer-click")}<span>Kliknite na konkrétny deň a pridajte ${state.role === "owner" ? "upratovanie" : "udalosť"} priamo do kalendára.</span></p>` : ""}
+        ${canCreate ? `<p class="calendar-hint">${icon("mouse-pointer-click")}<span>Kliknite na konkrétny deň a pridajte ${state.role === "owner" ? "upratovanie" : canManageCleaningCalendar() ? "udalosť alebo upratovanie" : "udalosť"} priamo do kalendára.</span></p>` : ""}
       </section>
     `;
   },
@@ -3641,18 +3717,18 @@ const views = {
           </div>
           <div class="table-wrap">
             <table class="owner-table">
-              <thead><tr><th>Rola</th><th>Meno</th><th>Email</th><th>Autorizácia</th><th>Poznámka</th><th>Akcie</th></tr></thead>
+              <thead><tr><th>Rola</th><th>Meno</th><th>Byt / vlastníctvo</th><th>Email</th><th>Autorizácia</th><th>Kalendár upratovania</th><th>Poznámka</th><th>Akcie</th></tr></thead>
               <tbody>${state.boardMembers.map(boardMemberApprovalRow).join("")}</tbody>
             </table>
           </div>
         </section>
         <div class="toolbar">
           <input class="search" data-search placeholder="Hľadať vlastníka alebo byt">
-          <span class="tag vote">Evidencia vlastníkov</span>
+          <span class="tag vote">${ownerProfileCount()} vlastníkov</span>
         </div>
         <div class="table-wrap">
           <table class="owner-table">
-            <thead><tr><th>Byt</th><th>Vlastník</th><th>Login email</th><th>Účet</th><th>Autorizácia</th><th>Vlastník od</th><th>Dlžník</th><th>Dlh</th><th>Kalendár upratovania</th><th>Poznámka</th><th>Akcie</th></tr></thead>
+            <thead><tr><th>Byt</th><th>Vlastník</th><th>Rola</th><th>Login email</th><th>Účet</th><th>Autorizácia</th><th>Vlastník od</th><th>Dlžník</th><th>Dlh</th><th>Kalendár upratovania</th><th>Poznámka</th><th>Akcie</th></tr></thead>
             <tbody>${state.owners.map(ownerRow).join("")}</tbody>
           </table>
         </div>
@@ -4104,9 +4180,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=194"],
+        ["Manifest", "manifest.webmanifest?v=195"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v194"]
+        ["Cache", "e-housing-v195"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -5097,6 +5173,13 @@ function cleaningEventTypeOptions() {
   ];
 }
 
+function leadershipCalendarEventTypeOptions() {
+  return [
+    ["general", "Bežná udalosť"],
+    ...cleaningEventTypeOptions()
+  ];
+}
+
 function calendarCells() {
   const month = calendarMonthDate();
   const year = month.getFullYear();
@@ -5151,6 +5234,7 @@ function ownerRow(owner) {
   return `<tr class="searchable" data-text="${owner.flat} ${owner.name} ${owner.email} ${owner.loginEmail} ${owner.note}">
     <td>${owner.flat}</td>
     <td>${owner.name}</td>
+    <td><span class="tag ${owner.profileRoleKey !== "owner" ? "vote" : ""}">${escapeHtml(owner.profileRole || "Vlastník nehnuteľnosti")}</span></td>
     <td>${owner.loginEmail}</td>
     <td><span class="tag">${owner.accountStatus}</span></td>
     <td><span class="tag ${owner.approvalStatus === "approved" ? "document" : "urgent"}">${approval}</span></td>
@@ -5161,17 +5245,22 @@ function ownerRow(owner) {
       ? `<button class="${owner.canManageCleaningCalendar ? "primary" : "ghost"}" data-toggle-cleaning-calendar="${owner.id}" aria-pressed="${owner.canManageCleaningCalendar}">${icon(owner.canManageCleaningCalendar ? "calendar-check" : "calendar-x")}<span>${owner.canManageCleaningCalendar ? "Povolené" : "Nepovolené"}</span></button>`
       : `<span class="tag ${owner.canManageCleaningCalendar ? "document" : ""}">${owner.canManageCleaningCalendar ? "Povolené" : "Nepovolené"}</span>`}</td>
     <td>${owner.note}</td>
-    <td><div class="row-actions">${["pending", "rejected"].includes(owner.approvalStatus) && state.role === "chair" ? `<button class="primary" data-approve-owner="${owner.id}">${icon("user-check")}<span>Schváliť</span></button>` : ""}<button class="ghost" data-detail="owner" data-id="${owner.id}">${icon("info")}<span>Detail</span></button>${adminEditButton("owner", owner.id)}${canDeleteItem("owner", owner) ? `<button class="ghost" data-delete-owner="${owner.id}">${icon("trash-2")}<span>Vymazať</span></button>` : ""}</div></td>
+    <td><div class="row-actions">${["pending", "rejected"].includes(owner.approvalStatus) && state.role === "chair" ? `<button class="primary" data-approve-owner="${owner.id}">${icon("user-check")}<span>Schváliť</span></button>` : ""}<button class="ghost" data-detail="owner" data-id="${owner.id}">${icon("info")}<span>Detail</span></button>${adminEditButton("owner", owner.id)}${owner.profileRoleKey === "owner" && canDeleteItem("owner", owner) ? `<button class="ghost" data-delete-owner="${owner.id}">${icon("trash-2")}<span>Vymazať</span></button>` : ""}</div></td>
   </tr>`;
 }
 
 function boardMemberApprovalRow(member) {
   const approval = approvalLabel(member.approvalStatus || "approved");
+  const cleaningStatus = member.ownerRecordId
+    ? `<span class="tag ${member.canManageCleaningCalendar ? "document" : ""}">${member.canManageCleaningCalendar ? "Povolené" : "Nepovolené"}</span>`
+    : `<span class="tag urgent">Chýba vlastnícky záznam</span>`;
   return `<tr class="searchable" data-text="${escapeAttr([member.role, member.name, member.email, member.note].join(" "))}">
     <td>${escapeHtml(member.role)}</td>
     <td>${escapeHtml(member.name)}</td>
+    <td>${escapeHtml(member.flat || "Bez bytu")}</td>
     <td>${escapeHtml(member.email)}</td>
     <td><span class="tag ${member.approvalStatus === "approved" ? "document" : "urgent"}">${approval}</span></td>
+    <td>${["chair", "vice_chair", "board"].includes(member.roleKey) ? cleaningStatus : `<span class="tag">Nevzťahuje sa</span>`}</td>
     <td>${escapeHtml(member.note || "")}</td>
     <td><div class="row-actions">${["pending", "rejected"].includes(member.approvalStatus || "approved") && canManageBoardMember(member) ? `<button class="primary" data-approve-profile="${member.id}">${icon("user-check")}<span>Schváliť</span></button>` : ""}${adminEditButton("boardMember", member.id, member)}${deleteButton("boardMember", member.id, member)}</div></td>
   </tr>`;
@@ -6450,6 +6539,7 @@ function detailBody(type, item) {
     return `
       <div class="detail-grid">
         ${readonlyField("Meno a priezvisko", item.name || "Neuvedené")}
+        ${readonlyField("Rola v aplikácii", item.profileRole || "Vlastník nehnuteľnosti")}
         ${readonlyField("Číslo bytu / poznámka", item.flat || "Bez bytu")}
         ${readonlyField("Login email", item.loginEmail || item.email || "Neuvedené")}
         ${readonlyField("Telefón", item.phone || "Neuvedené")}
@@ -7124,6 +7214,10 @@ async function deleteOwner(id) {
   if (!canDeleteItem("owner")) return;
   const owner = state.owners.find((item) => String(item.id) === String(id));
   if (!owner) return;
+  if (owner.profileRoleKey !== "owner") {
+    window.alert("Vlastnícky záznam člena vedenia sa spravuje spolu s jeho funkčným profilom a nemožno ho vymazať týmto tlačidlom.");
+    return;
+  }
   const confirmed = window.confirm(`Vymazať vlastníka ${owner.name} (${owner.flat}) vrátane jeho prihlasovacieho účtu? Po vymazaní sa už nebude vedieť prihlásiť a email bude možné zaregistrovať znova.`);
   if (!confirmed) return;
   if (supabaseClient && state.currentUserId) {
@@ -7484,12 +7578,12 @@ async function saveProfile() {
       return;
     }
 
-    if (profile.kind === "owner") {
-      const activeOwner = currentOwner();
-      if (!activeOwner?.id) {
+    const activeOwner = currentOwner();
+    if (profile.kind === "owner" && !activeOwner?.id) {
         if (status) status.textContent = "Údaje vlastníka sa nepodarilo uložiť: nie je vybraná aktívna nehnuteľnosť.";
         return;
-      }
+    }
+    if (activeOwner?.id) {
       const { error: ownerRecordError } = await supabaseClient.from("owner_records").update({
         full_name: nextFullName,
         flat_number: flatValue || profile.flat,
@@ -8043,6 +8137,15 @@ function formFor(type, defaults = {}) {
         </article>
       `;
     }
+    if (canManageCleaningCalendar()) {
+      return fieldsWithValues([
+        ["title", "Názov udalosti", "Schôdza vlastníkov"],
+        ["eventType", "Typ záznamu", "general", "select", leadershipCalendarEventTypeOptions()],
+        ["category", "Dátum", selectedDate, "date"],
+        ["youtubeUrl", "YouTube video link", ""],
+        ["note", "Poznámka", "Doplňujúca informácia k udalosti alebo upratovaniu.", "textarea"]
+      ]) + uploadField("Príloha alebo fotka upratovania") + notificationFields("all");
+    }
     return fieldsWithValues([
       ["title", "Názov udalosti", "Schôdza vlastníkov"],
       ["category", "Dátum udalosti", selectedDate, "date"],
@@ -8156,6 +8259,13 @@ function editFormFor(type, item) {
       ["ownedFrom", "Vlastník od", item.ownedFrom || new Date().toISOString().slice(0, 10)],
       ["debtAmount", "Výška dlhu v EUR", String(item.debtAmount || 0)],
       ["isDebtor", "Dlžník", item.isDebtor ? "áno" : "nie", "select", ["nie", "áno"]],
+      ...(state.role === "chair" ? [[
+        "cleaningCalendarAccess",
+        "Kalendár upratovania",
+        item.canManageCleaningCalendar ? "true" : "false",
+        "select",
+        [["false", "Nepovolené"], ["true", "Povolené"]]
+      ]] : []),
       ["note", "Poznámka", item.note || "", "textarea"]
     ]) + `<article class="notice"><strong>Zmena hesla</strong><p>Heslo sa nemení ručne v administrácii. Vlastníkovi odošlite bezpečný email s odkazom na nastavenie nového hesla.</p><button class="ghost" type="button" data-reset-owner-password="${item.id}">${icon("key-round")}<span>Odoslať reset hesla</span></button></article>`;
   }
@@ -8173,7 +8283,7 @@ function editFormFor(type, item) {
     ]);
   }
   if (type === "event") {
-    if (state.role === "owner") {
+    if (state.role === "owner" || isOwnCleaningEvent(item)) {
       return fieldsWithValues([
         ["eventType", "Typ záznamu", item.eventType || "cleaning", "select", cleaningEventTypeOptions()],
         ["category", "Dátum upratovania", eventDateKey(item), "date"],
@@ -8204,6 +8314,13 @@ function editFormFor(type, item) {
       ["roleField", "Funkcia", item.role, "select", ["Podpredseda SVB", "Ekonomická správa", "Člen dozornej rady"]],
       ["email", "Email", item.email],
       ["phone", "Telefón", item.phone],
+      ...(state.role === "chair" && ["chair", "vice_chair", "board"].includes(item.roleKey) ? [[
+        "cleaningCalendarAccess",
+        "Kalendár upratovania",
+        item.canManageCleaningCalendar ? "true" : "false",
+        "select",
+        [["false", "Nepovolené"], ["true", "Povolené"]]
+      ]] : []),
       ["note", "Poznámka", item.note, "textarea"]
     ]);
   }
@@ -8364,12 +8481,12 @@ async function saveVoteAnswer(voteId, commentOnly = false) {
 
   if (supabaseClient && state.currentUserId) {
     try {
-      const activeOwner = state.role === "owner" ? currentOwner() : null;
+      const activeOwner = currentOwner();
       const answerControls = [...document.querySelectorAll("[data-vote-question-id]")];
       const questions = vote.questions?.length ? vote.questions : [];
       let payload = [];
       if (!commentOnly) {
-        if (state.role === "owner" && !activeOwner?.id) throw new Error("Nie je vybraná aktívna nehnuteľnosť pre hlasovanie.");
+        if (ownersForCurrentUser().length && !activeOwner?.id) throw new Error("Nie je vybraná aktívna nehnuteľnosť pre hlasovanie.");
         payload = answerControls.map((control, index) => ({
           id: control.dataset.voteQuestionId || questions[index]?.id,
           answer: control.value || "Za"
@@ -8664,7 +8781,7 @@ async function saveDialog(type) {
     return;
   }
   const eventTypeValue = document.querySelector("#eventType")?.value.trim() || "general";
-  const titleValue = type === "calendar" && state.role === "owner"
+  const titleValue = type === "calendar" && isCleaningEventType(eventTypeValue)
     ? cleaningEventTitle(eventTypeValue)
     : document.querySelector("#title")?.value.trim() || "Nová položka";
   const categoryValue = type === "overview" && state.role === "owner"
@@ -8769,8 +8886,9 @@ async function saveDialog(type) {
   } else if (type === "calendar") {
     const date = normalizeEventDateInput(categoryValue);
     state.calendarMonth = date.slice(0, 7);
-    const owner = state.role === "owner" ? currentOwner() : null;
-    state.events.push({ id: Date.now(), day: Number(date.slice(8, 10)), date, title: titleValue, note: noteValue, eventType: state.role === "owner" ? eventTypeValue : "general", createdBy: state.currentUserId, ownerRecordId: owner?.id || null, creatorLabel: owner ? `${owner.name} · ${owner.flat}` : "" });
+    const cleaningEvent = isCleaningEventType(eventTypeValue);
+    const owner = cleaningEvent ? currentOwner() : null;
+    state.events.push({ id: Date.now(), day: Number(date.slice(8, 10)), date, title: titleValue, note: noteValue, eventType: cleaningEvent ? eventTypeValue : "general", createdBy: state.currentUserId, ownerRecordId: owner?.id || null, creatorLabel: owner ? `${owner.name} · ${owner.flat}` : "" });
     state.events.sort(sortByEventDateAsc);
     state.notificationLog.unshift({ time: "Teraz", type: "Udalosť", subject: titleValue, status: "Automatický email pripravený pre registrovaných vlastníkov" });
   } else if (type === "emails") {
@@ -8895,24 +9013,25 @@ async function saveDialogToSupabase(type, values) {
   } else if (type === "calendar") {
     const startsAt = eventDateToStartsAt(values.categoryValue);
     state.calendarMonth = normalizeEventDateInput(values.categoryValue).slice(0, 7);
-    const owner = state.role === "owner" ? currentOwner() : null;
-    const eventType = state.role === "owner" ? values.eventTypeValue : "general";
-    if (state.role === "owner" && (!canManageCleaningCalendar(owner) || !["cleaning", "cleaning_extra"].includes(eventType))) {
+    const eventType = isCleaningEventType(values.eventTypeValue) ? values.eventTypeValue : "general";
+    const cleaningEvent = isCleaningEventType(eventType);
+    const owner = cleaningEvent ? currentOwner() : null;
+    if (cleaningEvent && !canManageCleaningCalendar(owner)) {
       throw new Error("Nemáte oprávnenie pridať tento typ záznamu do kalendára.");
     }
     if (values.youtubeUrlValue && !youtubeVideoId(values.youtubeUrlValue)) throw new Error("YouTube odkaz nie je v podporovanom formáte.");
-    const eventTitle = state.role === "owner" ? cleaningEventTitle(eventType) : values.titleValue;
+    const eventTitle = cleaningEvent ? cleaningEventTitle(eventType) : values.titleValue;
     const response = assertSupabaseOk(await supabaseClient.from("events").insert({
       created_by: state.currentUserId,
       title: eventTitle,
       description: values.noteValue,
       starts_at: startsAt,
       event_type: eventType,
-      owner_record_id: owner?.id || null,
+      owner_record_id: cleaningEvent ? owner?.id || null : null,
       storage_path: filePath,
       youtube_url: values.youtubeUrlValue || null
     }).select("id").single());
-    const cleaningNotification = ["cleaning", "cleaning_extra"].includes(eventType);
+    const cleaningNotification = cleaningEvent;
     await notifyByChoice(
       cleaningNotification ? eventTitle : "Nová udalosť",
       eventTitle,
@@ -9137,7 +9256,7 @@ async function saveEditDialog(type, id) {
   if (!item) return;
   if (!canEditItem(type, item)) return;
   const eventTypeValue = document.querySelector("#eventType")?.value.trim() || item.eventType || "general";
-  const titleValue = type === "event" && state.role === "owner"
+  const titleValue = type === "event" && isOwnCleaningEvent(item) && isCleaningEventType(eventTypeValue)
     ? cleaningEventTitle(eventTypeValue)
     : document.querySelector("#title")?.value.trim() || editTitle(type, item);
   const categoryValue = document.querySelector("#category")?.value.trim() || "";
@@ -9168,6 +9287,7 @@ async function saveEditDialog(type, id) {
   const correspondencePostalCodeValue = document.querySelector("#correspondencePostalCode")?.value.trim();
   const debtAmountValue = document.querySelector("#debtAmount")?.value.trim();
   const isDebtorValue = document.querySelector("#isDebtor")?.value.trim().toLowerCase();
+  const cleaningCalendarAccessValue = document.querySelector("#cleaningCalendarAccess")?.value.trim();
   const noteValue = document.querySelector("#note")?.value.trim() || "";
 
   if (supabaseClient && state.currentUserId) {
@@ -9203,6 +9323,7 @@ async function saveEditDialog(type, id) {
         nextStepDateValue,
         debtAmountValue,
         isDebtorValue,
+        cleaningCalendarAccessValue,
         noteValue
       });
       await writeActivityLog("update", `Úprava položky: ${titleValue}`, {
@@ -9234,6 +9355,7 @@ async function saveEditDialog(type, id) {
     item.ownedFrom = ownedFromValue || item.ownedFrom;
     item.debtAmount = Number.parseFloat(debtAmountValue || item.debtAmount || "0");
     item.isDebtor = isDebtorValue ? ["áno", "ano", "yes", "true", "1"].includes(isDebtorValue) : item.debtAmount > 0;
+    if (cleaningCalendarAccessValue !== undefined) item.canManageCleaningCalendar = cleaningCalendarAccessValue === "true";
     item.note = noteValue || item.note;
     item.status = item.accountStatus;
   } else if (type === "activity") {
@@ -9249,6 +9371,7 @@ async function saveEditDialog(type, id) {
     item.role = roleFieldValue || item.role;
     item.email = emailValue || item.email;
     item.phone = phoneValue || item.phone;
+    if (cleaningCalendarAccessValue !== undefined) item.canManageCleaningCalendar = cleaningCalendarAccessValue === "true";
     item.note = noteValue || item.note;
   } else if (type === "event") {
     const date = normalizeEventDateInput(categoryValue);
@@ -9366,6 +9489,9 @@ async function saveEditToSupabase(type, item, values) {
       owned_from: values.ownedFromValue || null,
       is_debtor: nextIsDebtor,
       debt_amount: nextDebtAmount,
+      ...(state.role === "chair" && values.cleaningCalendarAccessValue !== undefined
+        ? { can_manage_cleaning_calendar: values.cleaningCalendarAccessValue === "true" }
+        : {}),
       note: values.noteValue || null,
       updated_at: new Date().toISOString()
     }).eq("id", item.id);
@@ -9415,25 +9541,40 @@ async function saveEditToSupabase(type, item, values) {
       note: values.noteValue || null
     }).eq("id", item.id);
     if (error) throw new Error(error.message);
+    if (item.ownerRecordId && state.role === "chair" && values.cleaningCalendarAccessValue !== undefined) {
+      const { error: ownerPermissionError } = await supabaseClient
+        .from("owner_records")
+        .update({
+          full_name: values.titleValue,
+          login_email: values.emailValue,
+          phone: values.phoneValue || null,
+          can_manage_cleaning_calendar: values.cleaningCalendarAccessValue === "true",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", item.ownerRecordId)
+        .eq("profile_id", item.id);
+      if (ownerPermissionError) throw new Error(ownerPermissionError.message);
+    }
     return;
   }
 
   if (type === "event") {
     const startsAt = eventDateToStartsAt(values.categoryValue || eventDateKey(item));
     state.calendarMonth = normalizeEventDateInput(values.categoryValue || eventDateKey(item)).slice(0, 7);
-    const owner = state.role === "owner" ? currentOwner() : null;
-    const eventType = state.role === "owner" ? values.eventTypeValue : item.eventType || "general";
-    if (state.role === "owner" && (!canManageCalendarEvent(item) || !["cleaning", "cleaning_extra"].includes(eventType))) {
+    const editsOwnCleaning = isOwnCleaningEvent(item);
+    const owner = editsOwnCleaning ? currentOwner() : null;
+    const eventType = editsOwnCleaning ? values.eventTypeValue : item.eventType || "general";
+    if (editsOwnCleaning && (!canManageCalendarEvent(item) || !isCleaningEventType(eventType))) {
       throw new Error("Nemáte oprávnenie upraviť tento záznam kalendára.");
     }
     if (values.youtubeUrlValue && !youtubeVideoId(values.youtubeUrlValue)) throw new Error("YouTube odkaz nie je v podporovanom formáte.");
     const filePath = await uploadSelectedFile("calendar");
     const update = {
-      title: state.role === "owner" ? cleaningEventTitle(eventType) : values.titleValue,
+      title: isCleaningEventType(eventType) ? cleaningEventTitle(eventType) : values.titleValue,
       description: values.noteValue || null,
       starts_at: startsAt,
       event_type: eventType,
-      owner_record_id: state.role === "owner" ? owner?.id || null : item.ownerRecordId || null,
+      owner_record_id: editsOwnCleaning ? owner?.id || null : item.ownerRecordId || null,
       youtube_url: values.youtubeUrlValue || null
     };
     if (filePath) update.storage_path = filePath;
