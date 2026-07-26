@@ -2922,6 +2922,26 @@ select.search {
   background: rgba(255, 255, 255, 0.92);
 }
 
+.talk-addressing-fields {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  margin-bottom: 4px;
+  border: 1px solid rgba(22, 84, 73, 0.2);
+  border-left: 4px solid #16705f;
+  background: #fff;
+}
+
+.talk-addressing-fields [data-talk-private-field] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.talk-addressing-fields [data-talk-private-field][hidden] {
+  display: none;
+}
+
 body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .messages-toolbar {
   padding-right: min(300px, 38%);
 }
@@ -4006,6 +4026,10 @@ dialog.video-dialog #dialogBody {
 }
 
 @media (max-width: 640px) {
+  .talk-addressing-fields [data-talk-private-field] {
+    grid-template-columns: 1fr;
+  }
+
   .main,
   .sidebar {
     padding: 16px;

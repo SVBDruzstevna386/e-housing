@@ -279,7 +279,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v202";
+const APP_VERSION = "v203";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1373,7 +1373,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v202",
+    appVersion: item.app_version || "v203",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -4259,7 +4259,7 @@ function serviceAdminSection() {
       values: [
         ["Manifest", "manifest.webmanifest?v=202"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v202"]
+        ["Cache", "e-housing-v203"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -5865,6 +5865,60 @@ function messageRecipientOptions() {
   return options.length ? options : ["Verejná diskusia"];
 }
 
+function canMessageProfileRole(role) {
+  if (role === "owner") return communicationPermissionFor(state.role, "individualOwners");
+  return communicationPermissionFor(state.role, "leadership");
+}
+
+function talkRecipientProfiles() {
+  return state.profiles
+    .filter((profile) =>
+      profile.id
+      && profile.id !== state.currentUserId
+      && profile.approval_status === "approved"
+      && canMessageProfileRole(profile.role)
+      && normalizeNeighborCard(profile.neighbor_card).shareMessaging
+    )
+    .sort((a, b) => {
+      const roleOrder = ROLE_DEFINITIONS.findIndex(([role]) => role === a.role)
+        - ROLE_DEFINITIONS.findIndex(([role]) => role === b.role);
+      return roleOrder || String(a.full_name || "").localeCompare(String(b.full_name || ""), "sk");
+    });
+}
+
+function talkRecipientRoleOptions(profiles = talkRecipientProfiles()) {
+  const availableRoles = new Set(profiles.map((profile) => profile.role));
+  return ROLE_DEFINITIONS.filter(([role]) => availableRoles.has(role));
+}
+
+function talkRecipientLabel(profile) {
+  const card = normalizeNeighborCard(profile.neighbor_card);
+  const flat = card.shareFlat && profile.flat_number ? ` · ${profile.flat_number}` : "";
+  return `${profile.full_name || roleLabelForKey(profile.role)}${flat}`;
+}
+
+function talkRecipientUserOptions(role, profiles = talkRecipientProfiles()) {
+  return [
+    ["", "Vyberte používateľa"],
+    ...profiles
+      .filter((profile) => profile.role === role)
+      .map((profile) => [profile.id, talkRecipientLabel(profile)])
+  ];
+}
+
+function selectedTalkRecipient(recipientId, recipientRole = "") {
+  const profile = talkRecipientProfiles().find((item) =>
+    String(item.id) === String(recipientId)
+    && (!recipientRole || item.role === recipientRole)
+  );
+  if (!profile) return null;
+  return {
+    id: profile.id,
+    label: talkRecipientLabel(profile),
+    role: profile.role
+  };
+}
+
 function isPublicRecipient(label) {
   return ["Verejná diskusia", "Všetci vlastníci"].includes(label);
 }
@@ -5929,7 +5983,7 @@ function messageSectionView(messageArea = "repair") {
           <article class="card icon-card message-recipient-card owner" data-system-icon="info">
             <div class="card-icon">${icon("info")}</div>
             <h3>Konkrétny vlastník</h3>
-            <p class="muted">Pri písaní správy vyberiete vlastníka podľa mena a bytu.</p>
+            <p class="muted">Adresáta vyberiete podľa roly a mena. Číslo bytu sa zobrazí iba vtedy, keď ho používateľ sprístupní.</p>
           </article>
         </div>
         <div class="message-list">
@@ -6545,6 +6599,7 @@ function bindDialogActions() {
   dialogBody.querySelectorAll("[data-youtube-play]").forEach((button) => {
     button.addEventListener("click", () => openYoutubeDialog(button.dataset.youtubePlay));
   });
+  bindTalkRecipientFields();
   dialogBody.querySelectorAll("[data-vote-owner-filter]").forEach((select) => {
     select.addEventListener("change", () => {
       state.voteDetailOwnerFilter = select.value;
@@ -8236,14 +8291,38 @@ function formFor(type, defaults = {}) {
   }
   if (type === "messages" || type === "talk") {
     const isTalk = type === "talk";
-    return fieldsWithValues([
+    const recipientProfiles = isTalk ? talkRecipientProfiles() : [];
+    const recipientRoles = talkRecipientRoleOptions(recipientProfiles);
+    const defaultRecipientRole = recipientRoles[0]?.[0] || "";
+    const canCreatePublic = communicationPermissionFor(state.role, "publicDiscussion");
+    const canCreatePrivate = recipientProfiles.length > 0;
+    const defaultScope = state.talkMessageFilter === "Súkromná správa" && canCreatePrivate
+      ? "private"
+      : canCreatePublic ? "public" : "private";
+    const addressingFields = isTalk ? `
+      <div class="talk-addressing-fields">
+        ${fieldsWithValues([
+          ["messageScope", "Typ správy", defaultScope, "select", [
+            ...(canCreatePublic ? [["public", "Verejná diskusia"]] : []),
+            ...(canCreatePrivate ? [["private", "Súkromná správa"]] : [])
+          ]]
+        ])}
+        <div data-talk-private-field>
+          ${fieldsWithValues([
+            ["messageRecipientRole", "Rola adresáta", defaultRecipientRole, "select", recipientRoles],
+            ["messageRecipientId", "Konkrétny používateľ", "", "select", talkRecipientUserOptions(defaultRecipientRole, recipientProfiles)]
+          ])}
+        </div>
+      </div>
+    ` : "";
+    return addressingFields + fieldsWithValues([
       ["title", isTalk ? "Predmet" : "Názov poruchy", isTalk ? "Nová téma" : "Nová porucha"],
       ["youtubeUrl", "YouTube video link", ""],
       ["note", isTalk ? "Text správy" : "Popis poruchy", isTalk ? "Napíšte správu, otázku alebo tému na spoločnú diskusiu." : "Popíšte poruchu, jej miesto a aktuálny stav.", "textarea"]
     ]) + uploadField(isTalk ? "Obrázok k správe" : "Obrázok poruchy", "image/*") + `
       <article class="notice">
         <strong>Automatické upozornenie</strong>
-        <p>Po ${isTalk ? "uverejnení správy" : "zaevidovaní poruchy"} sa automaticky odošle email a PWA upozornenie všetkým schváleným vlastníkom.</p>
+        <p>${isTalk ? "Pri verejnej správe sa upozornenie odošle všetkým schváleným vlastníkom. Pri súkromnej správe ho dostane iba vybraný adresát." : "Po zaevidovaní poruchy sa automaticky odošle email a PWA upozornenie všetkým schváleným vlastníkom."}</p>
       </article>
     `;
   }
@@ -8556,6 +8635,37 @@ function fieldsWithValues(items) {
       ${fieldControl(id, value, kind, options)}
     </div>
   `).join("");
+}
+
+function bindTalkRecipientFields() {
+  const scopeSelect = dialogBody.querySelector("#messageScope");
+  const roleSelect = dialogBody.querySelector("#messageRecipientRole");
+  const userSelect = dialogBody.querySelector("#messageRecipientId");
+  const privateFields = dialogBody.querySelector("[data-talk-private-field]");
+  if (!scopeSelect || !privateFields) return;
+
+  const refreshUsers = () => {
+    if (!roleSelect || !userSelect) return;
+    const currentValue = userSelect.value;
+    userSelect.innerHTML = talkRecipientUserOptions(roleSelect.value)
+      .map(([value, label]) => `<option value="${escapeAttr(value)}">${escapeHtml(label)}</option>`)
+      .join("");
+    if ([...userSelect.options].some((option) => option.value === currentValue)) {
+      userSelect.value = currentValue;
+    }
+  };
+
+  const refreshVisibility = () => {
+    const isPrivate = scopeSelect.value === "private";
+    privateFields.hidden = !isPrivate;
+    roleSelect?.toggleAttribute("required", isPrivate);
+    userSelect?.toggleAttribute("required", isPrivate);
+  };
+
+  roleSelect?.addEventListener("change", refreshUsers);
+  scopeSelect.addEventListener("change", refreshVisibility);
+  refreshUsers();
+  refreshVisibility();
 }
 
 function fieldControl(id, value, kind, options = []) {
@@ -8963,6 +9073,9 @@ async function saveDialog(type) {
   const settlementYearValue = document.querySelector("#settlementYear")?.value.trim();
   const documentDateValue = document.querySelector("#documentDate")?.value.trim();
   const youtubeUrlValue = document.querySelector("#youtubeUrl")?.value.trim();
+  const messageScopeValue = document.querySelector("#messageScope")?.value.trim() || "public";
+  const messageRecipientRoleValue = document.querySelector("#messageRecipientRole")?.value.trim() || "";
+  const messageRecipientIdValue = document.querySelector("#messageRecipientId")?.value.trim() || "";
   const priceValue = document.querySelector("#price")?.value.trim();
   const contactValue = document.querySelector("#contact")?.value.trim();
   const ownedFromValue = document.querySelector("#ownedFrom")?.value.trim();
@@ -8978,7 +9091,7 @@ async function saveDialog(type) {
 
   if (supabaseClient && state.currentUserId) {
     try {
-      await saveDialogToSupabase(type, { titleValue, categoryValue, noteValue, eventTypeValue, loginEmailValue, accountStatusValue, approvalStatusValue, statusValue, legalStatusValue, executionTitleStatusValue, nextStepDateValue, personValue, roleFieldValue, monthValue, hoursValue, financeKindValue, financeYearValue, amountValue, settlementYearValue, documentDateValue, youtubeUrlValue, priceValue, contactValue, ownedFromValue, debtAmountValue, isDebtorValue, voteDeadlineValue, voteQuestionsValue, notification });
+      await saveDialogToSupabase(type, { titleValue, categoryValue, noteValue, eventTypeValue, loginEmailValue, accountStatusValue, approvalStatusValue, statusValue, legalStatusValue, executionTitleStatusValue, nextStepDateValue, personValue, roleFieldValue, monthValue, hoursValue, financeKindValue, financeYearValue, amountValue, settlementYearValue, documentDateValue, youtubeUrlValue, messageScopeValue, messageRecipientRoleValue, messageRecipientIdValue, priceValue, contactValue, ownedFromValue, debtAmountValue, isDebtorValue, voteDeadlineValue, voteQuestionsValue, notification });
       await writeActivityLog("create", `${type === "overview" && state.role === "owner" ? "Vytvorenie oznamu vlastníkom" : "Vytvorenie položky"}: ${titleValue}`, {
         relatedTable: type,
         metadata: {
@@ -9022,7 +9135,13 @@ async function saveDialog(type) {
   } else if (type === "votes") {
     state.votes.unshift({ id: Date.now(), title: titleValue, description: noteValue, type: categoryValue || "present_majority", closes: voteDeadlineValue || "2026-07-15", status: "Prebieha", yes: 0, no: 0, abstain: 0, comments: 0, questions: parseVoteQuestions(voteQuestionsValue || titleValue).map((text, index) => ({ id: `local-${Date.now()}-${index}`, text })) });
   } else if (type === "messages" || type === "talk") {
-    state.messages.unshift({ id: Date.now(), messageArea: type === "talk" ? "talk" : "repair", scope: "Verejná diskusia", scopeRaw: "public", senderId: state.currentUserId, recipientLabel: "Všetci vlastníci", from: roleLabel(), to: "Všetci vlastníci", subject: titleValue, text: noteValue, date: "Teraz", createdAt: new Date().toISOString(), read: false, youtubeUrl: youtubeUrlValue || "" });
+    const isPrivateTalk = type === "talk" && messageScopeValue === "private";
+    const recipient = isPrivateTalk ? selectedTalkRecipient(messageRecipientIdValue, messageRecipientRoleValue) : null;
+    if (isPrivateTalk && !recipient) {
+      window.alert("Vyberte používateľa, ktorý povolil kontaktovanie cez e - Housing Licence.");
+      return;
+    }
+    state.messages.unshift({ id: Date.now(), messageArea: type === "talk" ? "talk" : "repair", scope: isPrivateTalk ? "Súkromná správa" : "Verejná diskusia", scopeRaw: isPrivateTalk ? "private" : "public", senderId: state.currentUserId, recipientId: recipient?.id || null, recipientLabel: recipient?.label || "Všetci vlastníci", from: roleLabel(), to: recipient?.label || "Všetci vlastníci", subject: titleValue, text: noteValue, date: "Teraz", createdAt: new Date().toISOString(), read: false, youtubeUrl: youtubeUrlValue || "" });
   } else if (type === "owners") {
     state.owners.push({
       flat: categoryValue,
@@ -9155,13 +9274,41 @@ async function saveDialogToSupabase(type, values) {
   } else if (type === "messages" || type === "talk") {
     if (values.youtubeUrlValue && !youtubeVideoId(values.youtubeUrlValue)) throw new Error("YouTube odkaz nie je v podporovanom formáte.");
     const isTalk = type === "talk";
+    const isPrivateTalk = isTalk && values.messageScopeValue === "private";
+    let recipient = isPrivateTalk
+      ? selectedTalkRecipient(values.messageRecipientIdValue, values.messageRecipientRoleValue)
+      : null;
+    if (isPrivateTalk && !recipient) {
+      throw new Error("Vyberte používateľa, ktorý povolil kontaktovanie cez e - Housing Licence.");
+    }
+    if (isPrivateTalk) {
+      const { data: freshRecipient, error: recipientError } = await supabaseClient
+        .from("profiles")
+        .select("id, role, full_name, flat_number, approval_status, neighbor_card")
+        .eq("id", recipient.id)
+        .maybeSingle();
+      if (recipientError) throw new Error(recipientError.message);
+      if (
+        !freshRecipient
+        || freshRecipient.role !== values.messageRecipientRoleValue
+        || freshRecipient.approval_status !== "approved"
+        || !canMessageProfileRole(freshRecipient.role)
+        || !normalizeNeighborCard(freshRecipient.neighbor_card).shareMessaging
+      ) {
+        throw new Error("Vybraný používateľ už nepovoľuje kontaktovanie cez e - Housing Licence.");
+      }
+      recipient = { id: freshRecipient.id, label: talkRecipientLabel(freshRecipient), role: freshRecipient.role };
+    }
+    if (!isPrivateTalk && isTalk && !communicationPermissionFor(state.role, "publicDiscussion")) {
+      throw new Error("Nemáte oprávnenie vytvoriť verejnú diskusiu.");
+    }
     const response = assertSupabaseOk(await supabaseClient.from("messages").insert({
       sender_id: state.currentUserId,
-      recipient_id: null,
-      recipient_label: "Všetci vlastníci",
+      recipient_id: recipient?.id || null,
+      recipient_label: recipient?.label || "Všetci vlastníci",
       subject: values.titleValue,
       body: values.noteValue,
-      scope: "public",
+      scope: isPrivateTalk ? "private" : "public",
       storage_path: filePath,
       youtube_url: values.youtubeUrlValue || null,
       message_section: isTalk ? "talk" : "repair"
@@ -9170,7 +9317,7 @@ async function saveDialogToSupabase(type, values) {
       isTalk ? "Nový príspevok v Rozprávajme sa" : "Nová nahlásená porucha",
       values.titleValue,
       values.noteValue,
-      { target: "all", ownerId: "" },
+      isPrivateTalk ? { target: "individual", ownerId: recipient.id } : { target: "all", ownerId: "" },
       "messages",
       response.data.id,
       {
@@ -9178,7 +9325,7 @@ async function saveDialogToSupabase(type, values) {
         view: type,
         detailType: "message",
         sectionLabel: titles[type],
-        eventType: isTalk ? "Rozprávajme sa" : "Nová nahlásená porucha"
+        eventType: isPrivateTalk ? "Nová súkromná správa" : isTalk ? "Rozprávajme sa" : "Nová nahlásená porucha"
       }
     );
   } else if (type === "calendar") {
@@ -9320,9 +9467,9 @@ function findProfileRecipient(label) {
 
 async function notifyByChoice(subject, titleText, messageText, notification = {}, relatedTable = null, relatedId = null, metadata = {}) {
   const isAllowedClassifiedChairNotice = notification.target === "chair" && relatedTable === "classifieds";
-  const isAllowedRepairNotice = notification.target === "all" && relatedTable === "messages" && metadata.appNotification === true;
+  const isAllowedMessageNotice = ["all", "individual"].includes(notification.target) && relatedTable === "messages" && metadata.appNotification === true;
   const isAllowedCleaningNotice = notification.target === "all" && relatedTable === "events" && metadata.cleaningNotification === true;
-  if (!supabaseClient || (!canSendEmailNotifications() && !isAllowedClassifiedChairNotice && !isAllowedRepairNotice && !isAllowedCleaningNotice)) return;
+  if (!supabaseClient || (!canSendEmailNotifications() && !isAllowedClassifiedChairNotice && !isAllowedMessageNotice && !isAllowedCleaningNotice)) return;
   const target = notification.target || "none";
   if (target === "none") return;
   if (target === "individual" && !notification.ownerId) {

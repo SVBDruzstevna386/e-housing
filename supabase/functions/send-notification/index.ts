@@ -61,8 +61,9 @@ Deno.serve(async (req) => {
   const isOwnerAnnouncementNotice = target === "all" && relatedTable === "announcements" && Boolean(relatedId) && sender?.role === "owner";
   const isClassifiedChairNotice = target === "chair" && relatedTable === "classifieds" && Boolean(relatedId);
   const isRepairAllNotice = target === "all" && relatedTable === "messages" && Boolean(relatedId) && appNotification;
+  const isPrivateTalkNotice = target === "individual" && relatedTable === "messages" && Boolean(relatedId) && Boolean(ownerId) && appNotification;
   const isCleaningAllNotice = target === "all" && relatedTable === "events" && Boolean(relatedId) && cleaningNotification;
-  if (!isBoardSender && !isMessageToChairNotice && !isOwnerAnnouncementNotice && !isClassifiedChairNotice && !isRepairAllNotice && !isCleaningAllNotice) return json({ error: "Only chairman or board can send notifications" }, 403);
+  if (!isBoardSender && !isMessageToChairNotice && !isOwnerAnnouncementNotice && !isClassifiedChairNotice && !isRepairAllNotice && !isPrivateTalkNotice && !isCleaningAllNotice) return json({ error: "Only chairman or board can send notifications" }, 403);
   if (isCleaningAllNotice) {
     const { data: relatedEvent, error: relatedEventError } = await admin
       .from("events")
@@ -95,6 +96,36 @@ Deno.serve(async (req) => {
     if (relatedMessageError) return json({ error: relatedMessageError.message }, 500);
     if (!relatedMessage || relatedMessage.sender_id !== userData.user.id || relatedMessage.scope !== "public") {
       return json({ error: "Repair notification is allowed only for own public report" }, 403);
+    }
+  }
+  if (isPrivateTalkNotice) {
+    const { data: relatedMessage, error: relatedMessageError } = await admin
+      .from("messages")
+      .select("id, sender_id, recipient_id, scope, message_section")
+      .eq("id", relatedId)
+      .maybeSingle();
+    if (relatedMessageError) return json({ error: relatedMessageError.message }, 500);
+    if (
+      !relatedMessage
+      || relatedMessage.sender_id !== userData.user.id
+      || relatedMessage.recipient_id !== ownerId
+      || relatedMessage.scope !== "private"
+      || relatedMessage.message_section !== "talk"
+    ) {
+      return json({ error: "Private notification is allowed only for own direct talk message" }, 403);
+    }
+    const { data: recipientProfile, error: recipientProfileError } = await admin
+      .from("profiles")
+      .select("id, approval_status, neighbor_card")
+      .eq("id", ownerId)
+      .maybeSingle();
+    if (recipientProfileError) return json({ error: recipientProfileError.message }, 500);
+    if (
+      !recipientProfile
+      || recipientProfile.approval_status !== "approved"
+      || recipientProfile.neighbor_card?.share_messaging === false
+    ) {
+      return json({ error: "Recipient does not allow direct messages" }, 403);
     }
   }
   if (!isBoardSender && isClassifiedChairNotice) {
@@ -263,15 +294,25 @@ async function resolveRecipients(admin: ReturnType<typeof createClient>, target:
       .filter((profile) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email));
   }
 
+  if (target === "individual") {
+    const { data, error } = await admin
+      .from("profiles")
+      .select("id, full_name, email, approval_status")
+      .eq("id", ownerId)
+      .eq("approval_status", "approved")
+      .not("email", "is", null)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    const email = String(data?.email || "").trim();
+    if (!data || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return [];
+    return [{ profile_id: data.id, name: data.full_name, email }];
+  }
+
   let query = admin
     .from("owner_records")
     .select("id, profile_id, full_name, login_email, approval_status")
     .eq("approval_status", "approved")
     .not("login_email", "is", null);
-
-  if (target === "individual") {
-    query = query.or(`id.eq.${ownerId},profile_id.eq.${ownerId}`);
-  }
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);

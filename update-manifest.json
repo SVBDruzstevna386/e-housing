@@ -1,15 +1,16 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v202",
+  "latestVersion": "v203",
   "releasedAt": "2026-07-26",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v202 pridáva vlastnú susedskú vizitku do záložky Profil.",
+  "summary": "Verzia v203 prepája súhlas vo vlastnej vizitke so súkromnými správami v záložke Rozprávajme sa.",
   "changes": [
-    "Vlastník môže uložiť krátke predstavenie, záujmy a ponuku pomoci susedom.",
-    "Samostatne nastaví zdieľanie komunikácie cez aplikáciu, emailu, telefónu a čísla bytu.",
-    "Osobné kontakty sú predvolene skryté a vizitka sa zatiaľ ostatným vlastníkom nezobrazuje.",
-    "PWA cache bola zvýšená na v202."
+    "Vo formulári Napísať príspevok možno zvoliť verejnú alebo súkromnú správu.",
+    "Súkromný adresát sa vyberá najprv podľa roly a potom podľa konkrétneho používateľa.",
+    "V zozname sa zobrazia iba schválení používatelia, ktorí povolili kontaktovanie cez e - Housing Licence.",
+    "Emailová a PWA notifikácia súkromnej správy smeruje iba vybranému adresátovi.",
+    "PWA cache bola zvýšená na v203."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",
