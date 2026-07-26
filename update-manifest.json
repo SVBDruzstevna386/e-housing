@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v205",
+  "latestVersion": "v206",
   "releasedAt": "2026-07-26",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v205 upravuje poradie a rozloženie formulára Napísať príspevok.",
+  "summary": "Verzia v206 zobrazuje záznamy komunikácie priamo pod filtrom.",
   "changes": [
-    "Polia sú zoradené: Predmet, Adresovanie príspevku, Text správy, YouTube video link, Obrázok a Automatické upozornenie.",
-    "Filtre roly a používateľa sú uložené pod sebou na plnú šírku.",
-    "Dlhé názvy rolí vrátane Vlastník nehnuteľnosti sa zobrazujú celé.",
-    "PWA cache bola zvýšená na v205."
+    "V záložke Rozprávajme sa sa záznamy zobrazujú hneď pod filtrom.",
+    "V záložke Nahlásiť poruchu sa záznamy zobrazujú hneď pod filtrom.",
+    "Informačné karty adresátov zostávajú zachované pod zoznamom záznamov.",
+    "PWA cache bola zvýšená na v206."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",
