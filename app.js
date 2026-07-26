@@ -279,7 +279,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v203";
+const APP_VERSION = "v204";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1373,7 +1373,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v203",
+    appVersion: item.app_version || "v204",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -4259,7 +4259,7 @@ function serviceAdminSection() {
       values: [
         ["Manifest", "manifest.webmanifest?v=202"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v203"]
+        ["Cache", "e-housing-v204"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -5866,7 +5866,7 @@ function messageRecipientOptions() {
 }
 
 function canMessageProfileRole(role) {
-  if (role === "owner") return communicationPermissionFor(state.role, "individualOwners");
+  if (role === "owner") return true;
   return communicationPermissionFor(state.role, "leadership");
 }
 
@@ -5888,7 +5888,12 @@ function talkRecipientProfiles() {
 
 function talkRecipientRoleOptions(profiles = talkRecipientProfiles()) {
   const availableRoles = new Set(profiles.map((profile) => profile.role));
-  return ROLE_DEFINITIONS.filter(([role]) => availableRoles.has(role));
+  return ROLE_DEFINITIONS
+    .filter(([role]) => availableRoles.has(role))
+    .map(([role, label]) => [
+      role,
+      `${label} (${profiles.filter((profile) => profile.role === role).length})`
+    ]);
 }
 
 function talkRecipientLabel(profile) {
@@ -8301,18 +8306,37 @@ function formFor(type, defaults = {}) {
       : canCreatePublic ? "public" : "private";
     const addressingFields = isTalk ? `
       <div class="talk-addressing-fields">
-        ${fieldsWithValues([
-          ["messageScope", "Typ správy", defaultScope, "select", [
-            ...(canCreatePublic ? [["public", "Verejná diskusia"]] : []),
-            ...(canCreatePrivate ? [["private", "Súkromná správa"]] : [])
-          ]]
-        ])}
-        <div data-talk-private-field>
+        <div class="talk-addressing-head">
+          <span class="talk-addressing-icon">${icon("send")}</span>
+          <div>
+            <h3>Adresovanie príspevku</h3>
+            <p>Vyberte spôsob zdieľania a pri súkromnej správe určite konkrétneho adresáta.</p>
+          </div>
+        </div>
+        <div class="talk-addressing-step">
+          <span class="talk-step-number">1</span>
           ${fieldsWithValues([
-            ["messageRecipientRole", "Rola adresáta", defaultRecipientRole, "select", recipientRoles],
-            ["messageRecipientId", "Konkrétny používateľ", "", "select", talkRecipientUserOptions(defaultRecipientRole, recipientProfiles)]
+            ["messageScope", "Spôsob zdieľania", defaultScope, "select", [
+              ...(canCreatePublic ? [["public", "Verejná diskusia"]] : []),
+              ...(canCreatePrivate ? [["private", "Súkromná správa"]] : [])
+            ]]
           ])}
         </div>
+        <div data-talk-private-field>
+          <div class="talk-addressing-step">
+            <span class="talk-step-number">2</span>
+            ${fieldsWithValues([
+              ["messageRecipientRole", "Rola adresáta", defaultRecipientRole, "select", recipientRoles]
+            ])}
+          </div>
+          <div class="talk-addressing-step">
+            <span class="talk-step-number">3</span>
+            ${fieldsWithValues([
+              ["messageRecipientId", "Konkrétny používateľ", "", "select", talkRecipientUserOptions(defaultRecipientRole, recipientProfiles)]
+            ])}
+          </div>
+        </div>
+        <div class="talk-recipient-summary" data-talk-recipient-summary hidden></div>
       </div>
     ` : "";
     return addressingFields + fieldsWithValues([
@@ -8642,7 +8666,18 @@ function bindTalkRecipientFields() {
   const roleSelect = dialogBody.querySelector("#messageRecipientRole");
   const userSelect = dialogBody.querySelector("#messageRecipientId");
   const privateFields = dialogBody.querySelector("[data-talk-private-field]");
+  const recipientSummary = dialogBody.querySelector("[data-talk-recipient-summary]");
   if (!scopeSelect || !privateFields) return;
+
+  const refreshSummary = () => {
+    if (!recipientSummary || !userSelect) return;
+    const selected = selectedTalkRecipient(userSelect.value, roleSelect?.value || "");
+    recipientSummary.hidden = !selected;
+    recipientSummary.innerHTML = selected
+      ? `${icon("badge-check")}<div><strong>${escapeHtml(selected.label)}</strong><span>Má aktívne povolenie „Napíšte mi cez e - Housing Licence“.</span></div>`
+      : "";
+    enhanceIcons();
+  };
 
   const refreshUsers = () => {
     if (!roleSelect || !userSelect) return;
@@ -8653,16 +8688,19 @@ function bindTalkRecipientFields() {
     if ([...userSelect.options].some((option) => option.value === currentValue)) {
       userSelect.value = currentValue;
     }
+    refreshSummary();
   };
 
   const refreshVisibility = () => {
     const isPrivate = scopeSelect.value === "private";
     privateFields.hidden = !isPrivate;
+    if (recipientSummary) recipientSummary.hidden = !isPrivate || !userSelect?.value;
     roleSelect?.toggleAttribute("required", isPrivate);
     userSelect?.toggleAttribute("required", isPrivate);
   };
 
   roleSelect?.addEventListener("change", refreshUsers);
+  userSelect?.addEventListener("change", refreshSummary);
   scopeSelect.addEventListener("change", refreshVisibility);
   refreshUsers();
   refreshVisibility();

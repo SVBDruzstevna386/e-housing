@@ -2924,22 +2924,120 @@ select.search {
 
 .talk-addressing-fields {
   display: grid;
-  gap: 14px;
-  padding: 14px;
-  margin-bottom: 4px;
-  border: 1px solid rgba(22, 84, 73, 0.2);
-  border-left: 4px solid #16705f;
+  gap: 16px;
+  padding: 18px;
+  margin-bottom: 6px;
+  border: 1px solid #cfded9;
+  border-radius: 8px;
   background: #fff;
+  box-shadow: 0 8px 22px rgba(30, 56, 52, 0.08);
+}
+
+.talk-addressing-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e1e8e5;
+}
+
+.talk-addressing-head h3,
+.talk-addressing-head p {
+  margin: 0;
+}
+
+.talk-addressing-head h3 {
+  font-size: 1rem;
+}
+
+.talk-addressing-head p {
+  margin-top: 3px;
+  color: #5e6f6b;
+  font-size: 0.9rem;
+}
+
+.talk-addressing-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  color: #fff;
+  background: #176f61;
+}
+
+.talk-addressing-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.talk-addressing-step {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.talk-addressing-step .field {
+  min-width: 0;
+  margin: 0;
+}
+
+.talk-step-number {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-bottom: 7px;
+  border: 1px solid #bad1ca;
+  border-radius: 50%;
+  color: #176f61;
+  background: #edf6f3;
+  font-weight: 800;
+  font-size: 0.82rem;
 }
 
 .talk-addressing-fields [data-talk-private-field] {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
 }
 
 .talk-addressing-fields [data-talk-private-field][hidden] {
   display: none;
+}
+
+.talk-recipient-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid #bad6cd;
+  border-radius: 6px;
+  color: #194d43;
+  background: #eef7f4;
+}
+
+.talk-recipient-summary[hidden] {
+  display: none;
+}
+
+.talk-recipient-summary svg {
+  flex: 0 0 auto;
+  width: 21px;
+  height: 21px;
+}
+
+.talk-recipient-summary div {
+  display: grid;
+  gap: 2px;
+}
+
+.talk-recipient-summary span {
+  color: #536c66;
+  font-size: 0.85rem;
 }
 
 body.theme-cartoon_3d:is([data-view="messages"], [data-view="talk"]) .messages-toolbar {
@@ -4026,8 +4124,16 @@ dialog.video-dialog #dialogBody {
 }
 
 @media (max-width: 640px) {
+  .talk-addressing-fields {
+    padding: 14px;
+  }
+
   .talk-addressing-fields [data-talk-private-field] {
     grid-template-columns: 1fr;
+  }
+
+  .talk-addressing-head {
+    align-items: flex-start;
   }
 
   .main,
