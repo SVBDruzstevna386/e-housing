@@ -279,7 +279,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v204";
+const APP_VERSION = "v205";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1373,7 +1373,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v204",
+    appVersion: item.app_version || "v205",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -4259,7 +4259,7 @@ function serviceAdminSection() {
       values: [
         ["Manifest", "manifest.webmanifest?v=202"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v204"]
+        ["Cache", "e-housing-v205"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -8339,10 +8339,11 @@ function formFor(type, defaults = {}) {
         <div class="talk-recipient-summary" data-talk-recipient-summary hidden></div>
       </div>
     ` : "";
-    return addressingFields + fieldsWithValues([
-      ["title", isTalk ? "Predmet" : "Názov poruchy", isTalk ? "Nová téma" : "Nová porucha"],
-      ["youtubeUrl", "YouTube video link", ""],
-      ["note", isTalk ? "Text správy" : "Popis poruchy", isTalk ? "Napíšte správu, otázku alebo tému na spoločnú diskusiu." : "Popíšte poruchu, jej miesto a aktuálny stav.", "textarea"]
+    return fieldsWithValues([
+      ["title", isTalk ? "Predmet" : "Názov poruchy", isTalk ? "Nová téma" : "Nová porucha"]
+    ]) + addressingFields + fieldsWithValues([
+      ["note", isTalk ? "Text správy" : "Popis poruchy", isTalk ? "Napíšte správu, otázku alebo tému na spoločnú diskusiu." : "Popíšte poruchu, jej miesto a aktuálny stav.", "textarea"],
+      ["youtubeUrl", "YouTube video link", ""]
     ]) + uploadField(isTalk ? "Obrázok k správe" : "Obrázok poruchy", "image/*") + `
       <article class="notice">
         <strong>Automatické upozornenie</strong>

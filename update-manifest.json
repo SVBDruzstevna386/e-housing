@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v204",
+  "latestVersion": "v205",
   "releasedAt": "2026-07-26",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v204 sprístupňuje opt-in vlastníkov v súkromných správach a zlepšuje výber adresáta.",
+  "summary": "Verzia v205 upravuje poradie a rozloženie formulára Napísať príspevok.",
   "changes": [
-    "Rola Vlastník nehnuteľnosti sa zobrazí vždy, keď má aspoň jeden schválený vlastník povolené kontaktovanie cez aplikáciu.",
-    "Formulár adresovania používa jasný trojkrokový výber spôsobu zdieľania, roly a konkrétneho používateľa.",
-    "Pri rolách sa zobrazuje počet dostupných adresátov a po výbere používateľa sa zobrazí potvrdenie jeho súhlasu.",
-    "PWA cache bola zvýšená na v204."
+    "Polia sú zoradené: Predmet, Adresovanie príspevku, Text správy, YouTube video link, Obrázok a Automatické upozornenie.",
+    "Filtre roly a používateľa sú uložené pod sebou na plnú šírku.",
+    "Dlhé názvy rolí vrátane Vlastník nehnuteľnosti sa zobrazujú celé.",
+    "PWA cache bola zvýšená na v205."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",

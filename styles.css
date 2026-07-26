@@ -2985,6 +2985,14 @@ select.search {
   margin: 0;
 }
 
+.talk-addressing-step select {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  padding-right: 42px;
+  font-size: 0.95rem;
+}
+
 .talk-step-number {
   display: grid;
   place-items: center;
@@ -3001,7 +3009,7 @@ select.search {
 
 .talk-addressing-fields [data-talk-private-field] {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 
@@ -4126,6 +4134,15 @@ dialog.video-dialog #dialogBody {
 @media (max-width: 640px) {
   .talk-addressing-fields {
     padding: 14px;
+  }
+
+  .talk-addressing-step {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .talk-step-number {
+    margin-bottom: 0;
   }
 
   .talk-addressing-fields [data-talk-private-field] {
