@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v209",
+  "latestVersion": "v210",
   "releasedAt": "2026-07-26",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v209 zobrazuje príspevky v záložke Rozprávajme sa v trojstĺpcovej mriežke.",
+  "summary": "Verzia v210 umožňuje autorovi vymazať vlastný príspevok v záložke Rozprávajme sa.",
   "changes": [
-    "Na širokej obrazovke sa vedľa seba zobrazujú tri karty príspevkov v záložke Rozprávajme sa.",
-    "Šírka kariet príspevkov zodpovedá informačným kartám pod zoznamom.",
-    "Na menších obrazovkách sa karty príspevkov zobrazujú v jednom stĺpci.",
-    "PWA cache bola zvýšená na v209."
+    "Autor vlastného príspevku v záložke Rozprávajme sa vidí tlačidlo Vymazať.",
+    "Používateľ nemôže týmto oprávnením vymazať príspevky iných autorov.",
+    "Po vymazaní sa overí, že databáza záznam skutočne odstránila.",
+    "PWA cache bola zvýšená na v210."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",

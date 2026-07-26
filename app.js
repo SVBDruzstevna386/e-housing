@@ -279,7 +279,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v209";
+const APP_VERSION = "v210";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1373,7 +1373,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v209",
+    appVersion: item.app_version || "v210",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -2131,6 +2131,7 @@ function canDeleteItem(type, item = null) {
   if (type === "boardMember") return canManageBoardMember(item);
   if (type === "announcement") return canManageAnnouncement(item);
   if (type === "classified") return canManageClassified(item);
+  if (type === "message" && item?.messageArea === "talk" && item.senderId === state.currentUserId) return true;
   return permissionFor(state.role, viewForItemType(type)).delete;
 }
 
@@ -4259,7 +4260,7 @@ function serviceAdminSection() {
       values: [
         ["Manifest", "manifest.webmanifest?v=202"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v209"]
+        ["Cache", "e-housing-v210"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -7595,8 +7596,9 @@ async function deleteItemFromSupabase(type, item) {
     return;
   }
   if (type === "message") {
-    const { error } = await supabaseClient.from("messages").delete().eq("id", item.id);
+    const { data, error } = await supabaseClient.from("messages").delete().eq("id", item.id).select("id").maybeSingle();
     if (error) throw new Error(error.message);
+    if (!data?.id) throw new Error("Databáza nepovolila vymazanie tohto príspevku.");
     return;
   }
   if (type === "billingSettlement") {
