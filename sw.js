@@ -1,10 +1,10 @@
-const CACHE_NAME = "e-housing-v208";
+const CACHE_NAME = "e-housing-v209";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=208",
-  "./app.js?v=208",
-  "./manifest.webmanifest?v=208",
+  "./styles.css?v=209",
+  "./app.js?v=209",
+  "./manifest.webmanifest?v=209",
   "./update-manifest.json",
   "./favicon.ico",
   "./favicon-16.png",

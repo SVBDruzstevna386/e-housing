@@ -2906,13 +2906,15 @@ select.search {
   gap: 12px;
 }
 
-.repair-message-list {
+.repair-message-list,
+.talk-message-list {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   align-items: start;
 }
 
-.repair-message-list .message {
+.repair-message-list .message,
+.talk-message-list .message {
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -4144,7 +4146,8 @@ dialog.video-dialog #dialogBody {
     grid-template-columns: 1fr;
   }
 
-  .repair-message-list {
+  .repair-message-list,
+  .talk-message-list {
     grid-template-columns: 1fr;
   }
 }
