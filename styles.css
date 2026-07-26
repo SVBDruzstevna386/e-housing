@@ -2906,6 +2906,20 @@ select.search {
   gap: 12px;
 }
 
+.repair-message-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.repair-message-list .message {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  justify-self: stretch;
+  overflow-wrap: anywhere;
+}
+
 .messages-panel {
   display: grid;
   gap: 16px;
@@ -4127,6 +4141,10 @@ dialog.video-dialog #dialogBody {
   }
 
   .message-recipient-row {
+    grid-template-columns: 1fr;
+  }
+
+  .repair-message-list {
     grid-template-columns: 1fr;
   }
 }
