@@ -279,7 +279,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v206";
+const APP_VERSION = "v207";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1373,7 +1373,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v206",
+    appVersion: item.app_version || "v207",
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -4259,7 +4259,7 @@ function serviceAdminSection() {
       values: [
         ["Manifest", "manifest.webmanifest?v=202"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v206"]
+        ["Cache", "e-housing-v207"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -5952,10 +5952,11 @@ function canStartMessageTo(label) {
 
 function messageSectionView(messageArea = "repair") {
   const isTalk = messageArea === "talk";
-  const filter = isTalk ? state.talkMessageFilter : state.messageFilter;
-  const messages = messageThreads(messageArea).filter((message) =>
-    filter === "all" || message.scope === filter || message.to === filter
-  );
+  const filter = state.talkMessageFilter;
+  const sectionMessages = messageThreads(messageArea);
+  const messages = isTalk
+    ? sectionMessages.filter((message) => filter === "all" || message.scope === filter || message.to === filter)
+    : sectionMessages;
   return `
     <div class="grid">
       <section class="panel messages-panel">
@@ -5965,15 +5966,17 @@ function messageSectionView(messageArea = "repair") {
             <p class="muted">${isTalk ? "Samostatný priestor na komunikáciu, otázky a spoločnú diskusiu vlastníkov a vedenia SVB." : "V tomto okne môžete sledovať priebeh opráv elektronicky nahlásených porúch."}</p>
           </div>
         </div>
-        <select class="search below-title-select message-filter-select" data-message-filter="${messageArea}">
-          <option value="all" ${filter === "all" ? "selected" : ""}>Všetky správy</option>
-          <option value="Verejná diskusia" ${filter === "Verejná diskusia" ? "selected" : ""}>Verejná diskusia</option>
-          <option value="Súkromná správa" ${filter === "Súkromná správa" ? "selected" : ""}>Súkromné správy</option>
-          <option value="Predseda SVB" ${filter === "Predseda SVB" ? "selected" : ""}>Predseda SVB</option>
-          <option value="Podpredseda SVB" ${filter === "Podpredseda SVB" ? "selected" : ""}>Podpredseda SVB</option>
-          <option value="Ekonomická správa" ${filter === "Ekonomická správa" ? "selected" : ""}>Ekonomická správa</option>
-          <option value="Dozorná rada" ${filter === "Dozorná rada" ? "selected" : ""}>Dozorná rada</option>
-        </select>
+        ${isTalk ? `
+          <select class="search below-title-select message-filter-select" data-message-filter="${messageArea}">
+            <option value="all" ${filter === "all" ? "selected" : ""}>Všetky správy</option>
+            <option value="Verejná diskusia" ${filter === "Verejná diskusia" ? "selected" : ""}>Verejná diskusia</option>
+            <option value="Súkromná správa" ${filter === "Súkromná správa" ? "selected" : ""}>Súkromné správy</option>
+            <option value="Predseda SVB" ${filter === "Predseda SVB" ? "selected" : ""}>Predseda SVB</option>
+            <option value="Podpredseda SVB" ${filter === "Podpredseda SVB" ? "selected" : ""}>Podpredseda SVB</option>
+            <option value="Ekonomická správa" ${filter === "Ekonomická správa" ? "selected" : ""}>Ekonomická správa</option>
+            <option value="Dozorná rada" ${filter === "Dozorná rada" ? "selected" : ""}>Dozorná rada</option>
+          </select>
+        ` : ""}
         <div class="message-list">
           ${messages.map(messageCard).join("")}
         </div>

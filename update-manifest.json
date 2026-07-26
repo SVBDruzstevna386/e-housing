@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v206",
+  "latestVersion": "v207",
   "releasedAt": "2026-07-26",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v206 zobrazuje záznamy komunikácie priamo pod filtrom.",
+  "summary": "Verzia v207 zobrazuje všetky nahlásené poruchy bez filtra.",
   "changes": [
-    "V záložke Rozprávajme sa sa záznamy zobrazujú hneď pod filtrom.",
-    "V záložke Nahlásiť poruchu sa záznamy zobrazujú hneď pod filtrom.",
-    "Informačné karty adresátov zostávajú zachované pod zoznamom záznamov.",
-    "PWA cache bola zvýšená na v206."
+    "Filter bol zo záložky Nahlásiť poruchu odstránený.",
+    "V záložke Nahlásiť poruchu sa vždy zobrazia všetky dostupné nahlásené poruchy.",
+    "Filter zostáva zachovaný iba v záložke Rozprávajme sa.",
+    "PWA cache bola zvýšená na v207."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",
