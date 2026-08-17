@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
 
   const { data: sender, error: senderError } = await admin
     .from("profiles")
-    .select("id, full_name, role")
+    .select("id, full_name, role, approval_status")
     .eq("id", userData.user.id)
     .maybeSingle();
   const body = await req.json().catch(() => ({}));
@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
   const ownerId = body.ownerId ? String(body.ownerId) : "";
   const appNotification = body.appNotification === true;
   const cleaningNotification = body.cleaningNotification === true;
+  const registrationNotice = body.registrationNotice === true;
   const webPushRequested = appNotification || cleaningNotification || relatedTable === "announcements";
   if (senderError) return json({ error: senderError.message }, 500);
   const isBoardSender = ["chair", "vice_chair", "economic", "board"].includes(sender?.role || "");
@@ -63,7 +64,29 @@ Deno.serve(async (req) => {
   const isRepairAllNotice = target === "all" && relatedTable === "messages" && Boolean(relatedId) && appNotification;
   const isPrivateTalkNotice = target === "individual" && relatedTable === "messages" && Boolean(relatedId) && Boolean(ownerId) && appNotification;
   const isCleaningAllNotice = target === "all" && relatedTable === "events" && Boolean(relatedId) && cleaningNotification;
-  if (!isBoardSender && !isMessageToChairNotice && !isOwnerAnnouncementNotice && !isClassifiedChairNotice && !isRepairAllNotice && !isPrivateTalkNotice && !isCleaningAllNotice) return json({ error: "Only chairman or board can send notifications" }, 403);
+  const isRegistrationPendingNotice = target === "chair"
+    && registrationNotice
+    && ["profiles", "owner_records"].includes(relatedTable || "")
+    && Boolean(relatedId);
+  if (!isBoardSender && !isMessageToChairNotice && !isOwnerAnnouncementNotice && !isClassifiedChairNotice && !isRepairAllNotice && !isPrivateTalkNotice && !isCleaningAllNotice && !isRegistrationPendingNotice) return json({ error: "Only chairman or board can send notifications" }, 403);
+  if (isRegistrationPendingNotice) {
+    if (relatedTable === "profiles") {
+      if (!sender || relatedId !== userData.user.id || sender.approval_status === "approved") {
+        return json({ error: "Registration notice is allowed only for own pending profile" }, 403);
+      }
+    }
+    if (relatedTable === "owner_records") {
+      const { data: ownerRecord, error: ownerRecordError } = await admin
+        .from("owner_records")
+        .select("id, profile_id, approval_status")
+        .eq("id", relatedId)
+        .maybeSingle();
+      if (ownerRecordError) return json({ error: ownerRecordError.message }, 500);
+      if (!ownerRecord || ownerRecord.profile_id !== userData.user.id || ownerRecord.approval_status !== "pending") {
+        return json({ error: "Registration notice is allowed only for own pending owner record" }, 403);
+      }
+    }
+  }
   if (isCleaningAllNotice) {
     const { data: relatedEvent, error: relatedEventError } = await admin
       .from("events")

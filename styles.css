@@ -3142,6 +3142,19 @@ body.theme-cartoon_3d .system-cards .message-recipient-card.owner {
   align-items: end;
 }
 
+.billing-filter-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: end;
+  margin-top: 12px;
+}
+
+.billing-filter-row .below-title-select {
+  width: 100%;
+  min-width: 0;
+}
+
 .activities-merged-section {
   min-width: 0;
 }
@@ -4218,6 +4231,10 @@ dialog.video-dialog #dialogBody {
 
   .compact-toolbar {
     align-items: stretch;
+  }
+
+  .billing-filter-row {
+    grid-template-columns: 1fr;
   }
 
   .search,

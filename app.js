@@ -17,6 +17,7 @@ const state = {
   talkMessageFilter: "all",
   classifiedFilter: "all",
   billingOwnerFilter: "all",
+  billingTypeFilter: "all",
   billingSettlements: [],
   financeEntries: [],
   executionCases: [],
@@ -163,7 +164,7 @@ const titles = {
   overview: "Prehľad domu",
   documents: "Dokumenty",
   documentHistory: "História dokumentov",
-  billing: "Vyúčtovanie",
+  billing: "Vyúčtovanie / Predpis",
   executions: "Exekúcie",
   finance: "Hospodárenie",
   messages: "Nahlásiť poruchu",
@@ -199,8 +200,8 @@ const HELP_TEXTS = {
     body: "Záložka Hlasovanie slúži na elektronické zberanie stanovísk vlastníkov k návrhom predsedu SVB. Predseda SVB vytvára hlasovanie, otázky a termín uzavretia. Vlastník nehnuteľnosti hlasuje osobitne za každú svoju priradenú nehnuteľnosť a môže do uzavretia hlasovania svoj hlas zmeniť. Komentáre môžu byť verejné alebo súkromné predsedovi SVB."
   },
   billing: {
-    title: "Nápoveda pre Vyúčtovanie",
-    body: "Vyúčtovanie obsahuje dokumenty a históriu vyúčtovaní priradené ku konkrétnej nehnuteľnosti alebo vlastníkovi. Predseda SVB pridáva vyúčtovania pre konkrétnych vlastníkov. Vlastník nehnuteľnosti aj člen dozornej rady vidia iba vyúčtovania patriace k svojej aktuálne vybranej nehnuteľnosti."
+    title: "Nápoveda pre Vyúčtovanie / Predpis",
+    body: "Vyúčtovanie / Predpis obsahuje dokumenty a históriu vyúčtovaní alebo mesačných predpisov priradené ku konkrétnej nehnuteľnosti alebo vlastníkovi. Predseda SVB pridáva záznamy pre konkrétnych vlastníkov. Vlastník nehnuteľnosti aj člen dozornej rady vidia iba záznamy patriace k svojej aktuálne vybranej nehnuteľnosti."
   },
   executions: {
     title: "Nápoveda pre Exekúcie",
@@ -279,7 +280,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v210";
+const APP_VERSION = "v212";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -1094,6 +1095,15 @@ async function registerPairedOwnerProperty({ email, password, name, flat, gdprAc
       metadata: { email, flat, name }
     });
     await loadSupabaseData();
+    await notifyChairAboutPendingRegistration({
+      relatedTable: "owner_records",
+      relatedId: inserted?.id,
+      name,
+      email,
+      role: roleLabelForKey("owner"),
+      flat,
+      status: "Čaká na autorizáciu"
+    });
     return { ok: true, ownerRecordId: inserted?.id };
   } catch (error) {
     return { ok: false, error: error?.message || "Párovanie nehnuteľnosti zlyhalo." };
@@ -1160,6 +1170,20 @@ async function applyRegistrationSession(session, { requestedRole, name, flat, em
     relatedId: user.id,
     metadata: { requestedRole, flat, email }
   });
+  const registeredProfile = state.profiles.find((profile) => profile.id === user.id);
+  const registeredOwner = requestedRole === "owner" ? currentOwner() : null;
+  const registrationApprovalStatus = registeredOwner?.approvalStatus || registeredProfile?.approval_status || "pending";
+  if (registrationApprovalStatus === "pending") {
+    await notifyChairAboutPendingRegistration({
+      relatedTable: "profiles",
+      relatedId: user.id,
+      name,
+      email: user.email || email,
+      role: roleLabelForKey(requestedRole),
+      flat,
+      status: "Čaká na autorizáciu"
+    });
+  }
   startAppNotificationWatcher();
   return true;
 }
@@ -1373,7 +1397,7 @@ function partnerInstallationFromDb(item) {
     chairEmail: item.chair_email || "",
     status: item.status || "draft",
     plan: item.plan || "pilot_free",
-    appVersion: item.app_version || "v210",
+    appVersion: item.app_version || APP_VERSION,
     githubRepositoryUrl: item.github_repository_url || "",
     vercelProjectId: item.vercel_project_id || "",
     productionUrl: item.production_url || "",
@@ -1820,6 +1844,7 @@ async function dbBillingSettlementToCard(item) {
   return {
     id: item.id,
     title: item.title,
+    documentType: item.document_type || "Vyúčtovanie",
     year: item.settlement_year,
     ownerRecordId: item.owner_record_id,
     ownerProfileId: item.owner_profile_id,
@@ -1840,6 +1865,10 @@ function billingSettlementBelongsToOwner(item, owner, ownerProfileId = owner?.pr
   if (item.ownerProfileId && ownerProfileId) return String(item.ownerProfileId) === String(ownerProfileId);
   const ownerEmail = owner.loginEmail || owner.email || "";
   return Boolean(item.email && ownerEmail && item.email.toLowerCase() === ownerEmail.toLowerCase());
+}
+
+function billingDocumentTypeOptions() {
+  return ["Vyúčtovanie", "Predpis"];
 }
 
 function dbExecutionCaseToCard(item) {
@@ -1957,6 +1986,8 @@ function ensureDefaultEmailTemplates() {
   const hasPasswordReset = defaults.some((template) => template.key === "password-reset" || template.id === "password-reset");
   const hasNotificationDetail = defaults.some((template) => template.key === "notification-detail" || template.id === "notification-detail");
   const hasMessageToChair = defaults.some((template) => template.key === "message-to-chair" || template.id === "message-to-chair");
+  const hasRegistrationPendingAdmin = defaults.some((template) => template.key === "registration-pending-admin" || template.id === "registration-pending-admin");
+  const hasRegistrationApprovedUser = defaults.some((template) => template.key === "registration-approved-user" || template.id === "registration-approved-user");
   if (!hasNotificationDetail) {
     state.emailTemplates.push({
       id: "notification-detail",
@@ -1982,6 +2013,24 @@ function ensureDefaultEmailTemplates() {
       title: "Notifikácia predsedovi o správe",
       subject: "Nová správa pre predsedu SVB: {{subject}}",
       body: "Dobrý deň,\n\nv aplikácii e - Housing Solutions Licence bola vytvorená správa, ktorú má predseda SVB preveriť.\n\nTyp správy: {{scope}}\nOdosielateľ: {{sender}}\nPredmet: {{subject}}\nKomu: {{recipient}}\n\nText správy:\n{{message}}\n\nProsíme, prihláste sa do aplikácie e - Housing Solutions Licence a pozrite si detail komunikácie."
+    });
+  }
+  if (!hasRegistrationPendingAdmin) {
+    state.emailTemplates.push({
+      id: "registration-pending-admin",
+      key: "registration-pending-admin",
+      title: "Registrácia čaká na autorizáciu",
+      subject: "Nová registrácia čaká na autorizáciu: {{name}}",
+      body: "Dobrý deň,\n\nv aplikácii e - Housing Solutions Licence bola vytvorená nová registrácia, ktorá čaká na autorizáciu predsedom SVB.\n\nMeno: {{name}}\nEmail: {{email}}\nRola: {{role}}\nByt: {{flat}}\nStav: {{status}}\n\nProsíme, prihláste sa do aplikácie a registráciu skontrolujte v záložke Vlastníci a byty.\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}"
+    });
+  }
+  if (!hasRegistrationApprovedUser) {
+    state.emailTemplates.push({
+      id: "registration-approved-user",
+      key: "registration-approved-user",
+      title: "Autorizácia účtu potvrdená",
+      subject: "Váš účet bol autorizovaný",
+      body: "Dobrý deň {{name}},\n\npredseda SVB potvrdil autorizáciu vášho účtu v aplikácii e - Housing Solutions Licence.\n\nRola: {{role}}\nByt: {{flat}}\nStav: {{status}}\n\nOd tejto chvíle sa môžete prihlásiť a používať sprístupnené funkcie aplikácie podľa svojej role.\n\nAplikáciu otvoríte kliknutím na tento odkaz:\n{{actionUrl}}"
     });
   }
 }
@@ -2945,7 +2994,7 @@ function actionLabel() {
   if (state.view === "partners") return "Nová inštalácia";
   if (state.view === "documents") return "Nahrať dokument";
   if (state.view === "documentHistory") return "Pridať do histórie";
-  if (state.view === "billing") return "Pridať vyúčtovanie";
+  if (state.view === "billing") return "Pridať vyúčtovanie / predpis";
   if (state.view === "executions") return "Pridať exekučný záznam";
   if (state.view === "finance") return canManageAll() ? "Pridať hospodársky záznam" : "Pridať podnet";
   if (state.view === "votes") return "Nové hlasovanie";
@@ -3165,28 +3214,41 @@ const views = {
       state.billingOwnerFilter = "all";
     }
     const selectedOwner = state.owners.find((item) => String(item.id) === String(state.billingOwnerFilter));
-    const items = usesOwnerScope
+    const ownerScopedItems = usesOwnerScope
       ? state.billingSettlements.filter((item) => billingSettlementBelongsToOwner(item, owner, ownerProfileId))
       : state.role === "chair" && selectedOwner
         ? state.billingSettlements.filter((item) => billingSettlementBelongsToOwner(item, selectedOwner, selectedOwner.profileId))
         : state.billingSettlements;
+    const validBillingTypes = billingDocumentTypeOptions();
+    if (state.billingTypeFilter !== "all" && !validBillingTypes.includes(state.billingTypeFilter)) {
+      state.billingTypeFilter = "all";
+    }
+    const items = state.billingTypeFilter === "all"
+      ? ownerScopedItems
+      : ownerScopedItems.filter((item) => (item.documentType || "Vyúčtovanie") === state.billingTypeFilter);
     return `
       <section class="panel">
         <div class="toolbar">
           <div>
-            <h2>História vyúčtovaní</h2>
-            <p class="muted">Súkromné vyúčtovania priradené ku konkrétnemu registrovanému vlastníkovi bytu.</p>
-            ${state.role === "chair" ? `
-              <select class="search below-title-select" data-billing-owner-filter aria-label="Filter vyúčtovaní podľa vlastníka nehnuteľnosti">
-                <option value="all" ${state.billingOwnerFilter === "all" ? "selected" : ""}>Všetci vlastníci nehnuteľností</option>
-                ${ownerOptions.map(([value, label]) => `<option value="${escapeAttr(value)}" ${String(state.billingOwnerFilter) === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}
+            <h2>Vyúčtovanie / Predpis</h2>
+            <p class="muted">Súkromné vyúčtovania a predpisy priradené ku konkrétnemu registrovanému vlastníkovi bytu.</p>
+            <div class="filter-row billing-filter-row">
+              ${state.role === "chair" ? `
+                <select class="search below-title-select" data-billing-owner-filter aria-label="Filter podľa vlastníka nehnuteľnosti">
+                  <option value="all" ${state.billingOwnerFilter === "all" ? "selected" : ""}>Všetci vlastníci nehnuteľností</option>
+                  ${ownerOptions.map(([value, label]) => `<option value="${escapeAttr(value)}" ${String(state.billingOwnerFilter) === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}
+                </select>
+              ` : ""}
+              <select class="search below-title-select" data-billing-type-filter aria-label="Filter podľa typu dokumentu">
+                <option value="all" ${state.billingTypeFilter === "all" ? "selected" : ""}>Vyúčtovanie aj predpisy</option>
+                ${validBillingTypes.map((value) => `<option value="${escapeAttr(value)}" ${state.billingTypeFilter === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}
               </select>
-            ` : ""}
+            </div>
           </div>
           <span class="tag document">${items.length} záznamy</span>
         </div>
         <div class="list">
-          ${items.length ? items.map(billingSettlementCard).join("") : systemCard("Bez vyúčtovania", "Pre aktuálneho používateľa zatiaľ nie je zverejnené žiadne vyúčtovanie.", "receipt-text")}
+          ${items.length ? items.map(billingSettlementCard).join("") : systemCard("Bez záznamu", "Pre aktuálny filter zatiaľ nie je zverejnené žiadne vyúčtovanie ani predpis.", "receipt-text")}
         </div>
       </section>
     `;
@@ -4258,9 +4320,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=202"],
+        ["Manifest", "manifest.webmanifest?v=212"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v210"]
+        ["Cache", "e-housing-v212"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -4468,12 +4530,13 @@ function historyDocumentCard(item) {
 }
 
 function billingSettlementCard(item) {
-  return `<article class="item searchable" data-text="${item.title} ${item.year} ${item.ownerName} ${item.flat}">
+  const documentType = item.documentType || "Vyúčtovanie";
+  return `<article class="item searchable" data-text="${item.title} ${item.year} ${item.ownerName} ${item.flat} ${documentType}">
     <div>
-      <h3>${item.title}</h3>
+      <h3>${escapeHtml(item.title)}</h3>
       <p class="muted">${item.ownerName} · ${item.flat} · rok ${item.year || "neuvedený"}</p>
-      <p>${escapeHtml(item.note || "Vyúčtovanie vlastníka nehnuteľnosti.")}</p>
-      <div class="tag-row"><span class="tag document">Vyúčtovanie</span><span class="tag">${formatDate(item.date)}</span></div>
+      <p>${escapeHtml(item.note || `${documentType} vlastníka nehnuteľnosti.`)}</p>
+      <div class="tag-row"><span class="tag document">${escapeHtml(documentType)}</span><span class="tag">${formatDate(item.date)}</span></div>
     </div>
     <div class="row-actions">
       <button class="ghost" data-detail="billingSettlement" data-id="${item.id}">${icon("info")}<span>Detail</span></button>
@@ -6196,6 +6259,13 @@ function bindViewActions() {
     });
   });
 
+  document.querySelectorAll("[data-billing-type-filter]").forEach((select) => {
+    select.addEventListener("change", () => {
+      state.billingTypeFilter = select.value;
+      render();
+    });
+  });
+
   document.querySelectorAll("[data-message-filter]").forEach((select) => {
     select.addEventListener("change", () => {
       if (select.dataset.messageFilter === "talk") state.talkMessageFilter = select.value;
@@ -6828,14 +6898,16 @@ function detailBody(type, item) {
     `;
   }
   if (type === "billingSettlement") {
+    const documentType = item.documentType || "Vyúčtovanie";
     return `
       <div class="detail-grid">
+        ${readonlyField("Typ dokumentu", documentType)}
         ${readonlyField("Vlastník", item.ownerName || "Vlastník nehnuteľnosti")}
         ${readonlyField("Byt", item.flat || "Bez bytu")}
         ${readonlyField("Rok", item.year || "Neuvedené")}
         ${readonlyField("Dátum zverejnenia", formatDate(item.date))}
       </div>
-      <article class="card"><p>${escapeHtml(item.note || "Vyúčtovanie vlastníka nehnuteľnosti.")}</p></article>
+      <article class="card"><p>${escapeHtml(item.note || `${documentType} vlastníka nehnuteľnosti.`)}</p></article>
       <div class="row-actions">${documentFileActions(item)}</div>
     `;
   }
@@ -7241,11 +7313,11 @@ function openApproveOwnerDialog(id) {
         ${readonlyField("Email", owner.loginEmail || owner.email || "Bez emailu")}
       </div>
     </article>
-    ${notificationFields("individual", owner.profileId || owner.id)}
+    <article class="notice"><strong>Automatická notifikácia</strong><p>Po schválení používateľ dostane email o potvrdení autorizácie účtu.</p></article>
   `;
   dialogSave.onclick = async (event) => {
     event.preventDefault();
-    await approveOwner(owner.id, collectNotificationOptions(owner.profileId || owner.id));
+    await approveOwner(owner.id);
   };
   dialog.showModal();
   enhanceIcons();
@@ -7265,17 +7337,17 @@ function openApproveProfileDialog(id) {
         ${readonlyField("Email", member.email || "Bez emailu")}
       </div>
     </article>
-    ${notificationFields("individual", member.id)}
+    <article class="notice"><strong>Automatická notifikácia</strong><p>Po schválení používateľ dostane email o potvrdení autorizácie účtu.</p></article>
   `;
   dialogSave.onclick = async (event) => {
     event.preventDefault();
-    await approveProfile(member.id, collectNotificationOptions(member.id));
+    await approveProfile(member.id);
   };
   dialog.showModal();
   enhanceIcons();
 }
 
-async function approveProfile(id, notification = { target: "none", ownerId: "" }) {
+async function approveProfile(id) {
   if (state.role !== "chair") return;
   const member = state.boardMembers.find((item) => String(item.id) === String(id));
   if (!member) return;
@@ -7296,7 +7368,16 @@ async function approveProfile(id, notification = { target: "none", ownerId: "" }
     relatedId: member.id,
     metadata: { memberName: member.name, role: member.role, email: member.email }
   });
-  await notifyByChoice("Registrácia roly schválená", member.name, `Registrácia roly ${member.role} pre používateľa ${member.name} bola schválená.`, notification, "profiles", member.id);
+  await notifyRegistrationApproved({
+    recipientId: member.id,
+    relatedTable: "profiles",
+    relatedId: member.id,
+    name: member.name,
+    email: member.email,
+    role: member.role,
+    flat: "",
+    status: "Schválený"
+  });
   dialog.close();
   if (supabaseClient && state.currentUserId) await loadSupabaseData();
   render();
@@ -7352,7 +7433,7 @@ async function saveMessageReply(original) {
   render();
 }
 
-async function approveOwner(id, notification = { target: "none", ownerId: "" }) {
+async function approveOwner(id) {
   if (state.role !== "chair") return;
   const owner = state.owners.find((item) => String(item.id) === String(id));
   if (!owner) return;
@@ -7379,7 +7460,16 @@ async function approveOwner(id, notification = { target: "none", ownerId: "" }) 
     relatedId: owner.id,
     metadata: { ownerName: owner.name, flat: owner.flat, email: owner.loginEmail || owner.email }
   });
-  await notifyByChoice("Registrácia vlastníka schválená", owner.name, `Registrácia vlastníka ${owner.name} pre byt ${owner.flat} bola schválená.`, notification, "owner_records", owner.id);
+  await notifyRegistrationApproved({
+    recipientId: owner.profileId || owner.id,
+    relatedTable: "owner_records",
+    relatedId: owner.id,
+    name: owner.name,
+    email: owner.loginEmail || owner.email,
+    role: roleLabelForKey(owner.profileRoleKey || "owner"),
+    flat: owner.flat,
+    status: "Aktívny"
+  });
   dialog.close();
   if (supabaseClient && state.currentUserId) await loadSupabaseData();
   render();
@@ -8254,11 +8344,12 @@ function formFor(type, defaults = {}) {
   }
   if (type === "billing") {
     return fieldsWithValues([
-      ["title", "Názov vyúčtovania", `Vyúčtovanie ${new Date().getFullYear()}`],
+      ["title", "Názov vyúčtovania / predpisu", `Vyúčtovanie ${new Date().getFullYear()}`],
+      ["billingDocumentType", "Typ dokumentu", "Vyúčtovanie", "select", billingDocumentTypeOptions()],
       ["category", "Vlastník nehnuteľnosti", "", "select", billingOwnerOptions()],
-      ["settlementYear", "Rok vyúčtovania", String(new Date().getFullYear() - 1)],
-      ["note", "Poznámka", "Ročné vyúčtovanie nákladov pre konkrétneho vlastníka nehnuteľnosti.", "textarea"]
-    ]) + uploadField("Súbor vyúčtovania") + notificationFields("individual");
+      ["settlementYear", "Rok", String(new Date().getFullYear() - 1)],
+      ["note", "Poznámka", "Ročné vyúčtovanie alebo predpis pre konkrétneho vlastníka nehnuteľnosti.", "textarea"]
+    ]) + uploadField("Súbor vyúčtovania / predpisu") + notificationFields("individual");
   }
   if (type === "executions") {
     return fieldsWithValues([
@@ -9114,6 +9205,7 @@ async function saveDialog(type) {
   const financeKindValue = document.querySelector("#financeKind")?.value.trim();
   const financeYearValue = document.querySelector("#financeYear")?.value.trim();
   const amountValue = document.querySelector("#amount")?.value.trim();
+  const billingDocumentTypeValue = document.querySelector("#billingDocumentType")?.value.trim() || "Vyúčtovanie";
   const settlementYearValue = document.querySelector("#settlementYear")?.value.trim();
   const documentDateValue = document.querySelector("#documentDate")?.value.trim();
   const youtubeUrlValue = document.querySelector("#youtubeUrl")?.value.trim();
@@ -9135,7 +9227,7 @@ async function saveDialog(type) {
 
   if (supabaseClient && state.currentUserId) {
     try {
-      await saveDialogToSupabase(type, { titleValue, categoryValue, noteValue, eventTypeValue, loginEmailValue, accountStatusValue, approvalStatusValue, statusValue, legalStatusValue, executionTitleStatusValue, nextStepDateValue, personValue, roleFieldValue, monthValue, hoursValue, financeKindValue, financeYearValue, amountValue, settlementYearValue, documentDateValue, youtubeUrlValue, messageScopeValue, messageRecipientRoleValue, messageRecipientIdValue, priceValue, contactValue, ownedFromValue, debtAmountValue, isDebtorValue, voteDeadlineValue, voteQuestionsValue, notification });
+      await saveDialogToSupabase(type, { titleValue, categoryValue, noteValue, eventTypeValue, loginEmailValue, accountStatusValue, approvalStatusValue, statusValue, legalStatusValue, executionTitleStatusValue, nextStepDateValue, personValue, roleFieldValue, monthValue, hoursValue, financeKindValue, financeYearValue, amountValue, billingDocumentTypeValue, settlementYearValue, documentDateValue, youtubeUrlValue, messageScopeValue, messageRecipientRoleValue, messageRecipientIdValue, priceValue, contactValue, ownedFromValue, debtAmountValue, isDebtorValue, voteDeadlineValue, voteQuestionsValue, notification });
       await writeActivityLog("create", `${type === "overview" && state.role === "owner" ? "Vytvorenie oznamu vlastníkom" : "Vytvorenie položky"}: ${titleValue}`, {
         relatedTable: type,
         metadata: {
@@ -9166,7 +9258,7 @@ async function saveDialog(type) {
     state.documentHistory.sort(sortByDocumentDateDesc);
   } else if (type === "billing") {
     const owner = state.owners.find((item) => String(item.id) === String(categoryValue) || String(item.profileId) === String(categoryValue));
-    state.billingSettlements.unshift({ id: Date.now(), title: titleValue, year: settlementYearValue || new Date().getFullYear(), ownerRecordId: owner?.id, ownerProfileId: owner?.profileId, ownerName: owner?.name || "Vlastník nehnuteľnosti", flat: owner?.flat || "", email: owner?.email || "", note: noteValue, date: new Date().toISOString() });
+    state.billingSettlements.unshift({ id: Date.now(), title: titleValue, documentType: billingDocumentTypeValue, year: settlementYearValue || new Date().getFullYear(), ownerRecordId: owner?.id, ownerProfileId: owner?.profileId, ownerName: owner?.name || "Vlastník nehnuteľnosti", flat: owner?.flat || "", email: owner?.email || "", note: noteValue, date: new Date().toISOString() });
   } else if (type === "executions") {
     const owner = state.owners.find((item) => String(item.id) === String(categoryValue) || String(item.profileId) === String(categoryValue));
     state.executionCases.unshift({ id: Date.now(), title: titleValue, ownerRecordId: owner?.id, ownerProfileId: owner?.profileId, ownerName: owner?.name || "Vlastník nehnuteľnosti", flat: owner?.flat || "", email: owner?.email || owner?.loginEmail || "", debtAmount: Number.parseFloat(amountValue || "0"), debtSince: ownedFromValue || new Date().toISOString().slice(0, 10), status: statusValue || "Evidovaný dlh", executionTitleStatus: executionTitleStatusValue || "Neposúdené", legalStatus: legalStatusValue || "", debtHistory: noteValue, note: "", lastActionDate: new Date().toISOString(), nextStepDate: nextStepDateValue || "" });
@@ -9253,12 +9345,16 @@ async function saveDialogToSupabase(type, values) {
       : { view: "documents", detailType: "document", sectionLabel: titles.documents });
   } else if (type === "billing") {
     if (!values.categoryValue) throw new Error("Vyberte registrovaného vlastníka nehnuteľnosti.");
-    if (!filePath) throw new Error("Nahrajte súbor vyúčtovania.");
+    if (!filePath) throw new Error("Nahrajte súbor vyúčtovania / predpisu.");
+    const billingDocumentType = billingDocumentTypeOptions().includes(values.billingDocumentTypeValue)
+      ? values.billingDocumentTypeValue
+      : "Vyúčtovanie";
     const owner = state.owners.find((ownerItem) => String(ownerItem.id) === String(values.categoryValue) || String(ownerItem.profileId) === String(values.categoryValue));
     const response = assertSupabaseOk(await supabaseClient.from("billing_settlements").insert({
       created_by: state.currentUserId,
       owner_record_id: owner?.id || null,
       owner_profile_id: owner?.profileId || values.categoryValue,
+      document_type: billingDocumentType,
       title: values.titleValue,
       settlement_year: Number.parseInt(values.settlementYearValue || `${new Date().getFullYear()}`, 10),
       note: values.noteValue,
@@ -9266,7 +9362,7 @@ async function saveDialogToSupabase(type, values) {
     }).select("id").single());
     const billingNotification = { ...values.notification };
     if (billingNotification.target === "individual" && !billingNotification.ownerId) billingNotification.ownerId = owner?.profileId || values.categoryValue;
-    await notifyByChoice("Nové vyúčtovanie", values.titleValue, values.noteValue, billingNotification, "billing_settlements", response.data.id);
+    await notifyByChoice(`Nový dokument: ${billingDocumentType}`, values.titleValue, values.noteValue, billingNotification, "billing_settlements", response.data.id);
   } else if (type === "executions") {
     if (!values.categoryValue) throw new Error("Vyberte vlastníka nehnuteľnosti.");
     const owner = state.owners.find((ownerItem) => String(ownerItem.id) === String(values.categoryValue) || String(ownerItem.profileId) === String(values.categoryValue));
@@ -9507,6 +9603,77 @@ function findProfileRecipient(label) {
   const owner = state.owners.find((item) => item.flat === flat || item.name === label);
   if (!owner) return null;
   return { id: owner.profileId || null, ownerId: owner.profileId || owner.id || "", email: owner.email, label: `${owner.name} · ${owner.flat}` };
+}
+
+async function notifyChairAboutPendingRegistration({ relatedTable, relatedId, name, email, role, flat, status }) {
+  if (!supabaseClient || !state.currentUserId || !relatedId) return;
+  const template = emailTemplateByKey("registration-pending-admin") || {};
+  const replacements = {
+    name: name || "Nový používateľ",
+    email: email || "",
+    role: role || "Používateľ",
+    flat: flat || "Neuvedené",
+    status: status || "Čaká na autorizáciu",
+    actionUrl: notificationActionUrl("owners")
+  };
+  const subject = fillEmailTemplate(template.subject || "Nová registrácia čaká na autorizáciu: {{name}}", replacements);
+  const message = fillEmailTemplate(template.body || "Dobrý deň,\n\nv aplikácii e - Housing Solutions Licence bola vytvorená nová registrácia, ktorá čaká na autorizáciu predsedom SVB.\n\nMeno: {{name}}\nEmail: {{email}}\nRola: {{role}}\nByt: {{flat}}\nStav: {{status}}\n\nProsíme, prihláste sa do aplikácie a registráciu skontrolujte v záložke Vlastníci a byty.\n\nDetail otvoríte kliknutím na tento odkaz:\n{{actionUrl}}", replacements);
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("send-notification", {
+      body: {
+        target: "chair",
+        subject,
+        title: replacements.name,
+        message,
+        relatedTable,
+        relatedId,
+        eventType: "Registrácia čaká na autorizáciu",
+        section: titles.owners,
+        actionUrl: replacements.actionUrl,
+        view: "owners",
+        registrationNotice: true
+      }
+    });
+    if (error || data?.error) throw new Error(data?.error || error.message);
+  } catch (error) {
+    state.notificationLog.unshift({ time: "Teraz", type: "Email", subject, status: error?.message || "Notifikácia predsedovi o registrácii sa nepodarila odoslať." });
+  }
+}
+
+async function notifyRegistrationApproved({ recipientId, relatedTable, relatedId, name, email, role, flat, status }) {
+  if (!supabaseClient || !state.currentUserId || !recipientId) return;
+  const template = emailTemplateByKey("registration-approved-user") || {};
+  const replacements = {
+    name: name || "používateľ",
+    email: email || "",
+    role: role || "Používateľ",
+    flat: flat || "Neuvedené",
+    status: status || "Schválený",
+    actionUrl: notificationActionUrl("overview")
+  };
+  const subject = fillEmailTemplate(template.subject || "Váš účet bol autorizovaný", replacements);
+  const message = fillEmailTemplate(template.body || "Dobrý deň {{name}},\n\npredseda SVB potvrdil autorizáciu vášho účtu v aplikácii e - Housing Solutions Licence.\n\nRola: {{role}}\nByt: {{flat}}\nStav: {{status}}\n\nOd tejto chvíle sa môžete prihlásiť a používať sprístupnené funkcie aplikácie podľa svojej role.\n\nAplikáciu otvoríte kliknutím na tento odkaz:\n{{actionUrl}}", replacements);
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("send-notification", {
+      body: {
+        target: "individual",
+        ownerId: recipientId,
+        subject,
+        title: replacements.name,
+        message,
+        relatedTable,
+        relatedId,
+        eventType: "Autorizácia účtu potvrdená",
+        section: titles.owners,
+        actionUrl: replacements.actionUrl,
+        view: "overview"
+      }
+    });
+    if (error || data?.error) throw new Error(data?.error || error.message);
+    if (Number(data?.recipients || 0) > 0 && Number(data?.sent || 0) === 0) throw new Error("Email sa nepodarilo odoslať žiadnemu príjemcovi.");
+  } catch (error) {
+    state.notificationLog.unshift({ time: "Teraz", type: "Email", subject, status: error?.message || "Notifikácia používateľovi o schválení sa nepodarila odoslať." });
+  }
 }
 
 async function notifyByChoice(subject, titleText, messageText, notification = {}, relatedTable = null, relatedId = null, metadata = {}) {

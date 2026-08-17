@@ -1,15 +1,15 @@
 {
   "product": "e - Housing Solutions Licence",
   "channel": "stable",
-  "latestVersion": "v210",
-  "releasedAt": "2026-07-26",
+  "latestVersion": "v212",
+  "releasedAt": "2026-08-17",
   "minimumSupportedVersion": "v170",
-  "summary": "Verzia v210 umožňuje autorovi vymazať vlastný príspevok v záložke Rozprávajme sa.",
+  "summary": "Verzia v212 dopĺňa automatické notifikácie pri registrácii a autorizácii účtu.",
   "changes": [
-    "Autor vlastného príspevku v záložke Rozprávajme sa vidí tlačidlo Vymazať.",
-    "Používateľ nemôže týmto oprávnením vymazať príspevky iných autorov.",
-    "Po vymazaní sa overí, že databáza záznam skutočne odstránila.",
-    "PWA cache bola zvýšená na v210."
+    "Predseda SVB dostane notifikáciu, keď nová registrácia čaká na autorizáciu.",
+    "Používateľ dostane notifikáciu po potvrdení autorizácie účtu predsedom SVB.",
+    "Do záložky E-Mail šablóny pribudli šablóny pre čakajúcu registráciu a potvrdenú autorizáciu.",
+    "PWA cache bola zvýšená na v212."
   ],
   "updateMode": "manifest_check_manual_deploy",
   "releaseUrl": "https://github.com/SVBDruzstevna386/e-housing",
