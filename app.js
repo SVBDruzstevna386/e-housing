@@ -265,6 +265,8 @@ const SUPABASE_URL = "https://ifyyflvxqkazndkwffvm.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_FfyzT0LPWKbDoeQYzDXMSw_bID7XfvC";
 const BUILDING_ID = "38600000-0000-0000-0000-000000000386";
 const STORAGE_BUCKET = "e-housing-files";
+const VOTE_OPTION_ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024;
+const VOTE_OPTION_ATTACHMENT_ACCEPT = ".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx";
 const PUBLIC_ASSETS_BUCKET = "e-housing-public";
 const BUILDING_PHOTO_SETTING_KEY = "building_login_photo_path";
 const OPERATION_MODE_SETTING_KEY = "operation_mode_text";
@@ -280,7 +282,7 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v212";
+const APP_VERSION = "v218";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -612,6 +614,51 @@ const headerBuildingImage = document.querySelector("#headerBuildingImage");
 const operationModeLabel = document.querySelector("#operationModeLabel");
 const sidebarProfilePhoto = document.querySelector("#sidebarProfilePhoto");
 const sidebarProfileName = document.querySelector("#sidebarProfileName");
+
+const submissionButtonStates = new WeakMap();
+
+function beginSubmissionLock(button, pendingText = "Ukladám...") {
+  if (!button || button.dataset.submissionPending === "true") return false;
+  submissionButtonStates.set(button, { html: button.innerHTML, disabled: button.disabled });
+  button.dataset.submissionPending = "true";
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  button.classList.add("is-submitting");
+  button.innerHTML = `<i data-lucide="loader-circle"></i><span>${escapeHtml(pendingText)}</span>`;
+  enhanceIcons();
+  return true;
+}
+
+function endSubmissionLock(button) {
+  const previous = submissionButtonStates.get(button);
+  submissionButtonStates.delete(button);
+  if (!button?.isConnected || !previous) return;
+  button.innerHTML = previous.html;
+  button.disabled = previous.disabled;
+  button.removeAttribute("aria-busy");
+  button.classList.remove("is-submitting");
+  delete button.dataset.submissionPending;
+  enhanceIcons();
+}
+
+async function runLockedAction(button, operation, pendingText = "Ukladám...") {
+  if (!beginSubmissionLock(button, pendingText)) return undefined;
+  try {
+    return await operation();
+  } finally {
+    endSubmissionLock(button);
+  }
+}
+
+dialogSave?.addEventListener("click", (event) => {
+  const handler = dialogSave.onclick;
+  if (typeof handler !== "function") return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  void runLockedAction(dialogSave, () => handler.call(dialogSave, event), "Ukladám...").catch((error) => {
+    console.error("Uloženie dialógu zlyhalo:", error);
+  });
+}, true);
 const sidebarProfileRole = document.querySelector("#sidebarProfileRole");
 const sidebarPropertyText = document.querySelector("#sidebarPropertyText");
 const sidebarPropertySelect = document.querySelector("#sidebarPropertySelect");
@@ -724,6 +771,9 @@ if (supabaseClient) {
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const submitButton = loginForm.querySelector('button[type="submit"]');
+  if (!beginSubmissionLock(submitButton, "Prihlasujem...")) return;
+  try {
   const email = loginEmail.value.trim() || "predsedaSVB@gmail.com";
   const savedPassword = state.passwords[email];
   setRememberLogin(loginRemember?.checked !== false);
@@ -745,6 +795,9 @@ loginForm.addEventListener("submit", async (event) => {
     state.currentUserEmail = email;
   }
   render();
+  } finally {
+    endSubmissionLock(submitButton);
+  }
 });
 
 showRegisterBtn.addEventListener("click", () => {
@@ -870,6 +923,8 @@ async function saveRecoveredPassword() {
 }
 
 registerOwnerBtn.addEventListener("click", async () => {
+  if (!beginSubmissionLock(registerOwnerBtn, "Registrujem...")) return;
+  try {
   const requestedRole = document.querySelector("#registerRole")?.value || "owner";
   const name = document.querySelector("#registerName").value.trim() || "Nový vlastník";
   const flat = document.querySelector("#registerFlat").value.trim() || "Nový byt";
@@ -970,6 +1025,9 @@ registerOwnerBtn.addEventListener("click", async () => {
   state.currentUserEmail = email;
   state.loggedIn = true;
   render();
+  } finally {
+    endSubmissionLock(registerOwnerBtn);
+  }
 });
 
 logoutBtn.addEventListener("click", async () => {
@@ -1277,7 +1335,7 @@ async function ensureCurrentProfile(user) {
 
 async function loadSupabaseData() {
   if (!supabaseClient || !state.loggedIn) return;
-  const [profiles, ownerRecords, categories, classifiedCategories, documents, billingSettlements, executionCases, financeEntries, innovationIdeas, innovationComments, announcements, events, messages, votes, voteQuestions, voteAnswers, voteComments, voteProxies, activities, photos, classifieds, templates, notifications, activityLogs] = await Promise.all([
+  const [profiles, ownerRecords, categories, classifiedCategories, documents, billingSettlements, executionCases, financeEntries, innovationIdeas, innovationComments, announcements, events, messages, votes, voteQuestions, voteQuestionOptions, voteAnswers, voteComments, voteProxies, activities, photos, classifieds, templates, notifications, activityLogs] = await Promise.all([
     supabaseClient.from("profiles").select("*").order("created_at", { ascending: true }),
     supabaseClient.from("owner_records").select("*").order("flat_number", { ascending: true }),
     supabaseClient.from("document_categories").select("*").order("sort_order", { ascending: true }),
@@ -1293,7 +1351,8 @@ async function loadSupabaseData() {
     supabaseClient.from("messages").select("*, sender:profiles!messages_sender_id_fkey(full_name, role), recipient:profiles!messages_recipient_id_fkey(full_name, flat_number)").order("created_at", { ascending: false }),
     supabaseClient.from("votes").select("*").order("created_at", { ascending: false }),
     supabaseClient.from("vote_questions").select("*").order("sort_order", { ascending: true }),
-    supabaseClient.from("vote_answers").select("vote_id, question_id, profile_id, owner_record_id, comment, answer, voter:profiles!vote_answers_profile_id_fkey(full_name, flat_number, email), owner_record:owner_records!vote_answers_owner_record_id_fkey(full_name, flat_number, login_email)"),
+    supabaseClient.from("vote_question_options").select("*").order("sort_order", { ascending: true }),
+    supabaseClient.from("vote_answers").select("vote_id, question_id, profile_id, owner_record_id, selected_option_id, comment, answer, voter:profiles!vote_answers_profile_id_fkey(full_name, flat_number, email), owner_record:owner_records!vote_answers_owner_record_id_fkey(full_name, flat_number, login_email)"),
     supabaseClient.from("vote_comments").select("*, author:profiles!vote_comments_profile_id_fkey(full_name, role, flat_number), recipient:profiles!vote_comments_recipient_id_fkey(full_name, role)").order("created_at", { ascending: true }),
     supabaseClient.from("vote_proxies").select("*").order("updated_at", { ascending: false }),
     supabaseClient.from("activities").select("*").order("created_at", { ascending: false }),
@@ -1337,7 +1396,13 @@ async function loadSupabaseData() {
   if (messages.data) state.messages = await Promise.all(messages.data.map(dbMessageToCard));
   if (voteComments.data) state.voteComments = voteComments.data.map(dbVoteCommentToCard);
   if (voteProxies.data) state.voteProxies = voteProxies.data.map(dbVoteProxyToCard);
-  if (votes.data) state.votes = votes.data.map((item) => dbVoteToCard(item, voteAnswers.data || [], voteQuestions.data || [], state.voteComments));
+  if (votes.data) {
+    const voteOptionsWithUrls = await Promise.all((voteQuestionOptions.data || []).map(async (option) => ({
+      ...option,
+      attachment_url: await signedStorageUrl(option.attachment_storage_path)
+    })));
+    state.votes = votes.data.map((item) => dbVoteToCard(item, voteAnswers.data || [], voteQuestions.data || [], voteOptionsWithUrls, state.voteComments));
+  }
   if (activities.data) state.activities = activities.data.map(dbActivityToCard);
   if (photos.data) state.photos = await Promise.all(photos.data.map(dbPhotoToCard));
   if (classifieds.data) state.classifieds = await Promise.all(classifieds.data.map(dbClassifiedToCard));
@@ -1735,21 +1800,44 @@ function voteAnswerOwner(answer) {
   };
 }
 
-function dbVoteToCard(item, answers = [], questions = [], comments = []) {
+function dbVoteToCard(item, answers = [], questions = [], options = [], comments = []) {
   const voteAnswers = answers.filter((answer) => answer.vote_id === item.id);
   const voteQuestions = questions.filter((question) => question.vote_id === item.id);
   const mappedQuestions = voteQuestions.map((question) => {
     const questionAnswers = voteAnswers.filter((answer) => answer.question_id === question.id);
     const myAnswer = questionAnswers.find((answer) => isAnswerForActiveProperty(answer));
+    const questionOptions = options
+      .filter((option) => option.question_id === question.id)
+      .map((option) => {
+        const optionYes = questionAnswers.filter((answer) => answer.selected_option_id === option.id && answer.answer === "Za").length;
+        return {
+          id: option.id,
+          label: option.label,
+          sortOrder: option.sort_order,
+          yes: optionYes,
+          attachmentStoragePath: option.attachment_storage_path || "",
+          attachmentFileName: option.attachment_file_name || "",
+          attachmentContentType: option.attachment_content_type || "",
+          attachmentSizeBytes: option.attachment_size_bytes || 0,
+          attachmentUrl: option.attachment_url || ""
+        };
+      });
+    const optionById = new Map(questionOptions.map((option) => [option.id, option]));
+    const answerLabel = (answer) => answer.answer === "Zdržal sa"
+      ? "Zdržal sa"
+      : optionById.get(answer.selected_option_id)?.label || answer.answer;
+    const hasOptions = questionOptions.length > 0;
     return {
       id: question.id,
       text: question.question,
       sortOrder: question.sort_order,
-      yes: questionAnswers.filter((answer) => answer.answer === "Za").length,
-      no: questionAnswers.filter((answer) => answer.answer === "Proti").length,
+      yes: hasOptions ? questionOptions.reduce((sum, option) => sum + option.yes, 0) : questionAnswers.filter((answer) => answer.answer === "Za").length,
+      no: hasOptions ? 0 : questionAnswers.filter((answer) => answer.answer === "Proti").length,
       abstain: questionAnswers.filter((answer) => answer.answer === "Zdržal sa").length,
-      myAnswer: myAnswer?.answer || "",
-      voters: questionAnswers.map((answer) => ({ profileId: answer.profile_id, ownerRecordId: answer.owner_record_id, ...voteAnswerOwner(answer), answer: answer.answer, comment: answer.comment || "" }))
+      options: questionOptions,
+      myAnswer: myAnswer ? answerLabel(myAnswer) : "",
+      mySelectedOptionId: myAnswer?.selected_option_id || "",
+      voters: questionAnswers.map((answer) => ({ profileId: answer.profile_id, ownerRecordId: answer.owner_record_id, ...voteAnswerOwner(answer), answer: answerLabel(answer), comment: answer.comment || "" }))
     };
   });
   const voteThread = comments.filter((comment) => comment.voteId === item.id);
@@ -4320,9 +4408,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=212"],
+        ["Manifest", "manifest.webmanifest?v=218"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v212"]
+        ["Cache", "e-housing-v218"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -5142,15 +5230,49 @@ function voteStatusLabel(status) {
   return status || "Prebieha";
 }
 
+function voteOptionAttachmentButton(option) {
+  if (!option?.attachmentUrl) return "";
+  const fileName = option.attachmentFileName || "cenová ponuka";
+  return `<a class="ghost vote-option-attachment" href="${escapeAttr(option.attachmentUrl)}" target="_blank" rel="noopener noreferrer" title="Zobraziť cenovú ponuku: ${escapeAttr(fileName)}">
+    ${icon("eye")}<span>Zobraziť cenovú ponuku</span>
+  </a>`;
+}
+
+function voteQuestionStatsMarkup(question, showMyAnswer = true, showAttachments = true) {
+  const myAnswer = showMyAnswer && question.myAnswer
+    ? `<span class="tag document">Môj hlas: ${escapeHtml(question.myAnswer)}</span>`
+    : "";
+  if (question.options?.length) {
+    return `<li class="multi-option-vote-result">
+      <span>${escapeHtml(question.text)}</span>
+      <div class="vote-option-result-list">
+        ${question.options.map((option) => `
+          <div class="vote-option-result">
+            <strong>${escapeHtml(option.label)}</strong>
+            <div class="tag-row">
+              <span class="tag vote">ZA ${option.yes || 0}</span>
+            </div>
+            ${showAttachments ? voteOptionAttachmentButton(option) : ""}
+          </div>
+        `).join("")}
+      </div>
+      <div class="tag-row"><span class="tag">Zdržal sa pri celom bode ${question.abstain || 0}</span></div>
+      ${myAnswer ? `<div class="tag-row">${myAnswer}</div>` : ""}
+    </li>`;
+  }
+  return `<li><span>${escapeHtml(question.text)}</span><div class="tag-row"><span class="tag vote">Za ${question.yes || 0}</span><span class="tag">Proti ${question.no || 0}</span><span class="tag">Zdržal sa ${question.abstain || 0}</span>${myAnswer}</div></li>`;
+}
+
 function voteCard(vote) {
   const total = vote.yes + vote.no + vote.abstain;
   const percent = total ? Math.round((vote.yes / total) * 100) : 0;
-  const questions = vote.questions?.length ? vote.questions : [{ text: vote.description || vote.title, yes: vote.yes, no: vote.no, abstain: vote.abstain }];
+  const questions = vote.questions?.length ? vote.questions : [{ text: vote.title, yes: vote.yes, no: vote.no, abstain: vote.abstain }];
   const cancelled = isVoteCancelled(vote);
   const actions = voteActions(vote, cancelled);
   const typeInfo = voteTypeInfo(vote.type);
+  const description = String(vote.description || "").trim();
   return `<article class="item vote-card ${cancelled ? "is-muted" : ""}">
-    <div>
+    <div class="vote-card-body">
       <div class="vote-card-head">
         <div>
           <h3>${escapeHtml(vote.title)}</h3>
@@ -5162,14 +5284,17 @@ function voteCard(vote) {
         <strong>${escapeHtml(typeInfo.label)}</strong>
         <span>${escapeHtml(typeInfo.threshold)}</span>
       </div>
-      <ol class="question-list vote-question-stats">${questions.map((question) => `<li><span>${escapeHtml(question.text)}</span><div class="tag-row"><span class="tag vote">Za ${question.yes || 0}</span><span class="tag">Proti ${question.no || 0}</span><span class="tag">Zdržal sa ${question.abstain || 0}</span>${question.myAnswer ? `<span class="tag document">Môj hlas: ${escapeHtml(question.myAnswer)}</span>` : ""}</div></li>`).join("")}</ol>
-      ${myVoteStatus(vote)}
+      <ol class="question-list vote-question-stats">${questions.map((question) => voteQuestionStatsMarkup(question)).join("")}</ol>
       ${myVoteProxyStatus(vote)}
       <div class="progress" aria-label="Celkový podiel hlasov za"><span style="width:${percent}%"></span></div>
       <div class="tag-row"><span class="tag vote">Spolu za ${vote.yes}</span><span class="tag">Spolu proti ${vote.no}</span><span class="tag">Spolu zdržal sa ${vote.abstain}</span><span class="tag">${total} hlasov spolu</span></div>
       ${voteThread(vote)}
     </div>
     <div class="row-actions">${actions}</div>
+    <div class="vote-card-lower">
+      ${description ? `<section class="vote-description-block"><strong>Doplňujúci text k hlasovaniu</strong><p>${escapeHtml(description)}</p></section>` : ""}
+      ${myVoteStatus(vote)}
+    </div>
   </article>`;
 }
 
@@ -5219,7 +5344,7 @@ function hasMyVote(vote) {
 
 function myVoteStatus(vote) {
   if (!hasMyVote(vote)) return "";
-  const values = vote.questions.map((question) => question.myAnswer ? `${question.text}: ${question.myAnswer}` : "").filter(Boolean);
+  const values = vote.questions.map((question, index) => question.myAnswer ? `Bod ${index + 1}: ${question.myAnswer}` : "").filter(Boolean);
   return `<div class="notice vote-status"><strong>Stav môjho hlasovania</strong><p>${values.map(escapeHtml).join("<br>")}</p><p class="muted">Hlas môžete zmeniť až do uzavretia hlasovania, teda do dňa domovej schôdze.</p></div>`;
 }
 
@@ -6139,21 +6264,23 @@ function bindViewActions() {
 
   document.querySelectorAll("[data-save-template]").forEach((button) => {
     button.addEventListener("click", async () => {
-      if (!canEditItem("emailTemplate")) return;
-      const template = state.emailTemplates.find((item) => item.id === button.dataset.saveTemplate);
-      if (!template) return;
-      template.subject = document.querySelector(`[data-template-subject="${template.id}"]`).value.trim();
-      template.body = document.querySelector(`[data-template-body="${template.id}"]`).value.trim();
-      if (supabaseClient && state.currentUserId) {
-        await supabaseClient.from("email_templates").update({ subject: template.subject, body: template.body }).eq("id", template.id);
-        await writeActivityLog("update", `Úprava e-mail šablóny: ${template.title}`, {
-          relatedTable: "email_templates",
-          relatedId: template.id,
-          metadata: { subject: template.subject }
-        });
-      }
-      state.notificationLog.unshift({ time: "Teraz", type: "Šablóna", subject: template.title, status: "Text automatického emailu bol upravený" });
-      render();
+      await runLockedAction(button, async () => {
+        if (!canEditItem("emailTemplate")) return;
+        const template = state.emailTemplates.find((item) => item.id === button.dataset.saveTemplate);
+        if (!template) return;
+        template.subject = document.querySelector(`[data-template-subject="${template.id}"]`).value.trim();
+        template.body = document.querySelector(`[data-template-body="${template.id}"]`).value.trim();
+        if (supabaseClient && state.currentUserId) {
+          await supabaseClient.from("email_templates").update({ subject: template.subject, body: template.body }).eq("id", template.id);
+          await writeActivityLog("update", `Úprava e-mail šablóny: ${template.title}`, {
+            relatedTable: "email_templates",
+            relatedId: template.id,
+            metadata: { subject: template.subject }
+          });
+        }
+        state.notificationLog.unshift({ time: "Teraz", type: "Šablóna", subject: template.title, status: "Text automatického emailu bol upravený" });
+        render();
+      });
     });
   });
 
@@ -6455,7 +6582,7 @@ function bindViewActions() {
   });
 
   document.querySelectorAll("[data-save-profile]").forEach((button) => {
-    button.addEventListener("click", () => saveProfile());
+    button.addEventListener("click", () => runLockedAction(button, () => saveProfile()));
   });
 
   document.querySelectorAll("[data-permission]").forEach((checkbox) => {
@@ -6468,15 +6595,15 @@ function bindViewActions() {
   });
 
   document.querySelectorAll("[data-save-permissions]").forEach((button) => {
-    button.addEventListener("click", () => saveRolePermissions());
+    button.addEventListener("click", () => runLockedAction(button, () => saveRolePermissions()));
   });
 
   document.querySelectorAll("[data-save-live-chat]").forEach((button) => {
-    button.addEventListener("click", () => saveLiveChatSettings());
+    button.addEventListener("click", () => runLockedAction(button, () => saveLiveChatSettings()));
   });
 
   document.querySelectorAll("[data-save-loading-message]").forEach((button) => {
-    button.addEventListener("click", () => saveLoadingMessageSettings());
+    button.addEventListener("click", () => runLockedAction(button, () => saveLoadingMessageSettings()));
   });
 
   document.querySelectorAll("[data-check-system-updates]").forEach((button) => {
@@ -6496,7 +6623,7 @@ function bindViewActions() {
   }
 
   document.querySelectorAll("[data-save-password]").forEach((button) => {
-    button.addEventListener("click", () => saveProfilePassword());
+    button.addEventListener("click", () => runLockedAction(button, () => saveProfilePassword(), "Mením heslo..."));
   });
 
   document.querySelectorAll("[data-install-app]").forEach((button) => {
@@ -6667,6 +6794,7 @@ function openDetailDialog(type, id) {
 }
 
 function bindDialogActions() {
+  bindVoteQuestionBuilder();
   dialogBody.querySelectorAll("[data-edit]").forEach((button) => {
     button.addEventListener("click", () => {
       openEditDialog(button.dataset.edit, button.dataset.id);
@@ -6955,7 +7083,7 @@ function detailBody(type, item) {
         ${readonlyField("Komentáre", item.comments || 0)}
       </div>
       <ol class="question-list vote-question-stats">
-        ${questions.map((question) => `<li><span>${escapeHtml(question.text)}</span><div class="tag-row"><span class="tag vote">Za ${question.yes || 0}</span><span class="tag">Proti ${question.no || 0}</span><span class="tag">Zdržal sa ${question.abstain || 0}</span></div></li>`).join("")}
+        ${questions.map((question) => voteQuestionStatsMarkup(question, false, true)).join("")}
       </ol>
       <div class="tag-row"><span class="tag vote">Za ${item.yes}</span><span class="tag">Proti ${item.no}</span><span class="tag">Zdržal sa ${item.abstain}</span></div>
       ${chairAnswers}
@@ -7129,6 +7257,38 @@ function printVoteProxy(proxy, vote) {
   printable.document.close();
 }
 
+function voteQuestionAnswerControl(question, index) {
+  if (!question.options?.length) {
+    return `<div class="field">
+      <label for="voteAnswer-${index}">${index + 1}. ${escapeHtml(question.text)}</label>
+      <select id="voteAnswer-${index}" data-vote-question-id="${question.id || ""}">
+        <option value="Za" ${question.myAnswer === "Za" ? "selected" : ""}>Za</option>
+        <option value="Proti" ${question.myAnswer === "Proti" ? "selected" : ""}>Proti</option>
+        <option value="Zdržal sa" ${question.myAnswer === "Zdržal sa" ? "selected" : ""}>Zdržal sa</option>
+      </select>
+    </div>`;
+  }
+  return `<fieldset class="vote-choice-fieldset" data-vote-question-id="${question.id || ""}">
+    <legend>${index + 1}. ${escapeHtml(question.text)}</legend>
+    <p class="muted">Vyberte jednu možnosť. Hlas sa započíta iba tejto možnosti ako ZA; ostatné možnosti zostanú bez hlasu.</p>
+    <div class="vote-choice-list">
+      ${question.options.map((option) => `
+        <div class="vote-choice-option-row">
+          <label class="vote-choice-option">
+            <input type="radio" name="voteChoice-${index}" value="${escapeAttr(option.id)}" ${question.mySelectedOptionId === option.id ? "checked" : ""}>
+            <span><strong>${escapeHtml(option.label)}</strong><small>Táto možnosť bude ZA</small></span>
+          </label>
+          ${voteOptionAttachmentButton(option)}
+        </div>
+      `).join("")}
+      <label class="vote-choice-option abstain">
+        <input type="radio" name="voteChoice-${index}" value="__abstain__" ${question.myAnswer === "Zdržal sa" ? "checked" : ""}>
+        <span><strong>Zdržal sa</strong><small>Zdržanie sa sa eviduje raz pre celý hlasovací bod</small></span>
+      </label>
+    </div>
+  </fieldset>`;
+}
+
 function openVoteDialog(id) {
   const vote = state.votes.find((item) => String(item.id) === String(id));
   if (!vote) return;
@@ -7140,22 +7300,13 @@ function openVoteDialog(id) {
     window.alert("Toto hlasovanie je uzavreté a hlas už nie je možné meniť.");
     return;
   }
-  const questions = vote.questions?.length ? vote.questions : [{ id: "", text: vote.description || vote.title }];
+  const questions = vote.questions?.length ? vote.questions : [{ id: "", text: vote.title }];
   dialogSave.hidden = false;
   dialogTitle.textContent = `Hlasovanie: ${vote.title}`;
   dialogBody.innerHTML = `
     <p class="muted">Hlasovať do: ${formatDate(vote.closes)}</p>
     <div class="vote-question-form">
-      ${questions.map((question, index) => `
-        <div class="field">
-          <label for="voteAnswer-${index}">${index + 1}. ${escapeHtml(question.text)}</label>
-          <select id="voteAnswer-${index}" data-vote-question-id="${question.id || ""}">
-            <option value="Za" ${question.myAnswer === "Za" ? "selected" : ""}>Za</option>
-            <option value="Proti" ${question.myAnswer === "Proti" ? "selected" : ""}>Proti</option>
-            <option value="Zdržal sa" ${question.myAnswer === "Zdržal sa" ? "selected" : ""}>Zdržal sa</option>
-          </select>
-        </div>
-      `).join("")}
+      ${questions.map(voteQuestionAnswerControl).join("")}
     </div>
     ${communicationPermissionFor(state.role, "voteComments") ? fieldsWithValues([["voteComment", "Komentár k hlasovaniu", "", "textarea"]]) : ""}
   `;
@@ -8386,9 +8537,8 @@ function formFor(type, defaults = {}) {
       ["title", "Názov hlasovania", "Hlasovanie o opravách domu"],
       ["category", "Typ hlasovania podľa zákonného kvóra", "present_majority", "select", voteTypeOptions()],
       ["voteDeadline", "Hlasovať do", new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)],
-      ["note", "Doplňujúci text k hlasovaniu", "Stručný popis návrhu, podklady alebo právny rámec.", "textarea"],
-      ["voteQuestions", "Hlasovacie otázky", "Súhlasíte s realizáciou navrhovanej opravy?\nSúhlasíte s použitím prostriedkov z fondu opráv?", "textarea"]
-    ]) + notificationFields("all");
+      ["note", "Doplňujúci text k hlasovaniu", "Stručný popis návrhu, podklady alebo právny rámec.", "textarea"]
+    ]) + voteQuestionBuilderField() + notificationFields("all");
   }
   if (type === "messages" || type === "talk") {
     const isTalk = type === "talk";
@@ -8823,6 +8973,133 @@ function parseVoteQuestions(value) {
     .filter(Boolean);
 }
 
+function voteOptionBuilderRow(value = "") {
+  const optionValue = typeof value === "string" ? value : value?.label || "";
+  return `<div class="vote-builder-option-row">
+    <div class="vote-builder-option-fields">
+      <input data-vote-option-text value="${escapeAttr(optionValue)}" placeholder="Názov firmy, ponuky alebo riešenia">
+      <label class="vote-option-file-field">
+        <span>${icon("paperclip")} Súbor cenovej ponuky</span>
+        <input type="file" data-vote-option-file accept="${VOTE_OPTION_ATTACHMENT_ACCEPT}">
+      </label>
+    </div>
+    <button class="icon-btn" type="button" data-remove-vote-option aria-label="Odstrániť možnosť" title="Odstrániť možnosť">${icon("trash-2")}</button>
+  </div>`;
+}
+
+function voteQuestionBuilderRow(text = "", options = []) {
+  const initialOptions = [...options];
+  while (initialOptions.length < 3) initialOptions.push("");
+  return `<fieldset class="vote-builder-question" data-vote-question-row>
+    <div class="vote-builder-question-head">
+      <legend data-vote-question-number>Bod hlasovania</legend>
+      <button class="icon-btn" type="button" data-remove-vote-question aria-label="Odstrániť bod hlasovania" title="Odstrániť bod hlasovania">${icon("trash-2")}</button>
+    </div>
+    <div class="field">
+      <label>Text bodu hlasovania</label>
+      <input data-vote-question-text value="${escapeAttr(text)}" placeholder="Napr. Výber dodávateľa vstupných dverí">
+    </div>
+    <div class="vote-builder-options">
+      <div>
+        <strong>Možnosti / cenové ponuky</strong>
+        <p class="muted">Voliteľné. Ak ich použijete, zadajte najmenej tri možnosti. Ku každej môžete priložiť PDF, obrázok alebo Word dokument do 20 MB.</p>
+      </div>
+      <div data-vote-option-list>${initialOptions.map(voteOptionBuilderRow).join("")}</div>
+      <button class="ghost" type="button" data-add-vote-option>${icon("plus")}<span>Pridať ďalšiu možnosť</span></button>
+    </div>
+  </fieldset>`;
+}
+
+function voteQuestionBuilderField() {
+  return `<section class="vote-question-builder-section">
+    <div class="vote-question-builder-head">
+      <div>
+        <h3>Body hlasovania</h3>
+        <p class="muted">Každý bod môže zostať klasickým hlasovaním ZA / PROTI / ZDRŽAL SA alebo môže obsahovať tri a viac možností.</p>
+      </div>
+      <button class="ghost" type="button" data-add-vote-question>${icon("plus")}<span>Pridať bod</span></button>
+    </div>
+    <div class="vote-question-builder" data-vote-question-builder>
+      ${voteQuestionBuilderRow("Súhlasíte s realizáciou navrhovanej opravy?")}
+      ${voteQuestionBuilderRow("Súhlasíte s použitím prostriedkov z fondu opráv?")}
+    </div>
+  </section>`;
+}
+
+function renumberVoteQuestionBuilder(builder) {
+  builder.querySelectorAll("[data-vote-question-row]").forEach((row, index) => {
+    const number = row.querySelector("[data-vote-question-number]");
+    if (number) number.textContent = `${index + 1}. bod hlasovania`;
+  });
+}
+
+function bindVoteQuestionBuilder() {
+  const builder = dialogBody.querySelector("[data-vote-question-builder]");
+  if (!builder || builder.dataset.bound === "true") return;
+  builder.dataset.bound = "true";
+  const section = builder.closest(".vote-question-builder-section");
+  section?.querySelector("[data-add-vote-question]")?.addEventListener("click", () => {
+    builder.insertAdjacentHTML("beforeend", voteQuestionBuilderRow());
+    renumberVoteQuestionBuilder(builder);
+    enhanceIcons();
+  });
+  builder.addEventListener("click", (event) => {
+    const addOptionButton = event.target.closest("[data-add-vote-option]");
+    if (addOptionButton) {
+      addOptionButton.closest("[data-vote-question-row]")?.querySelector("[data-vote-option-list]")?.insertAdjacentHTML("beforeend", voteOptionBuilderRow());
+      enhanceIcons();
+      return;
+    }
+    const removeOptionButton = event.target.closest("[data-remove-vote-option]");
+    if (removeOptionButton) {
+      removeOptionButton.closest(".vote-builder-option-row")?.remove();
+      return;
+    }
+    const removeQuestionButton = event.target.closest("[data-remove-vote-question]");
+    if (removeQuestionButton) {
+      if (builder.querySelectorAll("[data-vote-question-row]").length === 1) {
+        window.alert("Hlasovanie musí obsahovať aspoň jeden bod.");
+        return;
+      }
+      removeQuestionButton.closest("[data-vote-question-row]")?.remove();
+      renumberVoteQuestionBuilder(builder);
+    }
+  });
+  renumberVoteQuestionBuilder(builder);
+}
+
+function collectVoteQuestionDrafts() {
+  const rows = [...document.querySelectorAll("[data-vote-question-row]")];
+  return rows.map((row, index) => {
+    const question = row.querySelector("[data-vote-question-text]")?.value.trim() || "";
+    const optionRows = [...row.querySelectorAll(".vote-builder-option-row")];
+    const options = optionRows.map((optionRow, optionIndex) => {
+      const label = optionRow.querySelector("[data-vote-option-text]")?.value.trim() || "";
+      const file = optionRow.querySelector("[data-vote-option-file]")?.files?.[0] || null;
+      if (!label && file) throw new Error(`Doplňte názov možnosti č. ${optionIndex + 1} pri bode hlasovania č. ${index + 1}.`);
+      if (file) validateVoteOptionAttachment(file, index + 1, optionIndex + 1);
+      return { label, file };
+    }).filter((option) => option.label);
+    if (!question && options.length) throw new Error(`Doplňte text bodu hlasovania č. ${index + 1}.`);
+    if (options.length > 0 && options.length < 3) throw new Error(`Bod hlasovania č. ${index + 1} musí obsahovať aspoň tri možnosti.`);
+    if (new Set(options.map((option) => option.label.toLocaleLowerCase("sk-SK"))).size !== options.length) {
+      throw new Error(`Možnosti pri bode hlasovania č. ${index + 1} musia mať rozdielne názvy.`);
+    }
+    return { question, options };
+  }).filter((item) => item.question);
+}
+
+function validateVoteOptionAttachment(file, questionNumber, optionNumber) {
+  const extension = file.name.split(".").pop()?.toLowerCase() || "";
+  const allowedExtensions = new Set(["pdf", "png", "jpg", "jpeg", "webp", "gif", "doc", "docx"]);
+  if (!allowedExtensions.has(extension)) {
+    throw new Error(`Súbor pri možnosti č. ${optionNumber} v bode č. ${questionNumber} musí byť PDF, obrázok alebo Word dokument.`);
+  }
+  if (file.size < 1 || file.size > VOTE_OPTION_ATTACHMENT_MAX_BYTES) {
+    throw new Error(`Súbor pri možnosti č. ${optionNumber} v bode č. ${questionNumber} môže mať najviac 20 MB.`);
+  }
+}
+
 async function cancelVote(voteId) {
   if (!canEditItem("vote")) return;
   const vote = state.votes.find((item) => String(item.id) === String(voteId));
@@ -8887,15 +9164,26 @@ async function saveVoteAnswer(voteId, commentOnly = false) {
       let payload = [];
       if (!commentOnly) {
         if (ownersForCurrentUser().length && !activeOwner?.id) throw new Error("Nie je vybraná aktívna nehnuteľnosť pre hlasovanie.");
-        payload = answerControls.map((control, index) => ({
-          id: control.dataset.voteQuestionId || questions[index]?.id,
-          answer: control.value || "Za"
-        })).filter((question) => question.id).map((question) => ({
+        payload = answerControls.map((control, index) => {
+          const question = questions[index];
+          const selectedChoice = control.matches("fieldset")
+            ? control.querySelector("input[type='radio']:checked")?.value || ""
+            : control.value || "Za";
+          if (question?.options?.length && !selectedChoice) {
+            throw new Error(`Vyberte jednu možnosť alebo Zdržal sa pri bode č. ${index + 1}.`);
+          }
+          return {
+            id: control.dataset.voteQuestionId || question?.id,
+            answer: selectedChoice === "__abstain__" ? "Zdržal sa" : question?.options?.length ? "Za" : selectedChoice,
+            selectedOptionId: question?.options?.length && selectedChoice !== "__abstain__" ? selectedChoice : null
+          };
+        }).filter((question) => question.id).map((question) => ({
           vote_id: voteId,
           question_id: question.id,
           profile_id: state.currentUserId,
           owner_record_id: activeOwner?.id || null,
           answer: question.answer,
+          selected_option_id: question.selectedOptionId,
           comment: null
         }));
         if (!payload.length) throw new Error("Hlasovanie nemá žiadne otázky.");
@@ -8915,7 +9203,7 @@ async function saveVoteAnswer(voteId, commentOnly = false) {
       await writeActivityLog(commentOnly ? "comment" : "vote", commentOnly ? `Komentár k hlasovaniu: ${vote.title}` : `Hlasovanie používateľa: ${vote.title}`, {
         relatedTable: "votes",
         relatedId: voteId,
-        metadata: { commentOnly, answers: payload.map((item) => ({ questionId: item.question_id, answer: item.answer })), hasComment: Boolean(comment) }
+        metadata: { commentOnly, answers: payload.map((item) => ({ questionId: item.question_id, answer: item.answer, selectedOptionId: item.selected_option_id })), hasComment: Boolean(comment) }
       });
       await loadSupabaseData();
     } catch (error) {
@@ -8926,15 +9214,27 @@ async function saveVoteAnswer(voteId, commentOnly = false) {
     if (!commentOnly) {
       [...document.querySelectorAll("[data-vote-question-id]")].forEach((control, index) => {
         const question = vote.questions?.[index];
+        const selectedChoice = control.matches("fieldset")
+          ? control.querySelector("input[type='radio']:checked")?.value || ""
+          : control.value;
+        const answerValue = selectedChoice === "__abstain__" ? "Zdržal sa" : question?.options?.length ? "Za" : selectedChoice;
         if (question) {
-          question.yes = (question.yes || 0) + (control.value === "Za" ? 1 : 0);
-          question.no = (question.no || 0) + (control.value === "Proti" ? 1 : 0);
-          question.abstain = (question.abstain || 0) + (control.value === "Zdržal sa" ? 1 : 0);
-          question.myAnswer = control.value;
+          if (question.options?.length) {
+            question.options.forEach((option) => {
+              option.yes = (option.yes || 0) + (selectedChoice === option.id ? 1 : 0);
+            });
+          }
+          question.yes = (question.yes || 0) + (answerValue === "Za" ? 1 : 0);
+          question.no = (question.no || 0) + (answerValue === "Proti" ? 1 : 0);
+          question.abstain = (question.abstain || 0) + (answerValue === "Zdržal sa" ? 1 : 0);
+          question.mySelectedOptionId = question.options?.length && selectedChoice !== "__abstain__" ? selectedChoice : "";
+          question.myAnswer = answerValue === "Za" && question.options?.length
+            ? question.options.find((option) => option.id === selectedChoice)?.label || "Za"
+            : answerValue;
         }
-        vote.yes += control.value === "Za" ? 1 : 0;
-        vote.no += control.value === "Proti" ? 1 : 0;
-        vote.abstain += control.value === "Zdržal sa" ? 1 : 0;
+        vote.yes += answerValue === "Za" ? 1 : 0;
+        vote.no += answerValue === "Proti" ? 1 : 0;
+        vote.abstain += answerValue === "Zdržal sa" ? 1 : 0;
       });
     }
     if (comment) {
@@ -9218,7 +9518,15 @@ async function saveDialog(type) {
   const debtAmountValue = document.querySelector("#debtAmount")?.value.trim();
   const isDebtorValue = document.querySelector("#isDebtor")?.value.trim().toLowerCase();
   const voteDeadlineValue = document.querySelector("#voteDeadline")?.value.trim();
-  const voteQuestionsValue = document.querySelector("#voteQuestions")?.value.trim();
+  let voteQuestionDrafts = [];
+  if (type === "votes") {
+    try {
+      voteQuestionDrafts = collectVoteQuestionDrafts();
+    } catch (error) {
+      window.alert(error.message);
+      return;
+    }
+  }
   const notification = type === "messages" || type === "talk"
     ? { target: "all", ownerId: "" }
     : type === "overview" && state.role === "owner"
@@ -9227,7 +9535,7 @@ async function saveDialog(type) {
 
   if (supabaseClient && state.currentUserId) {
     try {
-      await saveDialogToSupabase(type, { titleValue, categoryValue, noteValue, eventTypeValue, loginEmailValue, accountStatusValue, approvalStatusValue, statusValue, legalStatusValue, executionTitleStatusValue, nextStepDateValue, personValue, roleFieldValue, monthValue, hoursValue, financeKindValue, financeYearValue, amountValue, billingDocumentTypeValue, settlementYearValue, documentDateValue, youtubeUrlValue, messageScopeValue, messageRecipientRoleValue, messageRecipientIdValue, priceValue, contactValue, ownedFromValue, debtAmountValue, isDebtorValue, voteDeadlineValue, voteQuestionsValue, notification });
+      await saveDialogToSupabase(type, { titleValue, categoryValue, noteValue, eventTypeValue, loginEmailValue, accountStatusValue, approvalStatusValue, statusValue, legalStatusValue, executionTitleStatusValue, nextStepDateValue, personValue, roleFieldValue, monthValue, hoursValue, financeKindValue, financeYearValue, amountValue, billingDocumentTypeValue, settlementYearValue, documentDateValue, youtubeUrlValue, messageScopeValue, messageRecipientRoleValue, messageRecipientIdValue, priceValue, contactValue, ownedFromValue, debtAmountValue, isDebtorValue, voteDeadlineValue, voteQuestionDrafts, notification });
       await writeActivityLog("create", `${type === "overview" && state.role === "owner" ? "Vytvorenie oznamu vlastníkom" : "Vytvorenie položky"}: ${titleValue}`, {
         relatedTable: type,
         metadata: {
@@ -9269,7 +9577,7 @@ async function saveDialog(type) {
       state.financeEntries.unshift({ id: Date.now(), type: financeKindValue || "other_expense", title: titleValue, amount: Number.parseFloat(amountValue || "0"), year: Number.parseInt(financeYearValue || `${new Date().getFullYear()}`, 10), date: new Date().toISOString(), note: noteValue });
     }
   } else if (type === "votes") {
-    state.votes.unshift({ id: Date.now(), title: titleValue, description: noteValue, type: categoryValue || "present_majority", closes: voteDeadlineValue || "2026-07-15", status: "Prebieha", yes: 0, no: 0, abstain: 0, comments: 0, questions: parseVoteQuestions(voteQuestionsValue || titleValue).map((text, index) => ({ id: `local-${Date.now()}-${index}`, text })) });
+    state.votes.unshift({ id: Date.now(), title: titleValue, description: noteValue, type: categoryValue || "present_majority", closes: voteDeadlineValue || "2026-07-15", status: "Prebieha", yes: 0, no: 0, abstain: 0, comments: 0, questions: (voteQuestionDrafts.length ? voteQuestionDrafts : [{ question: titleValue, options: [] }]).map((item, index) => ({ id: `local-${Date.now()}-${index}`, text: item.question, options: item.options.map((option, optionIndex) => ({ id: `local-option-${Date.now()}-${index}-${optionIndex}`, label: option.label, yes: 0, no: 0, abstain: 0, attachmentFileName: option.file?.name || "", attachmentUrl: option.file ? URL.createObjectURL(option.file) : "" })) })) });
   } else if (type === "messages" || type === "talk") {
     const isPrivateTalk = type === "talk" && messageScopeValue === "private";
     const recipient = isPrivateTalk ? selectedTalkRecipient(messageRecipientIdValue, messageRecipientRoleValue) : null;
@@ -9524,7 +9832,7 @@ async function saveDialogToSupabase(type, values) {
   } else if (type === "emails") {
     assertSupabaseOk(await supabaseClient.from("email_templates").insert({ key: `custom-${Date.now()}`, title: values.titleValue, subject: values.categoryValue, body: values.noteValue }));
   } else if (type === "votes") {
-    const questions = parseVoteQuestions(values.voteQuestionsValue);
+    const questions = values.voteQuestionDrafts || [];
     if (!questions.length) throw new Error("Zadajte aspoň jednu hlasovaciu otázku.");
     const closesAt = values.voteDeadlineValue
       ? new Date(`${values.voteDeadlineValue}T23:59:59`).toISOString()
@@ -9537,11 +9845,40 @@ async function saveDialogToSupabase(type, values) {
       status: "open",
       closes_at: closesAt
     }).select("id").single());
-    assertSupabaseOk(await supabaseClient.from("vote_questions").insert(questions.map((question, index) => ({
-      vote_id: voteResponse.data.id,
-      question,
-      sort_order: (index + 1) * 10
-    }))));
+    const uploadedOptionPaths = [];
+    try {
+      const questionResponse = assertSupabaseOk(await supabaseClient.from("vote_questions").insert(questions.map((item, index) => ({
+        vote_id: voteResponse.data.id,
+        question: item.question,
+        sort_order: (index + 1) * 10
+      }))).select("id, sort_order"));
+      const questionIdBySortOrder = new Map(questionResponse.data.map((item) => [item.sort_order, item.id]));
+      const optionRows = questions.flatMap((item, questionIndex) => item.options.map((option, optionIndex) => ({
+        question_id: questionIdBySortOrder.get((questionIndex + 1) * 10),
+        label: option.label,
+        sort_order: (optionIndex + 1) * 10
+      })));
+      if (optionRows.length) {
+        const optionResponse = assertSupabaseOk(await supabaseClient.from("vote_question_options").insert(optionRows).select("id, question_id, sort_order"));
+        const optionIdByKey = new Map(optionResponse.data.map((option) => [`${option.question_id}:${option.sort_order}`, option.id]));
+        for (let questionIndex = 0; questionIndex < questions.length; questionIndex += 1) {
+          const questionId = questionIdBySortOrder.get((questionIndex + 1) * 10);
+          for (let optionIndex = 0; optionIndex < questions[questionIndex].options.length; optionIndex += 1) {
+            const option = questions[questionIndex].options[optionIndex];
+            if (!option.file) continue;
+            const optionId = optionIdByKey.get(`${questionId}:${(optionIndex + 1) * 10}`);
+            const uploadedPath = await uploadVoteOptionAttachment(voteResponse.data.id, optionId, option.file);
+            if (uploadedPath) uploadedOptionPaths.push(uploadedPath);
+          }
+        }
+      }
+    } catch (error) {
+      if (uploadedOptionPaths.length) {
+        await supabaseClient.storage.from(STORAGE_BUCKET).remove(uploadedOptionPaths);
+      }
+      await supabaseClient.from("votes").delete().eq("id", voteResponse.data.id);
+      throw error;
+    }
     await notifyByChoice("Nové hlasovanie", values.titleValue, values.noteValue, values.notification, "votes", voteResponse.data.id);
   } else if (type === "owners") {
     const pairedProfile = profileByEmail(values.loginEmailValue);
@@ -9603,6 +9940,25 @@ function findProfileRecipient(label) {
   const owner = state.owners.find((item) => item.flat === flat || item.name === label);
   if (!owner) return null;
   return { id: owner.profileId || null, ownerId: owner.profileId || owner.id || "", email: owner.email, label: `${owner.name} · ${owner.flat}` };
+}
+
+async function uploadVoteOptionAttachment(voteId, optionId, file) {
+  if (!supabaseClient || !voteId || !optionId || !file) return null;
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+  const path = `votes/${voteId}/offers/${optionId}/${Date.now()}-${safeName}`;
+  const { error: uploadError } = await supabaseClient.storage.from(STORAGE_BUCKET).upload(path, file, { upsert: false });
+  if (uploadError) throw new Error(`Upload cenovej ponuky "${file.name}" zlyhal: ${uploadError.message}`);
+  const { error: updateError } = await supabaseClient.from("vote_question_options").update({
+    attachment_storage_path: path,
+    attachment_file_name: file.name.slice(0, 255),
+    attachment_content_type: file.type || null,
+    attachment_size_bytes: file.size
+  }).eq("id", optionId);
+  if (updateError) {
+    await supabaseClient.storage.from(STORAGE_BUCKET).remove([path]);
+    throw new Error(`Priradenie cenovej ponuky "${file.name}" zlyhalo: ${updateError.message}`);
+  }
+  return path;
 }
 
 async function notifyChairAboutPendingRegistration({ relatedTable, relatedId, name, email, role, flat, status }) {
