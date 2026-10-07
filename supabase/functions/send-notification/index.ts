@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
+import { normalizeNotificationArea, partitionRecipients } from "./notification-preferences.mjs";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,6 +9,9 @@ const corsHeaders = {
 };
 
 type NotificationTarget = "none" | "all" | "individual" | "chair";
+type AdminClient = ReturnType<typeof createClient<any>>;
+type NotificationRecipient = { profile_id: string | null; name: string; email: string };
+type NotificationPreferenceRow = { profile_id: string; area: string; email_enabled: boolean; push_enabled: boolean };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -55,7 +59,6 @@ Deno.serve(async (req) => {
   const appNotification = body.appNotification === true;
   const cleaningNotification = body.cleaningNotification === true;
   const registrationNotice = body.registrationNotice === true;
-  const webPushRequested = appNotification || cleaningNotification || relatedTable === "announcements";
   if (senderError) return json({ error: senderError.message }, 500);
   const isBoardSender = ["chair", "vice_chair", "economic", "board"].includes(sender?.role || "");
   const isMessageToChairNotice = target === "chair" && ["messages", "vote_comments"].includes(relatedTable || "") && Boolean(relatedId);
@@ -199,52 +202,83 @@ Deno.serve(async (req) => {
   }
 
   if (target === "none") {
-    await logNotification(admin, { subject, error: "Email nebol odoslany podla volby pouzivatela.", relatedTable, relatedId });
+    const notificationArea = await resolveNotificationArea(admin, relatedTable, relatedId);
+    await logNotification(admin, { subject, error: "Email nebol odoslany podla volby pouzivatela.", relatedTable, relatedId, notificationArea });
     return json({ skipped: true, recipients: 0 });
   }
 
-  const recipients = await resolveRecipients(admin, target, ownerId);
+  let recipients: NotificationRecipient[];
+  let notificationArea: string;
+  let preferenceRows: NotificationPreferenceRow[];
+  try {
+    recipients = await resolveRecipients(admin, target, ownerId);
+    notificationArea = await resolveNotificationArea(admin, relatedTable, relatedId);
+    preferenceRows = await resolveRecipientPreferences(admin, recipients, notificationArea);
+  } catch (error) {
+    return json({ error: error instanceof Error ? error.message : "Notification preferences could not be resolved" }, 500);
+  }
   if (!recipients.length) {
-    await logNotification(admin, { subject, error: "Nenasiel sa ziadny prijemca emailu.", relatedTable, relatedId });
+    await logNotification(admin, { subject, error: "Nenasiel sa ziadny prijemca emailu.", relatedTable, relatedId, notificationArea });
     return json({ sent: 0, recipients: 0 });
   }
 
-  const pushResult = webPushRequested
+  const { emailRecipients, pushRecipients } = partitionRecipients(recipients, preferenceRows, notificationArea) as {
+    emailRecipients: NotificationRecipient[];
+    pushRecipients: NotificationRecipient[];
+  };
+  const pushResult = pushRecipients.length
     ? await sendWebPush({
-      admin,
-      recipients,
-      subject,
-      title,
-      section,
-      actionUrl,
-      relatedTable,
-      relatedId,
-      vapidPublicKey,
-      vapidPrivateKey,
-      vapidSubject
-    })
+        admin,
+        recipients: pushRecipients,
+        subject,
+        title,
+        section,
+        actionUrl,
+        relatedTable,
+        relatedId,
+        vapidPublicKey,
+        vapidPrivateKey,
+        vapidSubject
+      })
     : emptyPushResult();
 
-  if (!gmailClientId || !gmailClientSecret || !gmailRefreshToken) {
-    await Promise.all(recipients.map((recipient) => logNotification(admin, {
+  if (!emailRecipients.length && !pushRecipients.length) {
+    return json({
+      skipped: true,
+      recipients: recipients.length,
+      emailRecipients: 0,
+      pushRecipients: 0,
+      sent: 0,
+      pushSent: 0,
+      pushAttempted: 0,
+      pushErrors: []
+    });
+  }
+
+  if (emailRecipients.length && (!gmailClientId || !gmailClientSecret || !gmailRefreshToken)) {
+    await Promise.all(emailRecipients.map((recipient) => logNotification(admin, {
       recipientId: recipient.profile_id,
       subject,
       error: "Gmail API nie je nakonfigurovane.",
       relatedTable,
-      relatedId
+      relatedId,
+      notificationArea
     })));
-    await Promise.all(recipients
+    await Promise.all(pushRecipients
       .filter((recipient) => recipient.profile_id && pushResult.successfulProfiles.has(recipient.profile_id))
       .map((recipient) => logNotification(admin, {
         recipientId: recipient.profile_id,
         subject,
         channel: "web_push",
         relatedTable,
-        relatedId
+        relatedId,
+        notificationArea
       })));
     return json({
       sent: 0,
       recipients: recipients.length,
+      emailRecipients: emailRecipients.length,
+      pushRecipients: pushRecipients.length,
       pushSent: pushResult.sent,
       pushAttempted: pushResult.attempted,
       pushErrors: pushResult.errors,
@@ -252,15 +286,17 @@ Deno.serve(async (req) => {
     }, 500);
   }
 
-  const html = renderEmail({ subject, title, message, senderName: sender?.full_name || "SVB", eventType, section, actionUrl });
+  const html = emailRecipients.length
+    ? renderEmail({ subject, title, message, senderName: sender?.full_name || "SVB", eventType, section, actionUrl })
+    : "";
   let sent = 0;
   const errors: string[] = [];
 
-  for (const recipient of recipients) {
+  for (const recipient of emailRecipients) {
     const result = await sendGmail({
-      clientId: gmailClientId,
-      clientSecret: gmailClientSecret,
-      refreshToken: gmailRefreshToken,
+      clientId: gmailClientId!,
+      clientSecret: gmailClientSecret!,
+      refreshToken: gmailRefreshToken!,
       fromEmail: gmailFromEmail,
       fromName: gmailFromName,
       to: recipient.email,
@@ -276,22 +312,37 @@ Deno.serve(async (req) => {
         subject,
         channel: pushDelivered ? "email_web_push" : "email",
         relatedTable,
-        relatedId
+        relatedId,
+        notificationArea
       });
     } else {
       const error = `Gmail API: ${result.error}`;
       errors.push(error);
-      await logNotification(admin, { recipientId: recipient.profile_id, subject, error, relatedTable, relatedId });
+      await logNotification(admin, { recipientId: recipient.profile_id, subject, error, relatedTable, relatedId, notificationArea });
       if (recipient.profile_id && pushResult.successfulProfiles.has(recipient.profile_id)) {
-        await logNotification(admin, { recipientId: recipient.profile_id, subject, channel: "web_push", relatedTable, relatedId });
+        await logNotification(admin, { recipientId: recipient.profile_id, subject, channel: "web_push", relatedTable, relatedId, notificationArea });
       }
     }
   }
+
+  const emailProfileIds = new Set(emailRecipients.map((recipient) => recipient.profile_id).filter(Boolean));
+  await Promise.all(pushRecipients
+    .filter((recipient) => recipient.profile_id && !emailProfileIds.has(recipient.profile_id) && pushResult.successfulProfiles.has(recipient.profile_id))
+    .map((recipient) => logNotification(admin, {
+      recipientId: recipient.profile_id,
+      subject,
+      channel: "web_push",
+      relatedTable,
+      relatedId,
+      notificationArea
+    })));
 
   const errorSummary = errors.length ? errors[0] : null;
   return json({
     sent,
     recipients: recipients.length,
+    emailRecipients: emailRecipients.length,
+    pushRecipients: pushRecipients.length,
     errors,
     error: errorSummary,
     pushSent: pushResult.sent,
@@ -300,7 +351,75 @@ Deno.serve(async (req) => {
   });
 });
 
-async function resolveRecipients(admin: ReturnType<typeof createClient>, target: NotificationTarget, ownerId: string) {
+const STATIC_NOTIFICATION_AREAS: Record<string, string> = {
+  announcements: "overview",
+  app_settings: "overview",
+  profiles: "overview",
+  owner_records: "overview",
+  votes: "votes",
+  vote_comments: "votes",
+  billing_settlements: "billing",
+  execution_cases: "executions",
+  finance_entries: "finance",
+  innovation_ideas: "finance",
+  innovation_comments: "finance",
+  events: "calendar",
+  activities: "activities",
+  photos: "photo_album",
+  classifieds: "classifieds"
+};
+
+async function resolveNotificationArea(
+  admin: AdminClient,
+  relatedTable: string | null,
+  relatedId: string | null
+) {
+  if (relatedTable === "documents") {
+    if (!relatedId) return "documents";
+    const { data, error } = await admin
+      .from("documents")
+      .select("is_history, published_at")
+      .eq("id", relatedId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return "documents";
+    const publishedYear = data.published_at ? new Date(data.published_at).getUTCFullYear() : null;
+    return data.is_history || (publishedYear !== null && publishedYear !== new Date().getUTCFullYear())
+      ? "document_history"
+      : "documents";
+  }
+
+  if (relatedTable === "messages") {
+    if (!relatedId) return "messages";
+    const { data, error } = await admin
+      .from("messages")
+      .select("message_section")
+      .eq("id", relatedId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data?.message_section === "talk" ? "talk" : "messages";
+  }
+
+  return normalizeNotificationArea(STATIC_NOTIFICATION_AREAS[relatedTable || ""] || "overview");
+}
+
+async function resolveRecipientPreferences(
+  admin: AdminClient,
+  recipients: NotificationRecipient[],
+  notificationArea: string
+): Promise<NotificationPreferenceRow[]> {
+  const profileIds = [...new Set(recipients.map((recipient) => recipient.profile_id).filter(Boolean))] as string[];
+  if (!profileIds.length) return [];
+  const { data, error } = await admin
+    .from("notification_preferences")
+    .select("profile_id, area, email_enabled, push_enabled")
+    .in("profile_id", profileIds)
+    .eq("area", notificationArea);
+  if (error) throw new Error(error.message);
+  return (data || []) as NotificationPreferenceRow[];
+}
+
+async function resolveRecipients(admin: AdminClient, target: NotificationTarget, ownerId: string): Promise<NotificationRecipient[]> {
   if (target === "chair") {
     const { data, error } = await admin
       .from("profiles")
@@ -346,7 +465,7 @@ async function resolveRecipients(admin: ReturnType<typeof createClient>, target:
       email: String(owner.login_email || "").trim()
     }))
     .filter((owner) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(owner.email));
-  const uniqueRecipients = new Map<string, { profile_id: string | null; name: string; email: string }>();
+  const uniqueRecipients = new Map<string, NotificationRecipient>();
   for (const recipient of recipients) {
     const key = recipient.profile_id || recipient.email.toLowerCase();
     if (!uniqueRecipients.has(key)) uniqueRecipients.set(key, recipient);
@@ -359,8 +478,8 @@ function emptyPushResult() {
 }
 
 async function sendWebPush(params: {
-  admin: ReturnType<typeof createClient>;
-  recipients: Array<{ profile_id: string | null; name: string; email: string }>;
+  admin: AdminClient;
+  recipients: NotificationRecipient[];
   subject: string;
   title: string;
   section: string;
@@ -440,8 +559,8 @@ function pushTopic(relatedTable: string | null, relatedId: string | null) {
 }
 
 async function logNotification(
-  admin: ReturnType<typeof createClient>,
-  params: { recipientId?: string | null; subject: string; channel?: string; error?: string | null; relatedTable?: string | null; relatedId?: string | null }
+  admin: AdminClient,
+  params: { recipientId?: string | null; subject: string; channel?: string; error?: string | null; relatedTable?: string | null; relatedId?: string | null; notificationArea?: string | null }
 ) {
   await admin.from("notification_log").insert({
     recipient_id: params.recipientId || null,
@@ -449,6 +568,7 @@ async function logNotification(
     channel: params.channel || "email",
     related_table: params.relatedTable || null,
     related_id: params.relatedId || null,
+    notification_area: params.notificationArea || null,
     sent_at: params.error ? null : new Date().toISOString(),
     error: params.error || null
   });

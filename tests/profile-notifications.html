@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Profile notification preferences visual test</title>
+    <link rel="stylesheet" href="../styles.css?v=221">
+  </head>
+  <body data-view="profile">
+    <div class="app-shell mobile-view-open">
+      <aside class="sidebar" aria-label="Hlavná navigácia">
+        <div class="brand">
+          <span class="brand-mark"><img class="brand-logo" src="../logo-e-housing.png" width="40" height="40" alt="Logo"></span>
+          <div><strong>e - Housing Solutions Licence</strong><span>SVB a NP Družstevná 386</span></div>
+        </div>
+        <nav class="nav-list"><button class="nav-item active"><span>Profil</span></button></nav>
+      </aside>
+      <main class="main">
+        <header class="topbar"><div class="page-title"><p class="eyebrow">Lokálna kontrola</p><h1>Profil</h1><p class="page-subtitle">SVB a NP Družstevná 386</p></div></header>
+        <section class="view-root">
+          <section class="panel profile-overview-panel">
+            <div class="grid two profile-merged-content">
+              <section class="profile-merged-section"><h2>Môj profil</h2><p class="muted">Osobné kontaktné údaje používateľa.</p></section>
+              <section class="profile-merged-section"><h2>Zmena hesla</h2><p class="muted">Nastavenie hesla účtu.</p></section>
+              <section class="profile-merged-section profile-installation-section">
+                <h2>Inštalácia aplikácie</h2>
+                <p class="muted">Webová aplikácia PWA pre mobilné zariadenia aj počítače.</p>
+                <div class="profile-version-status"><span class="profile-version-icon" aria-hidden="true">✓</span><div class="profile-version-copy"><span>Používaná verzia aplikácie</span><strong>v221</strong><small>Aktualizované 7. 10. 2026 o 09:06</small></div></div>
+                <div class="install-grid"><button class="primary" type="button">Stiahnuť pre Android</button><button class="ghost" type="button">Nainštalovať pre PC</button><button class="ghost" type="button">Stiahnuť pre macOS</button><button class="ghost" type="button">Nainštalovať pre iOS</button></div>
+              </section>
+              <section class="profile-merged-section span-all notification-settings-section">
+                <div class="toolbar">
+                  <div><h2>Notifikácie</h2><p class="muted">Samostatne si vyberte oblasti pre e-mailové a push upozornenia. Dôležité oznamy zostávajú povinne aktívne.</p></div>
+                  <span class="tag vote">3 povinné oblasti</span>
+                </div>
+                <div class="notification-preference-table" role="group" aria-label="Oblasti notifikácií">
+                  <div class="notification-preference-head" aria-hidden="true"><span>Oblasť</span><span>Email</span><span>Push</span></div>
+                  <div id="preferenceRows"></div>
+                </div>
+                <div class="notification-preference-actions">
+                  <button class="primary" type="button"><span>Uložiť nastavenia notifikácií</span></button>
+                  <p class="muted">Povinné oblasti nemožno vypnúť.</p>
+                </div>
+                <div class="notification-device-settings">
+                  <div class="notification-device-copy"><div><h3>Push na tomto zariadení</h3><p class="muted">Web Push je aktívny. Upozornenia môžu prísť aj pri zatvorenej aplikácii.</p></div><span class="tag vote">Aktívny</span></div>
+                  <p class="muted notification-ios-note">Na iPhone a iPade funguje Web Push po nainštalovaní aplikácie na plochu a otvorení cez jej ikonu.</p>
+                  <div class="row-actions"><button class="primary" type="button">Zapnúť push na zariadení</button><button class="ghost" type="button">Vypnúť push na zariadení</button></div>
+                </div>
+              </section>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script>
+      const areas = [
+        ["Prehľad", true], ["Hlasovanie", true], ["Vyúčtovanie / Predpis", true],
+        ["Dokumenty", false], ["História dokumentov", false], ["Exekúcie", false],
+        ["Hospodárenie", false], ["Nahlásiť poruchu", false], ["Kalendár", false],
+        ["Denník SVB", false], ["Fotoalbum", false], ["Inzercia", false], ["Rozprávajme sa", false]
+      ];
+      document.querySelector("#preferenceRows").innerHTML = areas.map(([label, required], index) => `
+        <div class="notification-preference-row ${required ? "is-required" : ""}">
+          <div class="notification-area-name"><span class="notification-area-icon" aria-hidden="true">${index + 1}</span><span>${label}</span>${required ? '<span class="notification-required-label">Povinné</span>' : ""}</div>
+          <label class="notification-channel-choice"><input type="checkbox" ${required ? "checked disabled" : ""} aria-label="Email notifikácie: ${label}"></label>
+          <label class="notification-channel-choice"><input type="checkbox" ${required ? "checked disabled" : ""} aria-label="Push notifikácie: ${label}"></label>
+        </div>
+      `).join("");
+    </script>
+  </body>
+</html>

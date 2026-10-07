@@ -157,7 +157,9 @@ const state = {
   pendingDeepLink: null,
   appNotificationsEnabled: false,
   pushSubscriptionActive: false,
-  lastNotificationSeenAt: ""
+  lastNotificationSeenAt: "",
+  notificationPreferences: {},
+  notificationPreferencesError: ""
 };
 
 const titles = {
@@ -282,7 +284,8 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v218";
+const APP_VERSION = "v221";
+const APP_UPDATED_AT_LABEL = "7. 10. 2026 o 09:06";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -293,6 +296,31 @@ const ACTIVE_OWNER_RECORD_PREFIX = "eHousingActiveOwnerRecord:";
 const UI_THEME_STORAGE_PREFIX = "eHousingUiTheme:";
 const LOADING_MESSAGE_CACHE_KEY = "eHousingLoginLoadingMessage";
 const APP_NOTIFICATION_POLL_MS = 45000;
+const NOTIFICATION_AREAS = [
+  { key: "overview", label: "Prehľad", icon: "layout-dashboard", required: true },
+  { key: "votes", label: "Hlasovanie", icon: "vote", required: true },
+  { key: "billing", label: "Vyúčtovanie / Predpis", icon: "receipt-text", required: true },
+  { key: "documents", label: "Dokumenty", icon: "folder-open", required: false },
+  { key: "document_history", label: "História dokumentov", icon: "history", required: false },
+  { key: "executions", label: "Exekúcie", icon: "gavel", required: false },
+  { key: "finance", label: "Hospodárenie", icon: "chart-no-axes-combined", required: false },
+  { key: "messages", label: "Nahlásiť poruchu", icon: "wrench", required: false },
+  { key: "calendar", label: "Kalendár", icon: "calendar-days", required: false },
+  { key: "activities", label: "Denník SVB", icon: "notebook-tabs", required: false },
+  { key: "photo_album", label: "Fotoalbum", icon: "images", required: false },
+  { key: "classifieds", label: "Inzercia", icon: "megaphone", required: false },
+  { key: "talk", label: "Rozprávajme sa", icon: "messages-square", required: false }
+];
+const REQUIRED_NOTIFICATION_AREAS = new Set(NOTIFICATION_AREAS.filter((area) => area.required).map((area) => area.key));
+
+function defaultNotificationAreaPreferences() {
+  return Object.fromEntries(NOTIFICATION_AREAS.map((area) => [
+    area.key,
+    { email: area.required, push: area.required }
+  ]));
+}
+
+state.notificationPreferences = defaultNotificationAreaPreferences();
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,
@@ -304,6 +332,7 @@ const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBL
 let notificationPollTimer = null;
 let notificationPollBusy = false;
 let platformSupportExpiryTimer = null;
+let voteDeadlineTimer = null;
 
 const ROLE_DEFINITIONS = [
   ["chair", "Predseda SVB"],
@@ -1335,7 +1364,7 @@ async function ensureCurrentProfile(user) {
 
 async function loadSupabaseData() {
   if (!supabaseClient || !state.loggedIn) return;
-  const [profiles, ownerRecords, categories, classifiedCategories, documents, billingSettlements, executionCases, financeEntries, innovationIdeas, innovationComments, announcements, events, messages, votes, voteQuestions, voteQuestionOptions, voteAnswers, voteComments, voteProxies, activities, photos, classifieds, templates, notifications, activityLogs] = await Promise.all([
+  const [profiles, ownerRecords, categories, classifiedCategories, documents, billingSettlements, executionCases, financeEntries, innovationIdeas, innovationComments, announcements, events, messages, votes, voteQuestions, voteQuestionOptions, voteAnswers, voteComments, voteProxies, activities, photos, classifieds, templates, notifications, notificationPreferences, activityLogs] = await Promise.all([
     supabaseClient.from("profiles").select("*").order("created_at", { ascending: true }),
     supabaseClient.from("owner_records").select("*").order("flat_number", { ascending: true }),
     supabaseClient.from("document_categories").select("*").order("sort_order", { ascending: true }),
@@ -1360,6 +1389,7 @@ async function loadSupabaseData() {
     supabaseClient.from("classifieds").select("*, creator:profiles!classifieds_created_by_fkey(full_name, role, flat_number, email)").order("created_at", { ascending: false }),
     supabaseClient.from("email_templates").select("*").order("title", { ascending: true }),
     supabaseClient.from("notification_log").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("notification_preferences").select("area, email_enabled, push_enabled").eq("profile_id", state.currentUserId),
     supabaseClient.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(500)
   ]);
 
@@ -1416,8 +1446,21 @@ async function loadSupabaseData() {
     status: item.error || "Záznam uložený",
     relatedTable: item.related_table,
     relatedId: item.related_id,
+    notificationArea: item.notification_area,
     recipientId: item.recipient_id
   }));
+  state.notificationPreferences = defaultNotificationAreaPreferences();
+  state.notificationPreferencesError = notificationPreferences.error?.message || "";
+  if (notificationPreferences.data) {
+    notificationPreferences.data.forEach((item) => {
+      if (!state.notificationPreferences[item.area]) return;
+      const required = REQUIRED_NOTIFICATION_AREAS.has(item.area);
+      state.notificationPreferences[item.area] = {
+        email: required ? true : item.email_enabled !== false,
+        push: required ? true : item.push_enabled !== false
+      };
+    });
+  }
   if (activityLogs.data) state.activityLogs = activityLogs.data.map(dbActivityLogToCard);
   await loadPlatformData();
 }
@@ -1836,6 +1879,7 @@ function dbVoteToCard(item, answers = [], questions = [], options = [], comments
       abstain: questionAnswers.filter((answer) => answer.answer === "Zdržal sa").length,
       options: questionOptions,
       myAnswer: myAnswer ? answerLabel(myAnswer) : "",
+      myAnswerValue: myAnswer?.answer || "",
       mySelectedOptionId: myAnswer?.selected_option_id || "",
       voters: questionAnswers.map((answer) => ({ profileId: answer.profile_id, ownerRecordId: answer.owner_record_id, ...voteAnswerOwner(answer), answer: answerLabel(answer), comment: answer.comment || "" }))
     };
@@ -2349,6 +2393,84 @@ function loadNotificationPreferences() {
   state.appNotificationsEnabled = appNotificationsEnabled();
   state.pushSubscriptionActive = false;
   state.lastNotificationSeenAt = localStorage.getItem(currentNotificationLastKey()) || "";
+  state.notificationPreferences = defaultNotificationAreaPreferences();
+  state.notificationPreferencesError = "";
+}
+
+function notificationAreaPreference(areaKey, channel) {
+  if (REQUIRED_NOTIFICATION_AREAS.has(areaKey)) return true;
+  return state.notificationPreferences?.[areaKey]?.[channel] !== false;
+}
+
+function notificationPreferencesMarkup() {
+  return `
+    <div class="notification-preference-table" role="group" aria-label="Oblasti notifikácií">
+      <div class="notification-preference-head" aria-hidden="true">
+        <span>Oblasť</span>
+        <span>${icon("mail")}Email</span>
+        <span>${icon("bell")}Push</span>
+      </div>
+      ${NOTIFICATION_AREAS.map((area) => {
+        const emailChecked = notificationAreaPreference(area.key, "email");
+        const pushChecked = notificationAreaPreference(area.key, "push");
+        const requiredAttributes = area.required ? "disabled" : "";
+        return `
+          <div class="notification-preference-row ${area.required ? "is-required" : ""}">
+            <div class="notification-area-name">
+              <span class="notification-area-icon" aria-hidden="true">${icon(area.icon)}</span>
+              <span>${escapeHtml(area.label)}</span>
+              ${area.required ? `<span class="notification-required-label">Povinné</span>` : ""}
+            </div>
+            <label class="notification-channel-choice" title="Email: ${escapeAttr(area.label)}">
+              <input type="checkbox" data-notification-preference data-area="${escapeAttr(area.key)}" data-channel="email" aria-label="Email notifikácie: ${escapeAttr(area.label)}" ${emailChecked ? "checked" : ""} ${requiredAttributes}>
+            </label>
+            <label class="notification-channel-choice" title="Push: ${escapeAttr(area.label)}">
+              <input type="checkbox" data-notification-preference data-area="${escapeAttr(area.key)}" data-channel="push" aria-label="Push notifikácie: ${escapeAttr(area.label)}" ${pushChecked ? "checked" : ""} ${requiredAttributes}>
+            </label>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+async function saveNotificationAreaPreferences() {
+  const status = document.querySelector("#notificationPreferencesStatus");
+  if (!supabaseClient || !state.currentUserId) {
+    if (status) status.textContent = "Nastavenia môže uložiť iba prihlásený používateľ.";
+    return;
+  }
+
+  const nextPreferences = defaultNotificationAreaPreferences();
+  const rows = NOTIFICATION_AREAS.map((area) => {
+    const email = area.required || Boolean(document.querySelector(`[data-notification-preference][data-area="${area.key}"][data-channel="email"]`)?.checked);
+    const push = area.required || Boolean(document.querySelector(`[data-notification-preference][data-area="${area.key}"][data-channel="push"]`)?.checked);
+    nextPreferences[area.key] = { email, push };
+    return {
+      profile_id: state.currentUserId,
+      area: area.key,
+      email_enabled: email,
+      push_enabled: push,
+      updated_at: new Date().toISOString()
+    };
+  });
+
+  const { error } = await supabaseClient
+    .from("notification_preferences")
+    .upsert(rows, { onConflict: "profile_id,area" });
+  if (error) {
+    state.notificationPreferencesError = error.message;
+    if (status) status.textContent = `Nastavenia notifikácií sa nepodarilo uložiť: ${error.message}`;
+    return;
+  }
+
+  state.notificationPreferences = nextPreferences;
+  state.notificationPreferencesError = "";
+  await writeActivityLog("profile", "Úprava nastavení notifikácií", {
+    relatedTable: "notification_preferences",
+    relatedId: state.currentUserId
+  });
+  if (status) status.textContent = "Nastavenia e-mailových a push notifikácií boli uložené.";
 }
 
 function saveNotificationSeenAt(value) {
@@ -2434,7 +2556,7 @@ async function checkForNewAppNotifications({ silent = false } = {}) {
     if (!state.lastNotificationSeenAt) saveNotificationSeenAt(lastSeen);
     const { data, error } = await supabaseClient
       .from("notification_log")
-      .select("id, subject, channel, error, created_at, related_table, related_id, recipient_id")
+      .select("id, subject, channel, error, created_at, related_table, related_id, recipient_id, notification_area")
       .eq("recipient_id", state.currentUserId)
       .is("error", null)
       .gt("created_at", lastSeen)
@@ -2444,7 +2566,7 @@ async function checkForNewAppNotifications({ silent = false } = {}) {
     const items = data || [];
     if (items.length) saveNotificationSeenAt(items[items.length - 1].created_at);
     if (!silent) {
-      const fallbackItems = items.filter((item) => !["email_web_push", "web_push"].includes(item.channel));
+      const fallbackItems = items.filter((item) => item.channel === "email" && !item.notification_area);
       for (const item of fallbackItems) await showSystemNotificationForLog(item);
     }
   } finally {
@@ -2997,6 +3119,7 @@ async function saveWelcomeText() {
 }
 
 function render() {
+  scheduleVoteDeadlineRefresh();
   syncAppChrome();
   loginScreen.classList.toggle("hidden", state.loggedIn);
   appShell.classList.toggle("hidden", !state.loggedIn);
@@ -3180,7 +3303,7 @@ const views = {
   overview() {
     const pendingOwners = pendingOwnerProfileCount();
     const urgentDocuments = state.documents.filter((document) => document.urgent).length;
-    const openVotes = state.votes.filter((vote) => ["open", "Prebieha", "prebieha"].includes(vote.status)).length;
+    const openVotes = state.votes.filter((vote) => isVoteOpen(vote)).length;
     const unreadMessages = state.messages.filter((message) => !message.read).length;
     const nextEvent = nextCalendarEvent();
     const nextVote = nextOpenVote();
@@ -3432,6 +3555,7 @@ const views = {
     if (state.currentVoteQuestionFilter !== "all" && !activeQuestionOptions.some((option) => option.id === state.currentVoteQuestionFilter)) state.currentVoteQuestionFilter = "all";
     if (state.historyVoteQuestionFilter !== "all" && !historyQuestionOptions.some((option) => option.id === state.historyVoteQuestionFilter)) state.historyVoteQuestionFilter = "all";
     const activeTotals = voteTotalsForVoteFilter(activeVote, state.currentVoteQuestionFilter);
+    const activeSummary = voteSummaryForViewer(activeVote, state.currentVoteQuestionFilter);
     const historyTotals = voteTotalsForVoteFilter(historyVote, state.historyVoteQuestionFilter);
     return `
       <section class="panel votes-dashboard">
@@ -3449,9 +3573,9 @@ const views = {
           </div>
           <div class="vote-summary-grid">
             ${voteSummaryCard("Hlasovali vlastníci", electronicVoterCount(activeVote), activeVote ? activeVote.title : "bez otvoreného hlasovania", "users")}
-            ${voteSummaryCard("Za", activeTotals.yes, "stav aktuálneho hlasovania", "check-circle")}
-            ${voteSummaryCard("Proti", activeTotals.no, "stav aktuálneho hlasovania", "x-circle")}
-            ${voteSummaryCard("Zdržal sa", activeTotals.abstain, "stav aktuálneho hlasovania", "circle-minus")}
+            ${voteSummaryCard("Za", activeSummary.yes, activeSummary.note, "check-circle")}
+            ${voteSummaryCard("Proti", activeSummary.no, activeSummary.note, "x-circle")}
+            ${voteSummaryCard("Zdržal sa", activeSummary.abstain, activeSummary.note, "circle-minus")}
           </div>
           <div class="vote-section-block">
             <div>
@@ -3894,31 +4018,50 @@ const views = {
             <p class="muted" id="profileStatus"></p>
           </div>
         </section>
-        <section class="profile-merged-section">
-          <div class="toolbar">
-            <div>
-              <h2>Notifikácie aplikácie</h2>
-              <p class="muted">Web Push upozornenia pre nové udalosti priradené k vášmu účtu.</p>
-            </div>
-            <span class="tag ${state.appNotificationsEnabled && state.pushSubscriptionActive ? "vote" : "document"}">${state.appNotificationsEnabled && state.pushSubscriptionActive ? "Zapnuté" : "Vypnuté"}</span>
-          </div>
-          <div class="list">
-            ${systemCard("Stav zariadenia", notificationPermissionText())}
-            ${systemCard("iPhone a iPad", "Na iOS fungujú notifikácie pre webové aplikácie až po nainštalovaní aplikácie na plochu a otvorení cez ikonu e - Housing Solutions Licence.")}
-          </div>
-          <div class="row-actions">
-            <button class="primary" data-enable-app-notifications type="button">${icon("bell-ring")}<span>Zapnúť notifikácie</span></button>
-            <button class="ghost" data-disable-app-notifications type="button">${icon("bell-off")}<span>Vypnúť notifikácie</span></button>
-          </div>
-        </section>
-        <section class="profile-merged-section">
+        <section class="profile-merged-section profile-installation-section">
           <h2>Inštalácia aplikácie</h2>
           <p class="muted">e - Housing Solutions Licence je pripravený ako webová aplikácia PWA. Po inštalácii sa otvorí ako samostatná aplikácia s vlastnou ikonou.</p>
+          <div class="profile-version-status" aria-label="Používaná verzia aplikácie ${escapeAttr(APP_VERSION)}, aktualizované ${escapeAttr(APP_UPDATED_AT_LABEL)}">
+            <span class="profile-version-icon" aria-hidden="true">${icon("badge-check")}</span>
+            <div class="profile-version-copy">
+              <span>Používaná verzia aplikácie</span>
+              <strong>${escapeHtml(APP_VERSION)}</strong>
+              <small>Aktualizované ${escapeHtml(APP_UPDATED_AT_LABEL)}</small>
+            </div>
+          </div>
           <div class="install-grid">
             <button class="primary" data-install-app="android" type="button">${icon("smartphone")}<span>Stiahnuť pre Android</span></button>
             <button class="ghost" data-install-app="windows" type="button">${icon("monitor-down")}<span>Nainštalovať pre PC</span></button>
             <button class="ghost" data-install-app="macos" type="button">${icon("monitor-down")}<span>Stiahnuť pre macOS</span></button>
             <button class="ghost" data-install-app="ios" type="button">${icon("tablet-smartphone")}<span>Nainštalovať pre iOS</span></button>
+          </div>
+        </section>
+        <section class="profile-merged-section span-all notification-settings-section">
+          <div class="toolbar">
+            <div>
+              <h2>Notifikácie</h2>
+              <p class="muted">Samostatne si vyberte oblasti pre e-mailové a push upozornenia. Dôležité oznamy zostávajú povinne aktívne.</p>
+            </div>
+            <span class="tag vote">3 povinné oblasti</span>
+          </div>
+          ${notificationPreferencesMarkup()}
+          <div class="notification-preference-actions">
+            <button class="primary" data-save-notification-preferences type="button">${icon("save")}<span>Uložiť nastavenia notifikácií</span></button>
+            <p class="muted" id="notificationPreferencesStatus" aria-live="polite">${state.notificationPreferencesError ? "Nastavenia sa nepodarilo načítať. Skúste stránku obnoviť." : "Povinné oblasti nemožno vypnúť."}</p>
+          </div>
+          <div class="notification-device-settings">
+            <div class="notification-device-copy">
+              <div>
+                <h3>Push na tomto zariadení</h3>
+                <p class="muted">${escapeHtml(notificationPermissionText())}</p>
+              </div>
+              <span class="tag ${state.appNotificationsEnabled && state.pushSubscriptionActive ? "vote" : "document"}">${state.appNotificationsEnabled && state.pushSubscriptionActive ? "Aktívny" : "Neaktívny"}</span>
+            </div>
+            <p class="muted notification-ios-note">Na iPhone a iPade funguje Web Push po nainštalovaní aplikácie na plochu a otvorení cez jej ikonu.</p>
+            <div class="row-actions">
+              <button class="primary" data-enable-app-notifications type="button">${icon("bell-ring")}<span>Zapnúť push na zariadení</span></button>
+              <button class="ghost" data-disable-app-notifications type="button">${icon("bell-off")}<span>Vypnúť push na zariadení</span></button>
+            </div>
           </div>
         </section>
         ${neighborCardPanel}
@@ -4408,9 +4551,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=218"],
+        ["Manifest", "manifest.webmanifest?v=221"],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v218"]
+        ["Cache", "e-housing-v221"]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -4501,9 +4644,26 @@ function nextCalendarEvent() {
   return { value: formatDate(event.startsAt || event.date), note: event.title };
 }
 
-function nextOpenVote() {
-  const openVotes = state.votes.filter((vote) => ["open", "Prebieha", "prebieha"].includes(vote.status) && vote.closes);
+function nextOpenVote(referenceTime = new Date()) {
+  const openVotes = state.votes.filter((vote) => isVoteOpen(vote, referenceTime) && vote.closes);
   return openVotes.sort((a, b) => new Date(a.closes) - new Date(b.closes))[0] || null;
+}
+
+function scheduleVoteDeadlineRefresh() {
+  if (voteDeadlineTimer) window.clearTimeout(voteDeadlineTimer);
+  voteDeadlineTimer = null;
+  if (!state.loggedIn) return;
+
+  const now = Date.now();
+  const nextDeadline = state.votes
+    .filter((vote) => ["open", "prebieha"].includes(normalizedVoteStatus(vote?.status)))
+    .map((vote) => new Date(vote.closes || "").getTime())
+    .filter((deadline) => Number.isFinite(deadline) && deadline > now)
+    .sort((a, b) => a - b)[0];
+  if (!nextDeadline) return;
+
+  const delay = Math.min(Math.max(nextDeadline - now + 250, 250), 2_147_000_000);
+  voteDeadlineTimer = window.setTimeout(() => render(), delay);
 }
 
 function systemCard(head, body, iconName = "info") {
@@ -4854,11 +5014,11 @@ function voteTimestamp(value) {
   return Number.isNaN(time) ? 0 : time;
 }
 
-function currentVote(votes = []) {
+function currentVote(votes = [], referenceTime = new Date()) {
   const openVotes = votes
-    .filter((vote) => !isVoteCancelled(vote) && !isVoteClosed(vote))
+    .filter((vote) => isVoteOpen(vote, referenceTime))
     .sort((a, b) => voteTimestamp(a.closes) - voteTimestamp(b.closes));
-  return openVotes[0] || votes.slice().sort((a, b) => voteTimestamp(votePublicationDate(b)) - voteTimestamp(votePublicationDate(a)))[0] || null;
+  return openVotes[0] || null;
 }
 
 function historyVotes(votes = [], activeVoteId = null) {
@@ -4922,6 +5082,45 @@ function voteTotalsForVoteFilter(vote, filterValue = "all") {
   };
 }
 
+function personalVoteTotalsForVoteFilter(vote, filterValue = "all") {
+  if (!vote) return { voted: false, yes: 0, no: 0, abstain: 0 };
+  const selectedQuestion = selectedVoteQuestionForVote(vote, filterValue);
+  const questions = selectedQuestion ? [selectedQuestion] : (vote.questions || []);
+  const answers = questions
+    .map((question) => question.myAnswerValue || (["Za", "Proti", "Zdržal sa"].includes(question.myAnswer) ? question.myAnswer : ""))
+    .filter(Boolean);
+  return {
+    voted: answers.length > 0,
+    yes: answers.filter((answer) => answer === "Za").length,
+    no: answers.filter((answer) => answer === "Proti").length,
+    abstain: answers.filter((answer) => answer === "Zdržal sa").length
+  };
+}
+
+function voteSummaryForViewer(vote, filterValue = "all", role = state.role, isPlatformAdmin = state.isPlatformAdmin) {
+  if (role === "chair" || isPlatformAdmin) {
+    return {
+      ...voteTotalsForVoteFilter(vote, filterValue),
+      note: "celkový stav všetkých hlasujúcich"
+    };
+  }
+  const totals = personalVoteTotalsForVoteFilter(vote, filterValue);
+  if (!totals.voted) {
+    return {
+      yes: "vlastník nehlasoval",
+      no: "vlastník nehlasoval",
+      abstain: "vlastník nehlasoval",
+      note: "bez elektronicky odovzdaného hlasu"
+    };
+  }
+  return {
+    yes: totals.yes,
+    no: totals.no,
+    abstain: totals.abstain,
+    note: "môj hlas v aktuálnom hlasovaní"
+  };
+}
+
 function electronicVoterCount(vote) {
   if (!vote) return 0;
   if (Number.isFinite(Number(vote.electronicVoters))) return Number(vote.electronicVoters);
@@ -4957,7 +5156,8 @@ function voteQuestionChartBlock(scope, vote, questionOptions, selectedValue, tot
 }
 
 function voteSummaryCard(label, value, note, iconName) {
-  return `<article class="status-metric vote-summary-card"><div class="card-icon">${icon(iconName)}</div><span>${label}</span><strong>${value}</strong><small>${escapeHtml(note)}</small></article>`;
+  const valueClass = typeof value === "string" ? " class=\"is-textual\"" : "";
+  return `<article class="status-metric vote-summary-card"><div class="card-icon">${icon(iconName)}</div><span>${escapeHtml(label)}</span><strong${valueClass}>${escapeHtml(value)}</strong><small>${escapeHtml(note)}</small></article>`;
 }
 
 function pieSegment(value, total, offset, color) {
@@ -5213,18 +5413,30 @@ function isVoteCancelled(vote) {
   return ["cancelled", "canceled", "zrušené", "zrusene"].includes(normalizedVoteStatus(vote?.status));
 }
 
-function isVoteClosed(vote) {
+function isVoteClosed(vote, referenceTime = new Date()) {
   const normalized = normalizedVoteStatus(vote?.status);
   if (["closed", "ukončené", "ukoncene", "archivované", "archivovane"].includes(normalized)) return true;
   if (!vote?.closes) return false;
   const closes = new Date(vote.closes);
   if (Number.isNaN(closes.getTime())) return false;
-  return closes < new Date();
+  const reference = new Date(referenceTime);
+  return closes.getTime() <= (Number.isNaN(reference.getTime()) ? Date.now() : reference.getTime());
 }
 
-function voteStatusLabel(status) {
+function isVoteOpen(vote, referenceTime = new Date()) {
+  const normalized = normalizedVoteStatus(vote?.status);
+  return ["open", "prebieha"].includes(normalized)
+    && !isVoteCancelled(vote)
+    && !isVoteClosed(vote, referenceTime);
+}
+
+function voteStatusLabel(voteOrStatus, referenceTime = new Date()) {
+  const vote = voteOrStatus && typeof voteOrStatus === "object" ? voteOrStatus : null;
+  const status = vote ? vote.status : voteOrStatus;
   const normalized = normalizedVoteStatus(status);
+  if (vote && ["open", "prebieha"].includes(normalized) && isVoteClosed(vote, referenceTime)) return "Ukončené";
   if (normalized === "open") return "Prebieha";
+  if (normalized === "prebieha") return "Prebieha";
   if (normalized === "cancelled" || normalized === "canceled") return "Zrušené";
   if (normalized === "closed") return "Ukončené";
   return status || "Prebieha";
@@ -5278,7 +5490,7 @@ function voteCard(vote) {
           <h3>${escapeHtml(vote.title)}</h3>
           <p class="muted">Hlasovať do: ${formatDate(vote.closes)} · otázky: ${questions.length} · komentáre: ${vote.comments}</p>
         </div>
-        <span class="tag ${cancelled ? "urgent" : "document"}">${voteStatusLabel(vote.status)}</span>
+        <span class="tag ${cancelled ? "urgent" : "document"}">${voteStatusLabel(vote)}</span>
       </div>
       <div class="vote-type-box">
         <strong>${escapeHtml(typeInfo.label)}</strong>
@@ -5300,19 +5512,22 @@ function voteCard(vote) {
 
 function voteActions(vote, cancelled) {
   const proxyAction = voteProxyButton(vote);
+  const closed = isVoteClosed(vote);
   const commentAction = communicationPermissionFor(state.role, "voteComments")
     ? `<button class="ghost" data-vote-comment="${vote.id}">${icon("message-circle")}<span>Komentovať</span></button>`
     : "";
   if (state.role === "owner") {
-    if (cancelled || isVoteClosed(vote)) return `${proxyAction}${commentAction}`;
+    if (cancelled || closed) return `${proxyAction}${commentAction}`;
     return `${proxyAction}${commentAction}<button class="primary" data-vote-answer="${vote.id}">${icon("check-circle")}<span>${hasMyVote(vote) ? "Zmeniť hlas" : "Hlasovať"}</span></button>`;
   }
   if (state.role !== "chair") {
-    return `${proxyAction}${commentAction}${!cancelled && !isVoteClosed(vote) ? `<button class="primary" data-vote-answer="${vote.id}">${icon("check-circle")}<span>${hasMyVote(vote) ? "Zmeniť hlas" : "Hlasovať"}</span></button>` : ""}`;
+    return `${proxyAction}${commentAction}${!cancelled && !closed ? `<button class="primary" data-vote-answer="${vote.id}">${icon("check-circle")}<span>${hasMyVote(vote) ? "Zmeniť hlas" : "Hlasovať"}</span></button>` : ""}`;
   }
-  return cancelled
-    ? `<button class="ghost" data-detail="vote" data-id="${vote.id}">${icon("info")}<span>Detail</span></button>${adminEditButton("vote", vote.id)}${deleteButton("vote", vote.id, vote)}${proxyAction}`
-    : `<button class="ghost" data-detail="vote" data-id="${vote.id}">${icon("info")}<span>Detail</span></button>${adminEditButton("vote", vote.id)}${canEditItem("vote") ? `<button class="ghost" data-cancel-vote="${vote.id}">${icon("ban")}<span>Zrušiť</span></button>` : ""}${deleteButton("vote", vote.id, vote)}${proxyAction}${commentAction}<button class="primary" data-vote-answer="${vote.id}">${icon("check-circle")}<span>${hasMyVote(vote) ? "Zmeniť hlas" : "Hlasovať"}</span></button>`;
+  const detailAction = `<button class="ghost" data-detail="vote" data-id="${vote.id}">${icon("info")}<span>Detail</span></button>`;
+  const managementActions = `${detailAction}${adminEditButton("vote", vote.id)}${deleteButton("vote", vote.id, vote)}${proxyAction}`;
+  if (cancelled) return managementActions;
+  if (closed) return `${managementActions}${commentAction}`;
+  return `${detailAction}${adminEditButton("vote", vote.id)}${canEditItem("vote") ? `<button class="ghost" data-cancel-vote="${vote.id}">${icon("ban")}<span>Zrušiť</span></button>` : ""}${deleteButton("vote", vote.id, vote)}${proxyAction}${commentAction}<button class="primary" data-vote-answer="${vote.id}">${icon("check-circle")}<span>${hasMyVote(vote) ? "Zmeniť hlas" : "Hlasovať"}</span></button>`;
 }
 
 function voteProxyForCurrentProperty(voteId) {
@@ -6365,6 +6580,10 @@ function bindViewActions() {
     button.addEventListener("click", () => disableAppNotifications());
   });
 
+  document.querySelectorAll("[data-save-notification-preferences]").forEach((button) => {
+    button.addEventListener("click", () => runLockedAction(button, () => saveNotificationAreaPreferences(), "Ukladám..."));
+  });
+
   document.querySelectorAll("[data-document-history-filter]").forEach((select) => {
     select.addEventListener("change", () => {
       state.documentHistoryFilter = select.value;
@@ -7079,7 +7298,7 @@ function detailBody(type, item) {
         ${readonlyField("Typ hlasovania", voteTypeInfo(item.type).label)}
         ${readonlyField("Potrebné kvórum", voteTypeInfo(item.type).threshold)}
         ${readonlyField("Uzatvorenie", formatDate(item.closes))}
-        ${readonlyField("Stav", voteStatusLabel(item.status))}
+        ${readonlyField("Stav", voteStatusLabel(item))}
         ${readonlyField("Komentáre", item.comments || 0)}
       </div>
       <ol class="question-list vote-question-stats">
@@ -10078,7 +10297,8 @@ async function notifyByChoice(subject, titleText, messageText, notification = {}
     });
     if (error || data?.error) throw new Error(data?.error || error.message);
     if (Array.isArray(data?.errors) && data.errors.length) throw new Error(data.errors[0]);
-    if (Number(data?.recipients || 0) > 0 && Number(data?.sent || 0) === 0) throw new Error("Email sa nepodarilo odoslať žiadnemu príjemcovi.");
+    const emailRecipientCount = Number(data?.emailRecipients ?? data?.recipients ?? 0);
+    if (emailRecipientCount > 0 && Number(data?.sent || 0) === 0) throw new Error("Email sa nepodarilo odoslať žiadnemu príjemcovi.");
   } catch (error) {
     const message = error?.message || "Email funkcia čaká na konfiguráciu alebo sa odoslanie nepodarilo";
     window.alert(`Položka bola uložená, ale email sa nepodarilo odoslať: ${message}`);
