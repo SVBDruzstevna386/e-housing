@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { normalizeNotificationArea, partitionRecipients } from "./notification-preferences.mjs";
+import { canNotifySvbProblem, svbProblemNotificationContent } from "./svb-problem-notification.mjs";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,12 +48,12 @@ Deno.serve(async (req) => {
     .maybeSingle();
   const body = await req.json().catch(() => ({}));
   const target: NotificationTarget = ["none", "all", "individual", "chair"].includes(body.target) ? body.target : "all";
-  const subject = String(body.subject || "Nova informacia v e - Housing Solutions Licence").trim();
-  const title = String(body.title || "").trim();
-  const message = String(body.message || "").trim();
-  const eventType = String(body.eventType || subject).trim();
-  const section = String(body.section || "Aplikacia").trim();
-  const actionUrl = normalizeActionUrl(String(body.actionUrl || "https://svbdruzstevna386.vercel.app/").trim());
+  let subject = String(body.subject || "Nova informacia v e - Housing Solutions Licence").trim();
+  let title = String(body.title || "").trim();
+  let message = String(body.message || "").trim();
+  let eventType = String(body.eventType || subject).trim();
+  let section = String(body.section || "Aplikacia").trim();
+  let actionUrl = normalizeActionUrl(String(body.actionUrl || "https://svbdruzstevna386.vercel.app/").trim());
   const relatedTable = body.relatedTable ? String(body.relatedTable) : null;
   const relatedId = body.relatedId ? String(body.relatedId) : null;
   const ownerId = body.ownerId ? String(body.ownerId) : "";
@@ -60,6 +61,21 @@ Deno.serve(async (req) => {
   const cleaningNotification = body.cleaningNotification === true;
   const registrationNotice = body.registrationNotice === true;
   if (senderError) return json({ error: senderError.message }, 500);
+  let isProblemNotice = false;
+  if (relatedTable === "svb_problems") {
+    const [{ data: problem, error: problemError }, { data: platformAdmin, error: platformError }, { data: template, error: templateError }] = await Promise.all([
+      admin.from("svb_problems").select("id, created_by, recipient_id").eq("id", relatedId || "00000000-0000-0000-0000-000000000000").maybeSingle(),
+      admin.from("platform_admins").select("user_id").eq("user_id", userData.user.id).eq("active", true).maybeSingle(),
+      admin.from("email_templates").select("subject, body").eq("building_id", "38600000-0000-0000-0000-000000000386").eq("key", "svb-problem").maybeSingle()
+    ]);
+    if (problemError || platformError || templateError) return json({ error: "Problem notification could not be verified" }, 500);
+    if (!canNotifySvbProblem(sender, problem, target, ownerId, Boolean(platformAdmin))) {
+      return json({ error: "Problem notifications require an approved administrator and the exact event audience" }, 403);
+    }
+    isProblemNotice = true;
+    // Never place event content supplied by an older client in emails or lock-screen previews.
+    ({ subject, title, message, eventType, section, actionUrl } = svbProblemNotificationContent(problem.id, template || {}, sender?.full_name || "SVB"));
+  }
   const isBoardSender = ["chair", "vice_chair", "economic", "board"].includes(sender?.role || "");
   const isMessageToChairNotice = target === "chair" && ["messages", "vote_comments"].includes(relatedTable || "") && Boolean(relatedId);
   const isOwnerAnnouncementNotice = target === "all" && relatedTable === "announcements" && Boolean(relatedId) && sender?.role === "owner";
@@ -71,7 +87,7 @@ Deno.serve(async (req) => {
     && registrationNotice
     && ["profiles", "owner_records"].includes(relatedTable || "")
     && Boolean(relatedId);
-  if (!isBoardSender && !isMessageToChairNotice && !isOwnerAnnouncementNotice && !isClassifiedChairNotice && !isRepairAllNotice && !isPrivateTalkNotice && !isCleaningAllNotice && !isRegistrationPendingNotice) return json({ error: "Only chairman or board can send notifications" }, 403);
+  if (!isBoardSender && !isMessageToChairNotice && !isOwnerAnnouncementNotice && !isClassifiedChairNotice && !isRepairAllNotice && !isPrivateTalkNotice && !isCleaningAllNotice && !isRegistrationPendingNotice && !isProblemNotice) return json({ error: "Only chairman or board can send notifications" }, 403);
   if (isRegistrationPendingNotice) {
     if (relatedTable === "profiles") {
       if (!sender || relatedId !== userData.user.id || sender.approval_status === "approved") {
@@ -211,7 +227,9 @@ Deno.serve(async (req) => {
   let notificationArea: string;
   let preferenceRows: NotificationPreferenceRow[];
   try {
-    recipients = await resolveRecipients(admin, target, ownerId);
+    recipients = isProblemNotice && target === "all"
+      ? await resolveProblemRecipients(admin)
+      : await resolveRecipients(admin, target, ownerId);
     notificationArea = await resolveNotificationArea(admin, relatedTable, relatedId);
     preferenceRows = await resolveRecipientPreferences(admin, recipients, notificationArea);
   } catch (error) {
@@ -366,7 +384,8 @@ const STATIC_NOTIFICATION_AREAS: Record<string, string> = {
   events: "calendar",
   activities: "activities",
   photos: "photo_album",
-  classifieds: "classifieds"
+  classifieds: "classifieds",
+  svb_problems: "problems"
 };
 
 async function resolveNotificationArea(
@@ -417,6 +436,19 @@ async function resolveRecipientPreferences(
     .eq("area", notificationArea);
   if (error) throw new Error(error.message);
   return (data || []) as NotificationPreferenceRow[];
+}
+
+async function resolveProblemRecipients(admin: AdminClient): Promise<NotificationRecipient[]> {
+  const [{ data: profiles, error: profileError }, { data: owners, error: ownerError }] = await Promise.all([
+    admin.from("profiles").select("id, full_name, email, role").eq("approval_status", "approved"),
+    admin.from("owner_records").select("profile_id").eq("approval_status", "approved")
+  ]);
+  if (profileError || ownerError) throw new Error(profileError?.message || ownerError?.message);
+  const ownerIds = new Set((owners || []).map((owner) => owner.profile_id));
+  return (profiles || [])
+    .filter((profile) => ["owner", "chair", "vice_chair", "board"].includes(profile.role) || ownerIds.has(profile.id))
+    .map((profile) => ({ profile_id: profile.id, name: profile.full_name, email: String(profile.email || "").trim() }))
+    .filter((profile) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email));
 }
 
 async function resolveRecipients(admin: AdminClient, target: NotificationTarget, ownerId: string): Promise<NotificationRecipient[]> {

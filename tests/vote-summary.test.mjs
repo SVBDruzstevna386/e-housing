@@ -24,7 +24,9 @@ const context = vm.createContext({ state: { role: "owner", isPlatformAdmin: fals
   "selectedVoteQuestionForVote",
   "voteTotalsForVoteFilter",
   "personalVoteTotalsForVoteFilter",
-  "voteSummaryForViewer"
+  "voteSummaryForViewer",
+  "voteChartForViewer",
+  "voteCardResultRow"
 ].forEach((name) => vm.runInContext(extractFunction(name), context));
 
 const vote = {
@@ -78,9 +80,74 @@ test("chair and platform admin keep aggregate totals for all voters", () => {
   assert.deepEqual(structuredClone(context.voteSummaryForViewer(vote, "all", "owner", true)), expected);
 });
 
+test("historical chart uses personal answers for owner, board and vice chair", () => {
+  const expected = { voted: true, yes: 2, no: 0, abstain: 1, viewerMode: "personal" };
+  for (const role of ["owner", "board", "vice_chair"]) {
+    assert.deepEqual(structuredClone(context.voteChartForViewer(vote, "all", role, false)), expected);
+  }
+});
+
+test("historical chart preserves aggregate totals for chair and platform admin", () => {
+  const expected = { yes: 8, no: 3, abstain: 2, voted: true, viewerMode: "aggregate" };
+  assert.deepEqual(structuredClone(context.voteChartForViewer(vote, "all", "chair", false)), expected);
+  assert.deepEqual(structuredClone(context.voteChartForViewer(vote, "all", "owner", true)), expected);
+});
+
+test("historical chart reports when the active property did not vote", () => {
+  const unansweredVote = {
+    ...vote,
+    questions: vote.questions.map((question) => ({ ...question, myAnswer: "", myAnswerValue: "" }))
+  };
+  assert.deepEqual(
+    structuredClone(context.voteChartForViewer(unansweredVote, "all", "owner", false)),
+    { voted: false, yes: 0, no: 0, abstain: 0, viewerMode: "personal" }
+  );
+  assert.match(appSource, /Vlastník nehlasoval/);
+});
+
+test("history view is wired to the role-aware chart calculation", () => {
+  assert.match(
+    appSource,
+    /const historyTotals = voteChartForViewer\(historyVote, state\.historyVoteQuestionFilter\)/
+  );
+});
+
 test("the unique voter card remains wired to the existing aggregate counter", () => {
   assert.match(
     appSource,
     /voteSummaryCard\("Hlasovali vlastníci", electronicVoterCount\(activeVote\), activeVote \? activeVote\.title/
   );
+});
+
+test("vote card row shows only personal results outside chair and platform admin roles", () => {
+  const personalTotals = context.voteChartForViewer(vote, "all", "owner", false);
+  const markup = context.voteCardResultRow(personalTotals);
+  assert.match(markup, /Môj hlas: ZA 2/);
+  assert.match(markup, /Odovzdané odpovede: 3/);
+  assert.doesNotMatch(markup, /Spolu za 8|13 hlasov spolu/);
+});
+
+test("vote card row explicitly reports an owner without an electronic vote", () => {
+  const unansweredVote = {
+    ...vote,
+    questions: vote.questions.map((question) => ({ ...question, myAnswer: "", myAnswerValue: "" }))
+  };
+  const markup = context.voteCardResultRow(context.voteChartForViewer(unansweredVote, "all", "owner", false));
+  assert.match(markup, /Vlastník nehlasoval/);
+  assert.doesNotMatch(markup, /Spolu za/);
+});
+
+test("chair and platform admin retain the aggregate vote card row", () => {
+  const chairMarkup = context.voteCardResultRow(context.voteChartForViewer(vote, "all", "chair", false));
+  const adminMarkup = context.voteCardResultRow(context.voteChartForViewer(vote, "all", "owner", true));
+  for (const markup of [chairMarkup, adminMarkup]) {
+    assert.match(markup, /Spolu za 8/);
+    assert.match(markup, /13 hlasov spolu/);
+  }
+});
+
+test("vote card and its progress bar use role-aware viewer totals", () => {
+  assert.match(appSource, /const viewerTotals = voteChartForViewer\(vote, "all"\)/);
+  assert.match(appSource, /voteCardResultRow\(viewerTotals\)/);
+  assert.doesNotMatch(appSource, /Spolu za \$\{vote\.yes\}/);
 });

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Historical vote chart visual test</title>
+    <link rel="stylesheet" href="../styles.css?v=224">
+  </head>
+  <body>
+    <main class="main">
+      <section class="view-root">
+        <section class="panel votes-dashboard">
+          <div class="vote-section-block history">
+            <div class="toolbar compact-toolbar">
+              <div><h3>História hlasovania</h3><p class="muted">Kontrola osobného historického grafu.</p></div>
+            </div>
+            <div class="vote-row">
+              <article class="card"><h3>Domová schôdza č. 33 zo dňa 06. 09. 2026</h3><p class="muted">Ukončené hlasovanie</p></article>
+              <div class="vote-inline-chart">
+                <div class="toolbar compact-toolbar">
+                  <div><h4>História: Domová schôdza č. 33 zo dňa 06. 09. 2026</h4><p class="muted">Graf zobrazuje vaše elektronické hlasy v tomto hlasovaní.</p></div>
+                  <select class="search wide-select" aria-label="Filter otázok k hlasovaniu"><option>Všetky otázky v tomto hlasovaní</option></select>
+                </div>
+                <div class="vote-pie-wrap is-unvoted">
+                  <div class="vote-pie is-unvoted" role="img" aria-label="Vlastník v tomto hlasovaní elektronicky nehlasoval">
+                    <div><strong class="vote-pie-empty-label">Vlastník nehlasoval</strong><span>bez elektronického hlasu</span></div>
+                  </div>
+                  <div class="vote-chart-empty-note"><strong>Bez odovzdaného hlasu</strong><span>Pre aktívnu nehnuteľnosť nie je v tomto hlasovaní evidovaná elektronická odpoveď.</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

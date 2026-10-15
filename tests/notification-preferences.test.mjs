@@ -15,10 +15,10 @@ const recipients = [
   { profile_id: null, name: "Legacy", email: "legacy@example.com" }
 ];
 
-test("defines all requested areas and three mandatory areas", () => {
-  assert.equal(NOTIFICATION_AREAS.length, 13);
-  assert.equal(new Set(NOTIFICATION_AREAS).size, 13);
-  assert.deepEqual([...REQUIRED_NOTIFICATION_AREAS], ["overview", "votes", "billing"]);
+test("defines all requested areas including mandatory SVB problems", () => {
+  assert.equal(NOTIFICATION_AREAS.length, 14);
+  assert.equal(new Set(NOTIFICATION_AREAS).size, 14);
+  assert.deepEqual([...REQUIRED_NOTIFICATION_AREAS], ["overview", "votes", "billing", "problems"]);
 });
 
 test("mandatory areas stay enabled even if a malformed row says otherwise", () => {

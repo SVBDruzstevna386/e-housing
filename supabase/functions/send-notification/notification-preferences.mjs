@@ -11,10 +11,11 @@ export const NOTIFICATION_AREAS = Object.freeze([
   "activities",
   "photo_album",
   "classifieds",
-  "talk"
+  "talk",
+  "problems"
 ]);
 
-export const REQUIRED_NOTIFICATION_AREAS = new Set(["overview", "votes", "billing"]);
+export const REQUIRED_NOTIFICATION_AREAS = new Set(["overview", "votes", "billing", "problems"]);
 
 export function normalizeNotificationArea(value) {
   return NOTIFICATION_AREAS.includes(value) ? value : "overview";

@@ -15,6 +15,9 @@ const state = {
   documentHistoryFilter: "all",
   messageFilter: "all",
   talkMessageFilter: "all",
+  svbProblems: [],
+  svbProblemsError: "",
+  svbProblemFilter: "all",
   classifiedFilter: "all",
   billingOwnerFilter: "all",
   billingTypeFilter: "all",
@@ -171,6 +174,7 @@ const titles = {
   finance: "Hospodárenie",
   messages: "Nahlásiť poruchu",
   talk: "Rozprávajme sa",
+  problems: "Problémy SVB",
   votes: "Hlasovanie",
   calendar: "Kalendár",
   activities: "Denník SVB",
@@ -185,6 +189,10 @@ const titles = {
 };
 
 const HELP_TEXTS = {
+  problems: {
+    title: "Nápoveda pre Problémy SVB",
+    body: "Dôležité udalosti týkajúce sa vlastníkov. Predseda alebo administrátor môže udalosť adresovať všetkým alebo konkrétnemu vlastníkovi a priložiť fotografie či YouTube video. Fotografie môžu byť zobrazené aj vo Fotoalbume s rovnakou viditeľnosťou ako udalosť."
+  },
   overview: {
     title: "Nápoveda pre Prehľad",
     body: "Záložka Prehľad slúži ako úvodná pracovná plocha aplikácie. Zobrazuje najdôležitejšie informácie podľa prihlásenej role, napríklad stav domu, aktuálne dokumenty, hlasovania, správy, kontakty na vedenie SVB a rýchle upozornenia. Obsah sa prispôsobuje tomu, či je používateľ predseda SVB, člen vedenia alebo vlastník nehnuteľnosti."
@@ -284,8 +292,8 @@ const WELCOME_TEXT_SETTING_KEY = "overview_welcome_text";
 const LOADING_MESSAGE_SETTING_KEY = "login_loading_message";
 const SYSTEM_UPDATE_MANIFEST_URL_SETTING_KEY = "system_update_manifest_url";
 const PLATFORM_CONTROL_ENABLED = true;
-const APP_VERSION = "v221";
-const APP_UPDATED_AT_LABEL = "7. 10. 2026 o 09:06";
+const APP_VERSION = "v228";
+const APP_UPDATED_AT_LABEL = "13. 10. 2026 o 13:42";
 const LIVE_APP_URL = "https://e-housing-zeta.vercel.app";
 const NOTIFICATION_APP_URL = "https://svbdruzstevna386.vercel.app";
 const VAPID_PUBLIC_KEY = "BBanWewIK-HpB0RwQuxdScHG5Y6U-U6-rhcp_lZKyxavXMC950e8XbsXaAjr5w8bNWSbvi-i01zbZ-Vj36xMdU0";
@@ -309,7 +317,8 @@ const NOTIFICATION_AREAS = [
   { key: "activities", label: "Denník SVB", icon: "notebook-tabs", required: false },
   { key: "photo_album", label: "Fotoalbum", icon: "images", required: false },
   { key: "classifieds", label: "Inzercia", icon: "megaphone", required: false },
-  { key: "talk", label: "Rozprávajme sa", icon: "messages-square", required: false }
+  { key: "talk", label: "Rozprávajme sa", icon: "messages-square", required: false },
+  { key: "problems", label: "Problémy SVB", icon: "triangle-alert", required: true }
 ];
 const REQUIRED_NOTIFICATION_AREAS = new Set(NOTIFICATION_AREAS.filter((area) => area.required).map((area) => area.key));
 
@@ -340,6 +349,13 @@ const ROLE_DEFINITIONS = [
   ["economic", "Ekonomická správa"],
   ["board", "Dozorná rada"],
   ["owner", "Vlastník nehnuteľnosti"]
+];
+
+const REGISTERED_OWNER_ROLE_OPTIONS = [
+  ["owner", "Vlastník nehnuteľnosti"],
+  ["board", "Člen dozornej rady"],
+  ["vice_chair", "Podpredseda SVB"],
+  ["economic", "Ekonomická správa"]
 ];
 
 const UI_THEME_OPTIONS = [
@@ -557,6 +573,10 @@ function rolePermissions() {
 }
 
 function permissionFor(role = state.role, view = state.view) {
+  if (view === "problems") {
+    const manage = role === "chair" || (role === state.role && state.isPlatformAdmin);
+    return { read: true, write: Boolean(manage), delete: Boolean(manage) };
+  }
   const permissions = rolePermissions();
   const permissionView = view === "talk" ? "messages" : view;
   const direct = permissions?.[role]?.[permissionView] || { read: false, write: false, delete: false };
@@ -790,6 +810,11 @@ if ("serviceWorker" in navigator) {
 
 if (supabaseClient) {
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (event === "SIGNED_OUT") {
+      state.loggedIn = false;
+      resetSvbProblemAcknowledgement();
+      render();
+    }
     if (event === "PASSWORD_RECOVERY" && session?.user) {
       state.currentUserId = session.user.id;
       state.currentUserEmail = session.user.email || state.currentUserEmail;
@@ -1065,6 +1090,7 @@ logoutBtn.addEventListener("click", async () => {
   stopAppNotificationWatcher();
   state.loggedIn = false;
   state.isPlatformSupportSession = false;
+  resetSvbProblemAcknowledgement();
   if (platformSupportExpiryTimer) window.clearTimeout(platformSupportExpiryTimer);
   platformSupportExpiryTimer = null;
   mobileViewOpen = false;
@@ -1126,6 +1152,17 @@ function roleFieldToAppRole(value, fallback = "board") {
   if (value === "Ekonomická správa") return "economic";
   if (value === "Člen dozornej rady" || value === "Dozorná rada") return "board";
   return fallback;
+}
+
+function canChangeRegisteredOwnerRole(owner = null, role = state.role) {
+  return role === "chair"
+    && Boolean(owner?.profileId)
+    && owner.profileRoleKey !== "chair";
+}
+
+function registeredOwnerRoleValue(value, fallback = "owner") {
+  const role = String(value || "").trim();
+  return REGISTERED_OWNER_ROLE_OPTIONS.some(([option]) => option === role) ? role : fallback;
 }
 
 async function registerSupabaseUser({ email, password, name, flat, requestedRole, gdprAccepted, gdprAcceptedAt }) {
@@ -1290,6 +1327,7 @@ async function waitForRegistrationProfile(user, requestedRole) {
 async function applySupabaseSession(session) {
   if (!session?.user) return false;
   const user = session.user;
+  if (state.currentUserId !== user.id) resetSvbProblemAcknowledgement();
   state.loggedIn = true;
   state.currentUserId = user.id;
   state.currentUserEmail = user.email;
@@ -1364,7 +1402,7 @@ async function ensureCurrentProfile(user) {
 
 async function loadSupabaseData() {
   if (!supabaseClient || !state.loggedIn) return;
-  const [profiles, ownerRecords, categories, classifiedCategories, documents, billingSettlements, executionCases, financeEntries, innovationIdeas, innovationComments, announcements, events, messages, votes, voteQuestions, voteQuestionOptions, voteAnswers, voteComments, voteProxies, activities, photos, classifieds, templates, notifications, notificationPreferences, activityLogs] = await Promise.all([
+  const [profiles, ownerRecords, categories, classifiedCategories, documents, billingSettlements, executionCases, financeEntries, innovationIdeas, innovationComments, announcements, events, messages, votes, voteQuestions, voteQuestionOptions, voteAnswers, voteComments, voteProxies, activities, photos, classifieds, templates, notifications, notificationPreferences, activityLogs, svbProblems] = await Promise.all([
     supabaseClient.from("profiles").select("*").order("created_at", { ascending: true }),
     supabaseClient.from("owner_records").select("*").order("flat_number", { ascending: true }),
     supabaseClient.from("document_categories").select("*").order("sort_order", { ascending: true }),
@@ -1390,7 +1428,10 @@ async function loadSupabaseData() {
     supabaseClient.from("email_templates").select("*").order("title", { ascending: true }),
     supabaseClient.from("notification_log").select("*").order("created_at", { ascending: false }),
     supabaseClient.from("notification_preferences").select("area, email_enabled, push_enabled").eq("profile_id", state.currentUserId),
-    supabaseClient.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(500)
+    supabaseClient.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(500),
+    hasSvbProblemAcknowledgement()
+      ? supabaseClient.from("svb_problems").select("*, creator:profiles!svb_problems_created_by_fkey(full_name), recipient:profiles!svb_problems_recipient_id_fkey(full_name, flat_number, role)").order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null })
   ]);
 
   if (profiles.data) state.profiles = profiles.data;
@@ -1424,6 +1465,8 @@ async function loadSupabaseData() {
   if (announcements.data) state.announcements = await Promise.all(announcements.data.map(dbAnnouncementToCard));
   if (events.data) state.events = (await Promise.all(events.data.map(dbEventToCard))).sort(sortByEventDateAsc);
   if (messages.data) state.messages = await Promise.all(messages.data.map(dbMessageToCard));
+  state.svbProblemsError = svbProblems.error?.message || "";
+  state.svbProblems = hasSvbProblemAcknowledgement() ? await Promise.all((svbProblems.data || []).map(dbSvbProblemToCard)) : [];
   if (voteComments.data) state.voteComments = voteComments.data.map(dbVoteCommentToCard);
   if (voteProxies.data) state.voteProxies = voteProxies.data.map(dbVoteProxyToCard);
   if (votes.data) {
@@ -1442,7 +1485,7 @@ async function loadSupabaseData() {
     id: item.id,
     time: item.created_at ? formatDateTime(item.created_at) : "Supabase",
     type: item.channel,
-    subject: item.subject,
+    subject: item.related_table === "svb_problems" ? "Nová informácia v Problémoch SVB" : item.subject,
     status: item.error || "Záznam uložený",
     relatedTable: item.related_table,
     relatedId: item.related_id,
@@ -2296,6 +2339,7 @@ function canManageBoardMember(member = null) {
 }
 
 function canEditItem(type, item = null) {
+  if (type === "svbProblem") return canManageSvbProblems();
   if (type === "vote") return state.role === "chair";
   if (type === "billingSettlement" && state.role === "board") return false;
   if (type === "event") return canManageCalendarEvent(item);
@@ -2306,6 +2350,8 @@ function canEditItem(type, item = null) {
 }
 
 function canDeleteItem(type, item = null) {
+  if (type === "svbProblem") return canManageSvbProblems();
+  if (type === "photo" && item?.problemId) return false;
   if (type === "vote") return state.role === "chair";
   if (type === "billingSettlement" && state.role === "board") return false;
   if (type === "event") return canManageCalendarEvent(item, "delete");
@@ -2326,6 +2372,7 @@ function viewForItemType(type) {
     financeEntry: "finance",
     innovationIdea: "finance",
     message: "messages",
+    svbProblem: "problems",
     vote: "votes",
     event: "calendar",
     activity: "activities",
@@ -2345,6 +2392,7 @@ function notificationMetaFor(relatedTable, relatedId, options = {}) {
     billing_settlements: { view: "billing", detailType: "billingSettlement", sectionLabel: titles.billing },
     execution_cases: { view: "executions", detailType: "executionCase", sectionLabel: titles.executions },
     messages: { view: "messages", detailType: "message", sectionLabel: titles.messages },
+    svb_problems: { view: "problems", detailType: "svbProblem", sectionLabel: titles.problems },
     events: { view: "calendar", detailType: "event", sectionLabel: titles.calendar },
     activities: { view: "activities", detailType: "activity", sectionLabel: titles.activities },
     photos: { view: "photoAlbum", detailType: "photo", sectionLabel: titles.photoAlbum },
@@ -3158,12 +3206,13 @@ function render() {
     welcomeBtn.hidden = state.view !== "overview";
     welcomeBtn.innerHTML = `${icon("handshake")}<span>Uvítanie správcom</span>`;
   }
-  newItemBtn.hidden = !canCreateInView();
+  newItemBtn.hidden = !canCreateInView() || (state.view === "problems" && !hasSvbProblemAcknowledgement());
   newItemBtn.innerHTML = `${icon("plus")}<span>${actionLabel()}</span>`;
   root.innerHTML = `${platformSupportBanner()}${views[state.view]()}${copyrightFooter()}`;
   bindViewActions();
   syncMobileLayout();
   enhanceIcons();
+  if (state.view === "problems") ensureSvbProblemAcknowledgement();
   schedulePendingDeepLinkDetail();
 }
 
@@ -3217,6 +3266,7 @@ function actionLabel() {
   if (state.view === "photoAlbum") return "Pridať fotku";
   if (state.view === "classifieds") return "Pridať inzerát";
   if (state.view === "messages") return "Zaeviduj poruchu";
+  if (state.view === "problems") return "Pridať udalosť";
   if (state.view === "talk") return "Napísať príspevok";
   if (state.view === "owners") return "Pridať vlastníka";
   if (state.view === "emails") return "Nová šablóna";
@@ -3542,6 +3592,9 @@ const views = {
   talk() {
     return messageSectionView("talk");
   },
+  problems() {
+    return svbProblemsView();
+  },
   votes() {
     const votes = filteredVotes();
     const activeVote = currentVote(votes);
@@ -3556,7 +3609,7 @@ const views = {
     if (state.historyVoteQuestionFilter !== "all" && !historyQuestionOptions.some((option) => option.id === state.historyVoteQuestionFilter)) state.historyVoteQuestionFilter = "all";
     const activeTotals = voteTotalsForVoteFilter(activeVote, state.currentVoteQuestionFilter);
     const activeSummary = voteSummaryForViewer(activeVote, state.currentVoteQuestionFilter);
-    const historyTotals = voteTotalsForVoteFilter(historyVote, state.historyVoteQuestionFilter);
+    const historyTotals = voteChartForViewer(historyVote, state.historyVoteQuestionFilter);
     return `
       <section class="panel votes-dashboard">
           <div class="toolbar">
@@ -3690,6 +3743,7 @@ const views = {
     `;
   },
   photoAlbum() {
+    const photos = albumPhotos();
     return `
       <section class="panel">
         <div class="toolbar">
@@ -3697,10 +3751,11 @@ const views = {
             <h2>Fotoalbum domu</h2>
             <p class="muted">Spoločná fotodokumentácia domu. Fotky môžu pridávať všetky role, vymazávať ich môže iba predseda SVB.</p>
           </div>
-          <span class="tag document">${state.photos.length} fotky</span>
+          <span class="tag document">${photos.length} fotky</span>
         </div>
+        ${!hasSvbProblemAcknowledgement() ? `<div class="svb-problem-album-locked"><span>${icon("shield-alert")} Fotografie z Problémov SVB sú chránené pravidlami dôvernosti.</span><button type="button" class="ghost" data-open-problem-notice>Zobraziť upozornenie</button></div>` : ""}
         <div class="photo-grid">
-          ${state.photos.map(photoCard).join("")}
+          ${photos.map(photoCard).join("")}
         </div>
       </section>
     `;
@@ -4042,7 +4097,7 @@ const views = {
               <h2>Notifikácie</h2>
               <p class="muted">Samostatne si vyberte oblasti pre e-mailové a push upozornenia. Dôležité oznamy zostávajú povinne aktívne.</p>
             </div>
-            <span class="tag vote">3 povinné oblasti</span>
+            <span class="tag vote">${REQUIRED_NOTIFICATION_AREAS.size} povinné oblasti</span>
           </div>
           ${notificationPreferencesMarkup()}
           <div class="notification-preference-actions">
@@ -4551,9 +4606,9 @@ function serviceAdminSection() {
       purpose: "Inštalácia webovej aplikácie na Android, iOS, macOS a Windows cez prehliadač.",
       manageUrl: `${LIVE_APP_URL}/manifest.webmanifest`,
       values: [
-        ["Manifest", "manifest.webmanifest?v=221"],
+        ["Manifest", `manifest.webmanifest?v=${APP_VERSION.slice(1)}`],
         ["Service worker", "sw.js"],
-        ["Cache", "e-housing-v221"]
+        ["Cache", `e-housing-${APP_VERSION}`]
       ],
       steps: [
         "Skontrolujte manifest.webmanifest, názov aplikácie a ikony.",
@@ -5121,6 +5176,21 @@ function voteSummaryForViewer(vote, filterValue = "all", role = state.role, isPl
   };
 }
 
+function voteChartForViewer(vote, filterValue = "all", role = state.role, isPlatformAdmin = state.isPlatformAdmin) {
+  if (role === "chair" || isPlatformAdmin) {
+    const totals = voteTotalsForVoteFilter(vote, filterValue);
+    return {
+      ...totals,
+      voted: totals.yes + totals.no + totals.abstain > 0,
+      viewerMode: "aggregate"
+    };
+  }
+  return {
+    ...personalVoteTotalsForVoteFilter(vote, filterValue),
+    viewerMode: "personal"
+  };
+}
+
 function electronicVoterCount(vote) {
   if (!vote) return 0;
   if (Number.isFinite(Number(vote.electronicVoters))) return Number(vote.electronicVoters);
@@ -5138,12 +5208,18 @@ function voteQuestionChartBlock(scope, vote, questionOptions, selectedValue, tot
   const selectedQuestion = selectedVoteQuestionForVote(vote, selectedValue);
   const filterAttr = scope === "history" ? "data-history-vote-question-filter" : "data-current-vote-question-filter";
   const scopeLabel = scope === "history" ? "História" : "Aktuálne";
+  const personalView = totals.viewerMode === "personal";
+  const chartDescription = selectedQuestion
+    ? `${personalView ? "Graf zobrazuje váš hlas k otázke" : "Graf zobrazuje otázku"}: ${escapeHtml(selectedQuestion.text)}`
+    : personalView
+      ? "Graf zobrazuje vaše elektronické hlasy v tomto hlasovaní."
+      : "Graf zobrazuje súčet otázok v tomto hlasovaní.";
   return `
     <div class="vote-inline-chart">
       <div class="toolbar compact-toolbar">
         <div>
           <h4>${scopeLabel}: ${escapeHtml(vote.title)}</h4>
-          <p class="muted">${selectedQuestion ? `Graf zobrazuje otázku: ${escapeHtml(selectedQuestion.text)}` : "Graf zobrazuje súčet otázok v tomto hlasovaní."}</p>
+          <p class="muted">${chartDescription}</p>
         </div>
         <select class="search wide-select" ${filterAttr} aria-label="Filter otázok k hlasovaniu">
           <option value="all" ${selectedValue === "all" ? "selected" : ""}>Všetky otázky v tomto hlasovaní</option>
@@ -5166,6 +5242,17 @@ function pieSegment(value, total, offset, color) {
 }
 
 function votePieChart(totals) {
+  const personalView = totals.viewerMode === "personal";
+  if (personalView && !totals.voted) {
+    return `
+      <div class="vote-pie-wrap is-unvoted">
+        <div class="vote-pie is-unvoted" role="img" aria-label="Vlastník v tomto hlasovaní elektronicky nehlasoval">
+          <div><strong class="vote-pie-empty-label">Vlastník nehlasoval</strong><span>bez elektronického hlasu</span></div>
+        </div>
+        <div class="vote-chart-empty-note"><strong>Bez odovzdaného hlasu</strong><span>Pre aktívnu nehnuteľnosť nie je v tomto hlasovaní evidovaná elektronická odpoveď.</span></div>
+      </div>
+    `;
+  }
   const total = totals.yes + totals.no + totals.abstain;
   const yesPortion = total ? totals.yes / total : 0;
   const noPortion = total ? totals.no / total : 0;
@@ -5178,8 +5265,8 @@ function votePieChart(totals) {
     : "#edf3f0 0 100%";
   return `
     <div class="vote-pie-wrap">
-      <div class="vote-pie" style="background: conic-gradient(${segments});" role="img" aria-label="Koláčový graf hlasovania">
-        <div><strong>${total}</strong><span>hlasov</span></div>
+      <div class="vote-pie" style="background: conic-gradient(${segments});" role="img" aria-label="${personalView ? "Graf môjho hlasovania" : "Koláčový graf hlasovania"}">
+        <div><strong>${total}</strong><span>${personalView ? "moje hlasy" : "hlasov"}</span></div>
       </div>
       <div class="vote-legend">
         ${voteLegendItem("Za", totals.yes, total, "yes")}
@@ -5193,6 +5280,18 @@ function votePieChart(totals) {
 function voteLegendItem(label, value, total, type) {
   const percent = total ? Math.round((Number(value || 0) / total) * 100) : 0;
   return `<div class="vote-legend-item ${type}"><span></span><strong>${label}</strong><em>${value} hlasov · ${percent}%</em></div>`;
+}
+
+function voteCardResultRow(totals) {
+  if (totals.viewerMode === "personal") {
+    if (!totals.voted) {
+      return `<div class="tag-row vote-card-result-row personal"><span class="tag urgent">Vlastník nehlasoval</span><span class="tag">Bez elektronicky odovzdaného hlasu</span></div>`;
+    }
+    const personalTotal = totals.yes + totals.no + totals.abstain;
+    return `<div class="tag-row vote-card-result-row personal"><span class="tag vote">Môj hlas: ZA ${totals.yes}</span><span class="tag">Môj hlas: PROTI ${totals.no}</span><span class="tag">Môj hlas: ZDRŽAL SA ${totals.abstain}</span><span class="tag">Odovzdané odpovede: ${personalTotal}</span></div>`;
+  }
+  const aggregateTotal = totals.yes + totals.no + totals.abstain;
+  return `<div class="tag-row vote-card-result-row aggregate"><span class="tag vote">Spolu za ${totals.yes}</span><span class="tag">Spolu proti ${totals.no}</span><span class="tag">Spolu zdržal sa ${totals.abstain}</span><span class="tag">${aggregateTotal} hlasov spolu</span></div>`;
 }
 
 function voteLegalInfoCard() {
@@ -5234,13 +5333,13 @@ function documentFileActions(item) {
 }
 
 function isImageAttachment(item) {
-  const path = `${item.storagePath || ""} ${item.fileUrl || ""}`.toLowerCase();
-  return /\.(png|jpe?g|webp|gif|bmp|avif)(\?|$)/i.test(path);
+  return [item.storagePath, item.fileUrl].some((path) => /\.(png|jpe?g|webp|gif|bmp|avif)([?#]|$)/i.test(path || ""));
 }
 
-function mediaPreviewBlock(item) {
+function mediaPreviewBlock(item, clickableImage = false) {
+  const imageTag = `<img src="${escapeAttr(item.fileUrl || "")}" alt="${escapeAttr(item.title || "Priložený obrázok")}">`;
   const image = item.fileUrl && isImageAttachment(item)
-    ? `<figure class="attachment-preview"><img src="${escapeAttr(item.fileUrl)}" alt="${escapeAttr(item.title || "Priložený obrázok")}"><figcaption>Priložený obrázok</figcaption></figure>`
+    ? `<figure class="attachment-preview">${clickableImage ? `<a href="${escapeAttr(item.fileUrl)}" target="_blank" rel="noopener" aria-label="Zobraziť fotografiu v plnej veľkosti">${imageTag}</a>` : imageTag}<figcaption>Priložený obrázok</figcaption></figure>`
     : "";
   const video = youtubePreviewBlock(item.youtubeUrl);
   return `${image}${video}`;
@@ -5366,22 +5465,50 @@ function canReplyMessage(message) {
   return false;
 }
 
+function calendarAlbumPhotos() {
+  if (!permissionFor(state.role, "calendar").read) return [];
+  return state.events.filter((event) => event.storagePath && isImageAttachment(event)).map((event) => ({
+    id: `event:${event.id}`, eventId: event.id,
+    title: isCleaningEventType(event.eventType) ? cleaningEventTitle(event.eventType) : event.title,
+    category: isCleaningEventType(event.eventType) ? cleaningEventTitle(event.eventType) : "Kalendár",
+    description: event.note || "", author: "Kalendár SVB", date: event.startsAt || event.date,
+    image: event.fileUrl || "building-placeholder.svg"
+  }));
+}
+
+async function refreshCalendarAttachment(event) {
+  if (!event.storagePath || !supabaseClient) return true;
+  const url = await signedStorageUrl(event.storagePath);
+  if (!url) {
+    window.alert("Prílohu udalosti sa nepodarilo načítať. Skontrolujte pripojenie a skúste to znova.");
+    return false;
+  }
+  event.fileUrl = url;
+  return true;
+}
+
 function photoCard(photo) {
-  return `<article class="photo-card searchable" data-text="${photo.title} ${photo.category} ${photo.author}">
+  return `<article class="photo-card searchable" data-text="${escapeAttr(`${photo.title} ${photo.category} ${photo.author}`)}">
     <button class="photo-preview-button" type="button" data-photo-preview="${photo.id}" aria-label="Zväčšiť fotku ${escapeAttr(photo.title)}">
       <img src="${photo.image}" alt="${escapeAttr(photo.title)}">
     </button>
     <div>
       <h3><button class="text-link" type="button" data-photo-preview="${photo.id}">${escapeHtml(photo.title)}</button></h3>
-      <p>${photo.description}</p>
-      <div class="tag-row"><span class="tag">${photo.category}</span><span class="tag">${photo.author}</span><span class="tag">${formatDate(photo.date)}</span></div>
-      <div class="row-actions">${deleteButton("photo", photo.id, photo)}</div>
+      <p>${escapeHtml(photo.description)}</p>
+      <div class="tag-row"><span class="tag">${escapeHtml(photo.category)}</span><span class="tag">${escapeHtml(photo.author)}</span><span class="tag">${formatDate(photo.date)}</span></div>
+      <div class="row-actions">${photo.problemId || photo.eventId ? `<button class="ghost" data-detail="${photo.eventId ? "event" : "svbProblem"}" data-id="${escapeAttr(photo.eventId || photo.problemId)}">${icon("eye")}<span>Detail udalosti</span></button>` : deleteButton("photo", photo.id, photo)}</div>
     </div>
   </article>`;
 }
 
-function openPhotoPreview(id) {
-  const photo = state.photos.find((item) => String(item.id) === String(id));
+async function openPhotoPreview(id) {
+  if (String(id).startsWith("problem:") && !ensureSvbProblemAcknowledgement(() => openPhotoPreview(id))) return;
+  if (String(id).startsWith("event:")) {
+    if (!permissionFor(state.role, "calendar").read) return;
+    const event = state.events.find((item) => `event:${item.id}` === String(id));
+    if (!event || !(await refreshCalendarAttachment(event))) return;
+  }
+  const photo = albumPhotos().find((item) => String(item.id) === String(id));
   if (!photo) return;
   dialogSave.hidden = true;
   dialogTitle.textContent = photo.title;
@@ -5476,8 +5603,10 @@ function voteQuestionStatsMarkup(question, showMyAnswer = true, showAttachments 
 }
 
 function voteCard(vote) {
-  const total = vote.yes + vote.no + vote.abstain;
-  const percent = total ? Math.round((vote.yes / total) * 100) : 0;
+  const viewerTotals = voteChartForViewer(vote, "all");
+  const viewerTotal = viewerTotals.yes + viewerTotals.no + viewerTotals.abstain;
+  const percent = viewerTotal ? Math.round((viewerTotals.yes / viewerTotal) * 100) : 0;
+  const progressLabel = viewerTotals.viewerMode === "personal" ? "Môj podiel hlasov za" : "Celkový podiel hlasov za";
   const questions = vote.questions?.length ? vote.questions : [{ text: vote.title, yes: vote.yes, no: vote.no, abstain: vote.abstain }];
   const cancelled = isVoteCancelled(vote);
   const actions = voteActions(vote, cancelled);
@@ -5498,8 +5627,8 @@ function voteCard(vote) {
       </div>
       <ol class="question-list vote-question-stats">${questions.map((question) => voteQuestionStatsMarkup(question)).join("")}</ol>
       ${myVoteProxyStatus(vote)}
-      <div class="progress" aria-label="Celkový podiel hlasov za"><span style="width:${percent}%"></span></div>
-      <div class="tag-row"><span class="tag vote">Spolu za ${vote.yes}</span><span class="tag">Spolu proti ${vote.no}</span><span class="tag">Spolu zdržal sa ${vote.abstain}</span><span class="tag">${total} hlasov spolu</span></div>
+      <div class="progress" aria-label="${progressLabel}"><span style="width:${percent}%"></span></div>
+      ${voteCardResultRow(viewerTotals)}
       ${voteThread(vote)}
     </div>
     <div class="row-actions">${actions}</div>
@@ -5695,6 +5824,7 @@ function dayCard(cell, canCreate = false) {
         <span>${escapeHtml(calendarLabel)}${creatorLabel ? `<small> · ${escapeHtml(creatorLabel)}</small>` : ""}</span>
       </button>
       <span class="event-actions">
+        ${event.storagePath && isImageAttachment(event) ? `<button type="button" data-photo-preview="event:${event.id}" title="Zobraziť fotografiu" aria-label="Zobraziť fotografiu udalosti ${escapeAttr(calendarLabel)}">${icon("image")}</button>` : ""}
         ${canEditItem("event", event) ? `<button type="button" data-edit="event" data-id="${event.id}" aria-label="Upraviť udalosť">${icon("pencil")}</button>` : ""}
         ${canDeleteItem("event", event) ? `<button type="button" data-delete-item="event" data-id="${event.id}" aria-label="Vymazať udalosť">${icon("trash-2")}</button>` : ""}
       </span>
@@ -6424,6 +6554,7 @@ function messageThreads(messageArea = "repair") {
 }
 
 function bindViewActions() {
+  bindSvbProblemActions(root);
   document.querySelectorAll("[data-partner-search]").forEach((input) => {
     input.addEventListener("input", () => {
       state.partnerSearch = input.value;
@@ -6565,7 +6696,11 @@ function bindViewActions() {
   });
 
   document.querySelectorAll("[data-photo-preview]").forEach((button) => {
-    button.addEventListener("click", () => openPhotoPreview(button.dataset.photoPreview));
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openPhotoPreview(button.dataset.photoPreview);
+    });
   });
 
   document.querySelectorAll("[data-youtube-play]").forEach((button) => {
@@ -6878,10 +7013,12 @@ function shiftCalendarMonth(offset) {
 
 function openCreateDialog(defaults = {}) {
   const type = state.view;
+  if (type === "problems" && !ensureSvbProblemAcknowledgement(() => openCreateDialog(defaults))) return;
   if (!canCreateInView(type)) return;
   dialog.dataset.mode = "create";
   dialog.dataset.entityType = type;
   delete dialog.dataset.entityId;
+  delete dialog.dataset.problemDraftId;
   dialogSave.hidden = false;
   dialogTitle.textContent = actionLabel();
   dialogBody.innerHTML = formFor(type, defaults);
@@ -6895,6 +7032,7 @@ function openCreateDialog(defaults = {}) {
 }
 
 function openEditDialog(type, id) {
+  if (type === "svbProblem" && !ensureSvbProblemAcknowledgement(() => openEditDialog(type, id))) return;
   const item = findEditable(type, id);
   if (!item) return;
   if (!canEditItem(type, item)) return;
@@ -6904,6 +7042,7 @@ function openEditDialog(type, id) {
   dialogSave.hidden = false;
   dialogTitle.textContent = `Upraviť: ${editTitle(type, item)}`;
   dialogBody.innerHTML = editFormFor(type, item);
+  if (type === "svbProblem") bindSvbProblemActions(dialogBody);
   dialogSave.onclick = async (event) => {
     event.preventDefault();
     await saveEditDialog(type, id);
@@ -7000,9 +7139,12 @@ async function saveClassifiedCategory(category = "") {
   render();
 }
 
-function openDetailDialog(type, id) {
+async function openDetailDialog(type, id) {
+  if (type === "svbProblem" && !ensureSvbProblemAcknowledgement(() => openDetailDialog(type, id))) return;
   const item = findEditable(type, id);
   if (!item) return;
+  if (type === "event" && !permissionFor(state.role, "calendar").read) return;
+  if (type === "event" && !(await refreshCalendarAttachment(item))) return;
   if (type === "vote") state.voteDetailOwnerFilter = "all";
   dialogSave.hidden = true;
   dialogTitle.textContent = detailTitle(type, item);
@@ -7013,6 +7155,7 @@ function openDetailDialog(type, id) {
 }
 
 function bindDialogActions() {
+  bindSvbProblemActions(dialogBody);
   bindVoteQuestionBuilder();
   dialogBody.querySelectorAll("[data-edit]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -7136,6 +7279,7 @@ function voteOwnerAnswerOptions(rows) {
 }
 
 function detailBody(type, item) {
+  if (type === "svbProblem") return svbProblemDetail(item);
   if (type === "event") {
     const eventTitle = ["cleaning", "cleaning_extra"].includes(item.eventType) ? cleaningEventTitle(item.eventType) : item.title;
     return `
@@ -7148,7 +7292,7 @@ function detailBody(type, item) {
         <h3>Detail</h3>
         <p>${escapeHtml(item.note || "Bez doplňujúcej informácie.")}</p>
       </section>
-      ${mediaPreviewBlock(item)}
+      ${mediaPreviewBlock(item, true)}
       ${item.fileUrl ? `<div class="row-actions">${documentFileActions(item)}</div>` : ""}
     `;
   }
@@ -7978,10 +8122,10 @@ async function deleteItem(type, id) {
   if (supabaseClient && state.currentUserId) {
     try {
       await deleteItemFromSupabase(type, item);
-      await writeActivityLog("delete", `Vymazanie položky: ${label}`, {
+      await writeActivityLog("delete", type === "svbProblem" ? "Vymazanie udalosti Problémy SVB" : `Vymazanie položky: ${label}`, {
         relatedTable: type,
         relatedId: id,
-        metadata: { title: label }
+        metadata: type === "svbProblem" ? { view: "problems" } : { title: label }
       });
       await loadSupabaseData();
     } catch (error) {
@@ -8034,6 +8178,7 @@ function deleteItemLabel(type, item) {
 }
 
 async function deleteItemFromSupabase(type, item) {
+  if (type === "svbProblem") return deleteSvbProblem(item);
   if (type === "document" || type === "historyDocument") {
     if (item.storagePath) await supabaseClient.storage.from(STORAGE_BUCKET).remove([item.storagePath]);
     const { error } = await supabaseClient.from("documents").delete().eq("id", item.id);
@@ -8120,6 +8265,7 @@ async function deleteItemFromSupabase(type, item) {
 
 function deleteItemFromState(type, id) {
   const matches = (item) => String(item.id) !== String(id);
+  if (type === "svbProblem") state.svbProblems = state.svbProblems.filter(matches);
   if (type === "document") state.documents = state.documents.filter(matches);
   if (type === "historyDocument") state.documentHistory = state.documentHistory.filter(matches);
   if (type === "announcement") state.announcements = state.announcements.filter(matches);
@@ -8651,6 +8797,7 @@ async function saveRolePermissions() {
 }
 
 function findEditable(type, id) {
+  if (type === "svbProblem") return visibleSvbProblems().find((item) => String(item.id) === String(id));
   if (type === "activityLog") return state.activityLogs.find((item) => String(item.id) === String(id));
   if (type === "announcement") return state.announcements.find((item) => String(item.id) === String(id));
   if (type === "document") return state.documents.find((item) => String(item.id) === String(id));
@@ -8676,6 +8823,7 @@ function editTitle(type, item) {
 }
 
 function formFor(type, defaults = {}) {
+  if (type === "problems") return svbProblemForm();
   if (type === "partners") {
     return `
       <article class="notice partner-install-notice">
@@ -8854,7 +9002,7 @@ function formFor(type, defaults = {}) {
         ["category", "Dátum upratovania", selectedDate, "date"],
         ["youtubeUrl", "YouTube video link", ""],
         ["note", "Poznámka", "Doplňujúca informácia k upratovaniu.", "textarea"]
-      ]) + uploadField("Fotka upratovania", "image/*") + `
+      ]) + calendarUploadField("Fotka upratovania", true) + `
         <article class="notice">
           <strong>Automatické upozornenie</strong>
           <p>Po uložení sa automaticky odošle informačný email všetkým schváleným vlastníkom.</p>
@@ -8868,13 +9016,13 @@ function formFor(type, defaults = {}) {
         ["category", "Dátum", selectedDate, "date"],
         ["youtubeUrl", "YouTube video link", ""],
         ["note", "Poznámka", "Doplňujúca informácia k udalosti alebo upratovaniu.", "textarea"]
-      ]) + uploadField("Príloha alebo fotka upratovania") + notificationFields("all");
+      ]) + calendarUploadField("Príloha alebo fotka upratovania") + notificationFields("all");
     }
     return fieldsWithValues([
       ["title", "Názov udalosti", "Schôdza vlastníkov"],
       ["category", "Dátum udalosti", selectedDate, "date"],
       ["note", "Poznámka pre email", "Vlastníkom sa odošle informačný email.", "textarea"]
-    ]) + uploadField("Príloha k udalosti") + notificationFields("all");
+    ]) + calendarUploadField("Príloha k udalosti") + notificationFields("all");
   }
   if (type === "activities") {
     return fieldsWithValues([
@@ -8958,21 +9106,35 @@ function fields(items) {
   `).join("");
 }
 
-function uploadField(label, accept = "") {
+function calendarUploadField(label, imagesOnly = false) {
+  const images = "image/jpeg,image/png,image/webp,image/gif";
+  return uploadField(label, imagesOnly ? images : `${images},application/pdf,.doc,.docx`,
+    imagesOnly ? "JPG, PNG, WebP alebo GIF, najviac 20 MB." : "JPG, PNG, WebP, GIF, PDF, DOC alebo DOCX, najviac 20 MB.");
+}
+
+function uploadField(label, accept = "", note = "Súbor sa po uložení nahrá do Supabase Storage bucketu e-housing-files.") {
   return `
     <div class="field">
       <label for="uploadFile">${label}</label>
       <input id="uploadFile" type="file"${accept ? ` accept="${escapeAttr(accept)}"` : ""}>
-      <p class="upload-note">Súbor sa po uložení nahrá do Supabase Storage bucketu e-housing-files.</p>
+      <p class="upload-note">${escapeHtml(note)}</p>
     </div>
   `;
 }
 
 function editFormFor(type, item) {
+  if (type === "svbProblem") return svbProblemForm(item);
   if (type === "owner") {
     return fieldsWithValues([
       ["title", "Meno vlastníka", item.name],
       ["category", "Byt", item.flat],
+      ...(canChangeRegisteredOwnerRole(item) ? [[
+        "ownerProfileRole",
+        "Rola používateľa",
+        registeredOwnerRoleValue(item.profileRoleKey),
+        "select",
+        REGISTERED_OWNER_ROLE_OPTIONS
+      ]] : []),
       ["ownerLoginEmail", "Login email", item.loginEmail || item.email],
       ["phone", "Telefón", item.phone || "", "tel"],
       ["correspondenceStreet", "Korešpondenčná ulica", item.correspondenceStreet || ""],
@@ -9013,13 +9175,14 @@ function editFormFor(type, item) {
         ["category", "Dátum upratovania", eventDateKey(item), "date"],
         ["youtubeUrl", "YouTube video link", item.youtubeUrl || ""],
         ["note", "Poznámka", item.note || "", "textarea"]
-      ]) + uploadField("Nahradiť alebo doplniť fotku upratovania", "image/*");
+      ]) + calendarUploadField("Nahradiť alebo doplniť fotku upratovania", true);
     }
     return fieldsWithValues([
       ["title", "Názov udalosti", item.title],
       ["category", "Dátum udalosti", eventDateKey(item), "date"],
+      ["youtubeUrl", "YouTube video link", item.youtubeUrl || ""],
       ["note", "Poznámka", item.note || "Pri uložení bude pripravený email pre vlastníkov.", "textarea"]
-    ]);
+    ]) + calendarUploadField("Nahradiť alebo doplniť prílohu udalosti");
   }
   if (type === "activity") {
     return fieldsWithValues([
@@ -9688,6 +9851,7 @@ async function saveNewPartnerInstallation() {
 
 async function saveDialog(type) {
   if (!canCreateInView(type)) return;
+  if (type === "problems") return saveSvbProblem();
   if (type === "partners") {
     try {
       await saveNewPartnerInstallation();
@@ -10133,15 +10297,35 @@ async function saveDialogToSupabase(type, values) {
 async function uploadSelectedFile(type) {
   const input = document.querySelector("#uploadFile");
   const file = input?.files?.[0];
-  if (!supabaseClient || !file) return null;
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-  const path = `${type}/${Date.now()}-${safeName}`;
-  const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).upload(path, file, { upsert: true });
-  if (error) {
-    window.alert(`Upload zlyhal: ${error.message}`);
-    return null;
+  if (!file) return null;
+  if (!supabaseClient) throw new Error("Súbor nie je možné nahrať bez pripojenia k úložisku.");
+  let safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+  const options = { upsert: false };
+  if (type === "calendar") {
+    options.contentType = calendarAttachmentContentType(file);
+    if (options.contentType.startsWith("image/") && !isImageAttachment({ storagePath: safeName })) {
+      safeName += `.${options.contentType.split("/")[1]}`;
+    }
   }
+  const path = `${type}/${crypto.randomUUID()}-${safeName}`;
+  const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).upload(path, file, options);
+  if (error) throw new Error(`Súbor sa nepodarilo nahrať: ${error.message}. Uloženie nebolo dokončené.`);
   return path;
+}
+
+function calendarAttachmentContentType(file) {
+  const types = {
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif",
+    pdf: "application/pdf", doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  };
+  const extension = file.name.split(".").pop().toLowerCase();
+  const contentType = file.type || types[extension];
+  if (!Object.values(types).includes(contentType)) {
+    throw new Error("Nepodporovaný formát prílohy. Fotku uložte ako JPG, PNG, WebP alebo GIF; dokument ako PDF, DOC alebo DOCX.");
+  }
+  if (!file.size || file.size > 20 * 1024 * 1024) throw new Error("Príloha musí mať veľkosť od 1 bajtu do 20 MB.");
+  return contentType;
 }
 
 function findProfileRecipient(label) {
@@ -10252,10 +10436,11 @@ async function notifyRegistrationApproved({ recipientId, relatedTable, relatedId
 }
 
 async function notifyByChoice(subject, titleText, messageText, notification = {}, relatedTable = null, relatedId = null, metadata = {}) {
+  const isAllowedProblemNotice = relatedTable === "svb_problems" && canManageSvbProblems();
   const isAllowedClassifiedChairNotice = notification.target === "chair" && relatedTable === "classifieds";
   const isAllowedMessageNotice = ["all", "individual"].includes(notification.target) && relatedTable === "messages" && metadata.appNotification === true;
   const isAllowedCleaningNotice = notification.target === "all" && relatedTable === "events" && metadata.cleaningNotification === true;
-  if (!supabaseClient || (!canSendEmailNotifications() && !isAllowedClassifiedChairNotice && !isAllowedMessageNotice && !isAllowedCleaningNotice)) return;
+  if (!supabaseClient || (!canSendEmailNotifications() && !isAllowedClassifiedChairNotice && !isAllowedMessageNotice && !isAllowedCleaningNotice && !isAllowedProblemNotice)) return;
   const target = notification.target || "none";
   if (target === "none") return;
   if (target === "individual" && !notification.ownerId) {
@@ -10360,11 +10545,13 @@ async function saveEditDialog(type, id) {
   const item = findEditable(type, id);
   if (!item) return;
   if (!canEditItem(type, item)) return;
+  if (type === "svbProblem") return saveSvbProblem(item);
   const eventTypeValue = document.querySelector("#eventType")?.value.trim() || item.eventType || "general";
   const titleValue = type === "event" && isOwnCleaningEvent(item) && isCleaningEventType(eventTypeValue)
     ? cleaningEventTitle(eventTypeValue)
     : document.querySelector("#title")?.value.trim() || editTitle(type, item);
   const categoryValue = document.querySelector("#category")?.value.trim() || "";
+  const ownerProfileRoleValue = document.querySelector("#ownerProfileRole")?.value.trim();
   const loginEmailValue = document.querySelector("#ownerLoginEmail")?.value.trim();
   const accountStatusValue = document.querySelector("#accountStatus")?.value.trim();
   const approvalStatusValue = document.querySelector("#approvalStatus")?.value.trim();
@@ -10400,6 +10587,7 @@ async function saveEditDialog(type, id) {
       await saveEditToSupabase(type, item, {
         titleValue,
         categoryValue,
+        ownerProfileRoleValue,
         eventTypeValue,
         loginEmailValue,
         accountStatusValue,
@@ -10434,7 +10622,14 @@ async function saveEditDialog(type, id) {
       await writeActivityLog("update", `Úprava položky: ${titleValue}`, {
         relatedTable: type,
         relatedId: id,
-        metadata: { previousTitle: editTitle(type, item), category: categoryValue }
+        metadata: {
+          previousTitle: editTitle(type, item),
+          category: categoryValue,
+          ...(type === "owner" && ownerProfileRoleValue ? {
+            previousRole: item.profileRoleKey || "owner",
+            nextRole: registeredOwnerRoleValue(ownerProfileRoleValue, item.profileRoleKey || "owner")
+          } : {})
+        }
       });
     } catch (error) {
       window.alert(`Úprava zlyhala: ${error.message}`);
@@ -10461,6 +10656,10 @@ async function saveEditDialog(type, id) {
     item.debtAmount = Number.parseFloat(debtAmountValue || item.debtAmount || "0");
     item.isDebtor = isDebtorValue ? ["áno", "ano", "yes", "true", "1"].includes(isDebtorValue) : item.debtAmount > 0;
     if (cleaningCalendarAccessValue !== undefined) item.canManageCleaningCalendar = cleaningCalendarAccessValue === "true";
+    if (ownerProfileRoleValue && canChangeRegisteredOwnerRole(item)) {
+      item.profileRoleKey = registeredOwnerRoleValue(ownerProfileRoleValue, item.profileRoleKey || "owner");
+      item.profileRole = roleLabelForKey(item.profileRoleKey);
+    }
     item.note = noteValue || item.note;
     item.status = item.accountStatus;
   } else if (type === "activity") {
@@ -10577,6 +10776,10 @@ async function saveEditToSupabase(type, item, values) {
   }
 
   if (type === "owner") {
+    if (values.ownerProfileRoleValue && !canChangeRegisteredOwnerRole(item)) {
+      throw new Error("Rolu používateľa môže meniť iba predseda SVB.");
+    }
+    const nextProfileRole = registeredOwnerRoleValue(values.ownerProfileRoleValue, item.profileRoleKey || "owner");
     const nextDebtAmount = Number.parseFloat(values.debtAmountValue || item.debtAmount || "0");
     const nextIsDebtor = values.isDebtorValue ? ["áno", "ano", "yes", "true", "1"].includes(values.isDebtorValue) : nextDebtAmount > 0;
     const pairedProfile = profileByEmail(values.loginEmailValue || item.loginEmail || item.email);
@@ -10602,8 +10805,9 @@ async function saveEditToSupabase(type, item, values) {
     }).eq("id", item.id);
     if (error) throw new Error(error.message);
     if (item.profileId) {
-      await supabaseClient.from("profiles").update({
+      const { error: profileError } = await supabaseClient.from("profiles").update({
         full_name: values.titleValue,
+        role: nextProfileRole,
         flat_number: values.categoryValue || item.flat,
         email: values.loginEmailValue || item.loginEmail || item.email,
         phone: values.phoneValue || null,
@@ -10616,6 +10820,7 @@ async function saveEditToSupabase(type, item, values) {
         debt_amount: nextDebtAmount,
         note: values.noteValue || null
       }).eq("id", item.profileId);
+      if (profileError) throw new Error(profileError.message);
     }
     return;
   }
